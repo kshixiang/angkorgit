@@ -1214,6 +1214,24 @@ export function SettingsDialog() {
                       </div>
                     </div>
                   </SettingCard>
+                  <SettingCard
+                    title="Commit message language"
+                    description="Language used when the AI generates a commit message."
+                    action={
+                      <Select
+                        value={settings.aiCommitLanguage}
+                        onValueChange={(value) => settings.setAiCommitLanguage(value as 'english' | 'chinese')}
+                      >
+                        <SelectTrigger className="h-8 w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="chinese">中文</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    }
+                  />
                   <CommitStyleCard />
                   <ReviewStyleCard />
                 </div>

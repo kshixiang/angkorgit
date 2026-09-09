@@ -446,10 +446,14 @@ export const demoCliAgents: CliAgentInfo[] = [
   { id: 'claude', label: 'Claude Code', path: '/usr/local/bin/claude', version: '2.0.0 (demo)' },
 ];
 
-export function demoCliRun(): CliRunResult {
+export function demoCliRun(request?: { stdin?: string; args?: string[] }): CliRunResult {
+  const prompt = `${request?.stdin ?? ''}\n${request?.args?.join(' ') ?? ''}`;
+  const chinese = prompt.includes('Simplified Chinese');
   return {
     status: 0,
-    stdout: 'feat: demo response — connect a real AI CLI in the desktop app',
+    stdout: chinese
+      ? 'feat: 演示响应 — 请在桌面应用中连接真实 AI CLI'
+      : 'feat: demo response — connect a real AI CLI in the desktop app',
     stderr: '',
     output: null,
   };

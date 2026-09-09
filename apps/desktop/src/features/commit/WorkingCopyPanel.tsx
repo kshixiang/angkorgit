@@ -247,6 +247,7 @@ export function WorkingCopyPanel() {
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const [waitIndex, setWaitIndex] = useState(0);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; staged: boolean } | null>(null);
+  const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; path: string; staged: boolean } | null>(null);
   const [multi, setMulti] = useState<{ staged: boolean; paths: string[] } | null>(null);
   const messageRef = useRef<HTMLTextAreaElement | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
@@ -463,6 +464,23 @@ export function WorkingCopyPanel() {
     });
   };
 
+  const requestDiscardFolder = (folder: string, staged: boolean) => {
+    const source = staged ? allStaged : allUnstaged;
+    const paths = source.filter((file) => file.path.startsWith(`${folder}/`)).map((file) => file.path);
+    if (paths.length === 0) return;
+    void confirmDialog({
+      title: `Discard all ${paths.length} change${paths.length === 1 ? '' : 's'} in ${folder}?`,
+      description: staged
+        ? 'These files go back to the last commit — staged and unstaged changes alike. New files are deleted. This cannot be undone.'
+        : 'All changes in this folder will be reverted. Untracked files among them are deleted. This cannot be undone.',
+      path: folder,
+      confirmLabel: 'Discard all',
+      destructive: true,
+    }).then((ok) => {
+      if (ok) void discardMany(paths, staged);
+    });
+  };
+
   const discardAllStaged = async () => {
     const before = allStaged.length;
     try {
@@ -491,7 +509,14 @@ export function WorkingCopyPanel() {
 
   const openFileMenu = useCallback((event: React.MouseEvent, file: FileStatus, staged: boolean) => {
     event.preventDefault();
+    setFolderMenu(null);
     setFileMenu({ x: event.clientX, y: event.clientY, file, staged });
+  }, []);
+
+  const openFolderMenu = useCallback((event: React.MouseEvent, folder: { path: string }, staged: boolean) => {
+    event.preventDefault();
+    setFileMenu(null);
+    setFolderMenu({ x: event.clientX, y: event.clientY, path: folder.path, staged });
   }, []);
 
   const requestDiscard = useCallback(
@@ -540,6 +565,7 @@ export function WorkingCopyPanel() {
       const generated = await aiCapabilities.generateCommitMessage(getAiProvider(), patch, {
         style: useSettings.getState().aiStyle.commit,
         branch: status?.branch ?? null,
+        language: useSettings.getState().aiCommitLanguage,
       });
       if (!stillRunning()) return;
       setMessage(generated);
@@ -933,6 +959,7 @@ export function WorkingCopyPanel() {
             renderFile={renderUnstaged}
             fold={unstagedFold}
             onFoldState={setUnstagedFoldState}
+            onFolderContextMenu={(event, folder) => openFolderMenu(event, folder, false)}
           />
         ) : (
           <VirtualFileList
@@ -993,6 +1020,7 @@ export function WorkingCopyPanel() {
             renderFile={renderStaged}
             fold={stagedFold}
             onFoldState={setStagedFoldState}
+            onFolderContextMenu={(event, folder) => openFolderMenu(event, folder, true)}
           />
         ) : (
           <VirtualFileList
@@ -1124,6 +1152,23 @@ export function WorkingCopyPanel() {
             </DropdownMenuItem>
             </>
             )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {folderMenu && (
+        <DropdownMenu open onOpenChange={(open) => !open && setFolderMenu(null)}>
+          <DropdownMenuTrigger asChild>
+            <span style={{ position: 'fixed', left: folderMenu.x, top: folderMenu.y }} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="bottom">
+            <DropdownMenuLabel className="max-w-64 truncate font-mono">{folderMenu.path}</DropdownMenuLabel>
+            <DropdownMenuItem
+              destructive
+              onClick={() => requestDiscardFolder(folderMenu.path, folderMenu.staged)}
+            >
+              <Trash2 /> Discard all…
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

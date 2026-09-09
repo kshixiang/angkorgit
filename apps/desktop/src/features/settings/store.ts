@@ -146,6 +146,7 @@ interface SettingsState {
   aiProfiles: Partial<Record<AiProviderKind, AiProfile>>;
   aiKeysMigrated: boolean;
   aiStyle: AiStyleConfig;
+  aiCommitLanguage: 'english' | 'chinese';
   setTheme: (theme: Theme) => void;
   setAccent: (accent: AccentId) => void;
   setZoom: (zoom: number) => void;
@@ -167,6 +168,7 @@ interface SettingsState {
   setAiProvider: (provider: AiProviderKind) => void;
   setCommitStyle: (style: Partial<CommitStyle>) => void;
   setReviewStyle: (style: Partial<ReviewStyle>) => void;
+  setAiCommitLanguage: (language: 'english' | 'chinese') => void;
 }
 
 const clampZoom = (zoom: number): number =>
@@ -221,6 +223,7 @@ export const useSettings = create<SettingsState>()(
       aiProfiles: {},
       aiKeysMigrated: false,
       aiStyle: DEFAULT_AI_STYLE,
+      aiCommitLanguage: 'english',
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
@@ -285,6 +288,7 @@ export const useSettings = create<SettingsState>()(
         set((s) => ({ aiStyle: { ...s.aiStyle, commit: { ...s.aiStyle.commit, ...style } } })),
       setReviewStyle: (style) =>
         set((s) => ({ aiStyle: { ...s.aiStyle, review: { ...s.aiStyle.review, ...style } } })),
+      setAiCommitLanguage: (aiCommitLanguage) => set({ aiCommitLanguage }),
     }),
     {
       name: 'angkorgit-settings',

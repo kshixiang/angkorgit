@@ -129,4 +129,12 @@ describe('generateCommitMessage with style', () => {
     expect(message).toBe('feat: x');
     expect(requests[0].messages[1].content).toContain('conventional-commit');
   });
+
+  it('asks for Simplified Chinese when selected', async () => {
+    const requests: AiCompletionRequest[] = [];
+    await aiCapabilities.generateCommitMessage(fakeAi('修复登录重定向', requests), 'diff', {
+      language: 'chinese',
+    });
+    expect(requests[0].messages[1].content).toContain('Simplified Chinese');
+  });
 });

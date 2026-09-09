@@ -654,7 +654,7 @@ export const ipc = {
   async aiCliRun(request: CliRunRequest): Promise<CliRunResult> {
     if (!isTauri()) {
       await delay(600);
-      return demo.demoCliRun();
+      return demo.demoCliRun(request);
     }
     return invoke('ai_cli_run', { request });
   },

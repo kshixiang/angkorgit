@@ -1,0 +1,8 @@
+---
+description: 查看代码时优先使用 CodeGraph
+alwaysApply: true
+---
+
+# 代码查看工具
+
+分析或浏览代码时，优先使用 CodeGraph 获取模块、符号和依赖关系；再结合文件内容与命令行工具确认具体实现。若当前环境未提供 CodeGraph，使用现有工具继续工作，不要因此阻塞任务。

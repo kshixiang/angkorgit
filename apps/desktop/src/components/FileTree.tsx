@@ -65,12 +65,14 @@ function TreeLevel<T>({
   depth,
   collapsed,
   onToggle,
+  onFolderContextMenu,
   renderFile,
 }: {
   folder: TreeFolder<T>;
   depth: number;
   collapsed: Set<string>;
   onToggle: (path: string) => void;
+  onFolderContextMenu?: (event: React.MouseEvent, folder: TreeFolder<T>) => void;
   renderFile: (item: T, depth: number) => React.ReactNode;
 }) {
   return (
@@ -82,6 +84,7 @@ function TreeLevel<T>({
             className="flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-xs text-muted hover:bg-surface-raised"
             style={{ paddingLeft: 8 + depth * 14 }}
             onClick={() => onToggle(child.path)}
+            onContextMenu={onFolderContextMenu ? (event) => onFolderContextMenu(event, child) : undefined}
           >
             <ChevronRight
               className={cn('size-3 shrink-0 transition-transform', !collapsed.has(child.path) && 'rotate-90')}
@@ -96,6 +99,7 @@ function TreeLevel<T>({
               depth={depth + 1}
               collapsed={collapsed}
               onToggle={onToggle}
+              onFolderContextMenu={onFolderContextMenu}
               renderFile={renderFile}
             />
           )}
@@ -163,12 +167,14 @@ export function FileTree<T>({
   renderFile,
   fold,
   onFoldState,
+  onFolderContextMenu,
 }: {
   items: T[];
   pathOf: (item: T) => string;
   renderFile: (item: T, depth: number) => React.ReactNode;
   fold?: FileTreeFold;
   onFoldState?: (state: FileTreeFoldState) => void;
+  onFolderContextMenu?: (event: React.MouseEvent, folder: { path: string; count: number }) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const root = useMemo(() => buildFileTree(items, pathOf), [items, pathOf]);
@@ -194,6 +200,13 @@ export function FileTree<T>({
       return next;
     });
   return (
-    <TreeLevel folder={root} depth={0} collapsed={collapsed} onToggle={onToggle} renderFile={renderFile} />
+    <TreeLevel
+      folder={root}
+      depth={0}
+      collapsed={collapsed}
+      onToggle={onToggle}
+      onFolderContextMenu={onFolderContextMenu}
+      renderFile={renderFile}
+    />
   );
 }

@@ -17,6 +17,7 @@ function clip(text: string, max = 24_000): string {
 export interface CommitMessageContext {
   style?: CommitStyle;
   branch?: string | null;
+  language?: 'english' | 'chinese';
 }
 
 export async function generateCommitMessage(
@@ -26,12 +27,14 @@ export async function generateCommitMessage(
 ): Promise<string> {
   const style = context.style ?? DEFAULT_COMMIT_STYLE;
   const prefix = resolveCommitPrefix(style.prefixRules, context.branch ?? null);
+  const language = context.language ?? 'english';
+  const languageInstruction = language === 'chinese' ? ' Write the commit message in Simplified Chinese.' : ' Write the commit message in English.';
   const result = await ai.complete({
     messages: [
       { role: 'system', content: SYSTEM },
       {
         role: 'user',
-        content: `${commitStyleInstructions(style, prefix)}\n\nStaged diff:\n\n${clip(stagedDiff)}`,
+        content: `${commitStyleInstructions(style, prefix)}${languageInstruction}\n\nStaged diff:\n\n${clip(stagedDiff)}`,
       },
     ],
     temperature: 0.3,
