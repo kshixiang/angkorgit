@@ -1,6 +1,6 @@
 # Distribution Guide
 
-How AngKorGit ships to users: signing, notarization, auto-updates, and package
+How GitMD ships to users: signing, notarization, auto-updates, and package
 managers. Steps marked **[owner]** need the project owner's accounts/keys and
 cannot be automated by contributors.
 
@@ -15,18 +15,18 @@ cannot be automated by contributors.
 
 ## 2. Distribution WITHOUT paid signing (the current, chosen approach)
 
-AngKorGit ships **unsigned** — free and independent. Users get one extra step
+GitMD ships **unsigned** — free and independent. Users get one extra step
 on first launch; document it prominently (README covers this):
 
 - **macOS**: the app isn't notarized, so Gatekeeper blocks the first open.
   Either right-click the app → **Open** → Open, or on newer macOS:
-  **System Settings → Privacy & Security → "AngKorGit was blocked" → Open Anyway**.
-  Terminal alternative: `xattr -cr /Applications/AngKorGit.app` (removes the
+  **System Settings → Privacy & Security → "GitMD was blocked" → Open Anyway**.
+  Terminal alternative: `xattr -cr /Applications/GitMD.app` (removes the
   quarantine flag). Tauri ad-hoc-signs the binary automatically, so it runs
   fine on Apple Silicon once past Gatekeeper.
 - **Windows**: SmartScreen shows "Windows protected your PC" →
   **More info → Run anyway**.
-- **Linux**: AppImage: `chmod +x AngKorGit_*.AppImage` and run; `.deb` installs
+- **Linux**: AppImage: `chmod +x GitMD_*.AppImage` and run; `.deb` installs
   normally.
 
 **macOS Keychain prompts**: account tokens live in the Keychain, and macOS

@@ -59,6 +59,7 @@ import {
 import { ipc, openExternal } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
+import { useUiText } from '@/shared/i18n';
 import { useGraph } from '@/features/graph/store';
 import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
@@ -212,6 +213,7 @@ function Section({
 }
 
 export function Sidebar() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const branches = useRepo((s) => s.branches);
   const tags = useRepo((s) => s.tags);
@@ -413,7 +415,7 @@ export function Sidebar() {
     const spec = forgeRemote ? pullRequestCheckoutSpec(forgeRemote.kind, pr) : null;
     if (!spec) {
       toast.error(
-        `This ${forgeNoun(forgeRemote?.kind)} cannot be checked out from AngKorGit — open it in the browser instead.`,
+        `This ${forgeNoun(forgeRemote?.kind)} cannot be checked out from GitMD — open it in the browser instead.`,
       );
       return;
     }
@@ -832,14 +834,14 @@ export function Sidebar() {
   );
 
   return (
-    <aside className="flex h-full flex-col bg-surface" aria-label="Branches and refs">
+    <aside className="flex h-full flex-col bg-surface" aria-label={t('Branches and refs')}>
       <div className="flex items-center gap-1 p-2">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter refs…"
+            placeholder={t('Filter refs…')}
             className="h-7 border-transparent bg-surface-raised pl-8 text-xs"
           />
         </div>
@@ -861,7 +863,7 @@ export function Sidebar() {
         <Section
           {...section('branches')}
           icon={<GitBranch className="size-3.5" />}
-          title="Branches"
+          title={t('Branches')}
           count={locals.length}
           action={
             <Hint label="New branch">
@@ -891,7 +893,7 @@ export function Sidebar() {
         <Section
           {...section('worktrees')}
           icon={<FolderTree className="size-3.5" />}
-          title="Worktrees"
+          title={t('Worktrees')}
           count={worktrees.length}
           action={
             <span className="flex items-center">
@@ -1043,7 +1045,7 @@ export function Sidebar() {
           </>
         )}
 
-        <Section {...section('remotes')} icon={<Cloud className="size-3.5" />} title="Remotes" count={remoteBranches.length}>
+        <Section {...section('remotes')} icon={<Cloud className="size-3.5" />} title={t('Remotes')} count={remoteBranches.length}>
           {remotes.length === 0 && !hasRemoteBranches && !repoRefreshing && (
             <SidebarEmpty
               icon={<Cloud />}
@@ -1066,7 +1068,7 @@ export function Sidebar() {
 
         <Section
           icon={<TagIcon className="size-3.5" />}
-          title="Tags"
+          title={t('Tags')}
           count={filteredTags.length}
           {...section('tags')}
           action={
@@ -1125,7 +1127,7 @@ export function Sidebar() {
 
         <Section
           icon={<Archive className="size-3.5" />}
-          title="Stashes"
+          title={t('Stashes')}
           count={stashes.length}
           {...section('stashes')}
           action={

@@ -52,7 +52,7 @@ const PROVIDERS: Record<ProviderKind, ProviderPreset> = {
     label: 'GitHub',
     defaultHost: 'github.com',
     hostEditable: false,
-    tokenUrl: () => 'https://github.com/settings/tokens/new?scopes=repo&description=AngKorGit',
+    tokenUrl: () => 'https://github.com/settings/tokens/new?scopes=repo&description=GitMD',
     tokenHint: 'Personal access token with the "repo" scope',
     usernameHint: 'username (detected from the token)',
   },
@@ -127,7 +127,7 @@ async function validateToken(
         method: 'GET',
         headers: {
           authorization: `Basic ${btoa(`${identity}:${token}`)}`,
-          'user-agent': 'AngKorGit',
+          'user-agent': 'GitMD',
         },
       });
       if (res.status === 401 || res.status === 403) {
@@ -145,7 +145,7 @@ async function validateToken(
         headers: {
           authorization: `Bearer ${token}`,
           accept: 'application/vnd.github+json',
-          'user-agent': 'AngKorGit',
+          'user-agent': 'GitMD',
         },
       });
       if (res.status !== 200) throw new Error(`GitHub rejected the token (${res.status})`);
@@ -157,7 +157,7 @@ async function validateToken(
           const res = await ipc.httpRequest({
             url: `${scheme}://${host}/api/v4/user`,
             method: 'GET',
-            headers: { 'private-token': token, 'user-agent': 'AngKorGit' },
+            headers: { 'private-token': token, 'user-agent': 'GitMD' },
           });
           if (res.status === 200) {
             return { login: (JSON.parse(res.body) as { username: string }).username };

@@ -9,8 +9,10 @@ import { useUi } from '@/features/ui/store';
 import { ipc } from '@/core/ipc';
 import { WorkingCopyPanel } from '@/features/commit/WorkingCopyPanel';
 import { CommitDetails } from './CommitDetails';
+import { useUiText } from '@/shared/i18n';
 
 export function Inspector() {
+  const t = useUiText();
   const selectedOid = useGraph((s) => s.selectedOid);
   const repoPath = useRepo((s) => s.repo?.path);
   const fileTree = useUi((s) => s.fileTree);
@@ -77,10 +79,10 @@ export function Inspector() {
   const isStash = useRepo((s) => !!selectedOid && s.stashes.some((entry) => entry.oid === selectedOid));
 
   return (
-    <aside className="flex h-full flex-col bg-surface" aria-label="Inspector">
+    <aside className="flex h-full flex-col bg-surface" aria-label={t('Inspector')}>
       <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border-subtle px-2">
         <span className="px-1 text-xs font-semibold uppercase tracking-wide text-muted">
-          {commit || commitError ? (isStash ? 'Stash' : 'Commit') : 'Working copy'}
+          {commit || commitError ? (isStash ? 'Stash' : 'Commit') : t('Working copy')}
         </span>
         <div className="ml-auto flex items-center gap-0.5">
           <Hint label={fileFilterOpen ? 'Hide file filter' : 'Filter files'}>

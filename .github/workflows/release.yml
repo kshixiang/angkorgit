@@ -55,6 +55,6 @@ jobs:
         with:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'AngKorGit ${{ github.ref_name }}'
+          releaseName: 'GitMD ${{ github.ref_name }}'
           releaseDraft: true
           args: ${{ matrix.args }}

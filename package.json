@@ -1,8 +1,8 @@
 {
-  "name": "angkorgit",
+  "name": "gitmd",
   "version": "0.11.0",
   "private": true,
-  "description": "AngKorGit — a modern, fast, beautiful cross-platform Git client inspired by the craftsmanship of Angkor Wat.",
+  "description": "GitMD — a modern, fast, beautiful cross-platform Git client.",
   "license": "MIT",
   "packageManager": "pnpm@10.32.1",
   "pnpm": {
@@ -21,7 +21,7 @@
     "tauri:dev": "pnpm --filter @angkorgit/desktop tauri dev",
     "tauri:build": "pnpm --filter @angkorgit/desktop tauri build",
     "release:mac": "pnpm tauri:build && open apps/desktop/src-tauri/target/release/bundle/dmg",
-    "install:mac": "rm -rf /Applications/AngKorGit.app && ditto apps/desktop/src-tauri/target/release/bundle/macos/AngKorGit.app /Applications/AngKorGit.app && open -a /Applications/AngKorGit.app",
+    "install:mac": "rm -rf /Applications/GitMD.app && ditto apps/desktop/src-tauri/target/release/bundle/macos/GitMD.app /Applications/GitMD.app && open -a /Applications/GitMD.app",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",

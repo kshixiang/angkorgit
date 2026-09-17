@@ -11,11 +11,11 @@ export async function checkForUpdates(options: { silent: boolean }): Promise<voi
     const update = await check();
 
     if (!update) {
-      if (!options.silent) toast.success('AngKorGit is up to date');
+      if (!options.silent) toast.success('GitMD is up to date');
       return;
     }
 
-    toast.info(`AngKorGit ${update.version} is available`, {
+      toast.info(`GitMD ${update.version} is available`, {
       description: 'Download and restart to update.',
       duration: 15_000,
       action: {

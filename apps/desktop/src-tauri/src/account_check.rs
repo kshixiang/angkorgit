@@ -98,7 +98,7 @@ async fn probe_github(token: &str) -> Verdict {
         .get("https://api.github.com/user")
         .header("authorization", format!("Bearer {token}"))
         .header("accept", "application/vnd.github+json")
-        .header("user-agent", "AngKorGit")
+        .header("user-agent", "GitMD")
         .send()
         .await;
     match response {
@@ -124,7 +124,7 @@ async fn probe_gitlab(host: &str, token: &str) -> Verdict {
         let Ok(res) = client
             .get(&url)
             .header("private-token", token)
-            .header("user-agent", "AngKorGit")
+            .header("user-agent", "GitMD")
             .send()
             .await
         else {
@@ -169,7 +169,7 @@ async fn probe_gitlab_user(scheme: &str, host: &str, token: &str) -> Verdict {
     match client
         .get(&url)
         .header("private-token", token)
-        .header("user-agent", "AngKorGit")
+        .header("user-agent", "GitMD")
         .send()
         .await
     {
@@ -187,7 +187,7 @@ async fn probe_bitbucket(email: &str, token: &str) -> Verdict {
     match client
         .get("https://api.bitbucket.org/2.0/user")
         .header("authorization", format!("Basic {basic}"))
-        .header("user-agent", "AngKorGit")
+        .header("user-agent", "GitMD")
         .send()
         .await
     {

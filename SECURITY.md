@@ -2,19 +2,19 @@
 
 ## Supported Versions
 
-AngKorGit is pre-1.0; only the latest release receives security fixes.
+GitMD is pre-1.0; only the latest release receives security fixes.
 
 | Version | Supported |
 | --- | --- |
 | latest release | ✅ |
 | older releases | ❌ |
 
-## What AngKorGit touches on your machine
+## What GitMD touches on your machine
 
 For transparency, the app's security-relevant surface is:
 
 - **Your repositories** — read/write via libgit2, only for repositories you open.
-- **OS keychain** — hosting-account tokens are stored under the `AngKorGit`
+- **OS keychain** — hosting-account tokens are stored under GitMD's keychain service
   keychain service; committer identity is written to per-repository git config.
   Tokens never reach `accounts.json`, which holds only host, username, provider
   and whether the token was verified. A token is offered only to the host it was
@@ -22,14 +22,14 @@ For transparency, the app's security-relevant surface is:
 - **SSH keys** — read from disk (and the SSH agent) to authenticate `git@`
   remotes; never copied or transmitted anywhere else. Keys created by
   Settings → Authentication → SSH are ed25519 and are written **without a
-  passphrase**, because AngKorGit cannot prompt for one — a passphrase-protected
+  passphrase**, because GitMD cannot prompt for one — a passphrase-protected
   key only works via your SSH agent. Generation never overwrites an existing key.
 - **AI provider keys** — API keys you enter in Settings → AI are stored in the
   app's local settings (the webview's local storage on your machine), **not** in
   the OS keychain, and are sent only to the provider you configured. Prefer the
   installed-CLI or local-model providers if you'd rather store no key at all.
 - **AI CLIs** — if you select an installed AI CLI (Claude Code, Codex, Gemini
-  CLI, OpenCode), AngKorGit runs that binary as a local subprocess with your
+  CLI, OpenCode), GitMD runs that binary as a local subprocess with your
   user's permissions. Only a fixed allowlist of known CLI programs can be run.
 - **Network** — outbound only: git remotes you configure, Gravatar (avatar
   lookup by email hash), the AI provider you explicitly configure, and the

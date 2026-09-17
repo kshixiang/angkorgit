@@ -50,6 +50,13 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
         : [],
     [dialog, rawContext],
   );
+  const createFileFolder = useMemo(
+    () =>
+      dialog === 'createFile' && rawContext && typeof rawContext !== 'string' && 'folder' in rawContext
+        ? rawContext.folder
+        : '',
+    [dialog, rawContext],
+  );
 
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -147,6 +154,19 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
         action: () => ipc.renameBranch(path, dialogContext ?? '', name.trim()),
       }),
     );
+  };
+
+  const submitCreateFile = () => {
+    const fileName = name.trim();
+    if (!fileName || fileName === '.' || fileName === '..' || /[\\/]/.test(fileName)) {
+      toast.error('Enter a file name without a path.');
+      return;
+    }
+    void submit('Create file', async () => {
+      const file = `${createFileFolder}/${fileName}`;
+      await ipc.writeFile(path, file, '');
+      useUi.getState().openEditor(file);
+    });
   };
 
   return (
@@ -293,6 +313,32 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
               onClick={submitRename}
             >
               Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={dialog === 'createFile'} onOpenChange={(o) => !o && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create file</DialogTitle>
+            <DialogDescription>In {createFileFolder}/</DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            placeholder="filename.ts"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitCreateFile();
+            }}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={closeDialog}>
+              Cancel
+            </Button>
+            <Button disabled={busy || !name.trim()} onClick={submitCreateFile}>
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>

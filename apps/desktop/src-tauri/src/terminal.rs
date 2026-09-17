@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
+#[cfg(target_os = "windows")]
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -35,10 +37,50 @@ struct TermData {
     data: String,
 }
 
+#[cfg(target_os = "windows")]
+fn git_bash_path() -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Ok(root) = std::env::var("GIT_INSTALL_ROOT") {
+        candidates.push(PathBuf::from(root).join("bin/bash.exe"));
+    }
+    for variable in ["ProgramFiles", "ProgramW6432", "LocalAppData"] {
+        if let Ok(root) = std::env::var(variable) {
+            let root = PathBuf::from(root);
+            let git_root = if variable == "LocalAppData" {
+                root.join("Programs/Git")
+            } else {
+                root.join("Git")
+            };
+            candidates.push(git_root.join("bin/bash.exe"));
+        }
+    }
+    if let Ok(path) = std::env::var("PATH") {
+        candidates.extend(std::env::split_paths(&path).map(|entry| entry.join("bash.exe")));
+    }
+
+    candidates.into_iter().find(|path| is_file(path))
+}
+
+#[cfg(target_os = "windows")]
+fn is_file(path: &Path) -> bool {
+    path.is_file()
+}
+
 fn default_shell() -> CommandBuilder {
     #[cfg(target_os = "windows")]
     {
-        CommandBuilder::new("powershell.exe")
+        let bash = git_bash_path();
+        let mut cmd = CommandBuilder::new(
+            bash.clone()
+                .unwrap_or_else(|| PathBuf::from("powershell.exe")),
+        );
+        if bash.is_some() {
+            cmd.args(["--login", "-i"]);
+            cmd.env("CHERE_INVOKING", "1");
+            cmd.env("TERM", "xterm-256color");
+        }
+        cmd
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -46,6 +88,18 @@ fn default_shell() -> CommandBuilder {
         let mut cmd = CommandBuilder::new(shell);
         cmd.env("TERM", "xterm-256color");
         cmd
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn finds_git_bash_from_path() {
+        let path = super::git_bash_path();
+        if let Ok(git_root) = std::env::var("GIT_INSTALL_ROOT") {
+            assert!(path.is_some_and(|value| value.starts_with(git_root)));
+        }
     }
 }
 

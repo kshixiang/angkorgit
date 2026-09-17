@@ -69,6 +69,7 @@ import { AccountsTab, providerIcon } from './AccountsTab';
 import { Field, SettingCard, SettingEmpty, SettingRow } from './SettingCard';
 import { getAiProvider } from '@/features/ai/client';
 import { modKey } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 type SectionId = 'appearance' | 'git' | 'accounts' | 'ai' | 'shortcuts';
 
@@ -107,7 +108,7 @@ function SshCard() {
   const generate = async () => {
     setBusy(true);
     try {
-      const created = await ipc.sshKeyGenerate('~/.ssh/angkorgit_ed25519', 'AngKorGit');
+      const created = await ipc.sshKeyGenerate('~/.ssh/angkorgit_ed25519', 'GitMD');
       settings.setSshKeyPath(created.path);
       setPublicKey(created.publicKey);
       toast.success(`Created ${created.path} — add the public key to your host`, {
@@ -396,7 +397,7 @@ function CliAgentPicker() {
         />
       )}
       <p className="mt-1 text-[11px] leading-relaxed text-faint">
-        Requests run through the CLI on this machine with its own login and quota. AngKorGit stores no key and
+        Requests run through the CLI on this machine with its own login and quota. GitMD stores no key and
         sends nothing anywhere itself.
       </p>
     </div>
@@ -457,7 +458,7 @@ function CommitStyleCard() {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted">
-              Branch prefix rules <span className="font-normal text-faint">· first match wins, applied by AngKorGit itself</span>
+              Branch prefix rules <span className="font-normal text-faint">· first match wins, applied by GitMD itself</span>
             </span>
             <Button
               variant="ghost"
@@ -588,6 +589,7 @@ export function SettingsDialog() {
   const { dialog, closeDialog } = useUi();
   const open = dialog === 'settings';
   const settings = useSettings();
+  const t = useUiText();
 
   const [section, setSection] = useState<SectionId>('appearance');
   const [gitName, setGitName] = useState('');
@@ -706,11 +708,11 @@ export function SettingsDialog() {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent className="max-w-3xl overflow-hidden p-0">
-        <DialogTitle className="sr-only">Settings</DialogTitle>
+        <DialogTitle className="sr-only">{t('Settings')}</DialogTitle>
         <div className="flex h-[560px] max-h-[80vh]">
           <nav className="flex w-52 shrink-0 flex-col border-r border-border-subtle bg-surface">
             <p className="px-4 pb-2 pt-4 text-xs font-semibold uppercase tracking-wide text-faint">
-              Settings
+              {t('Settings')}
             </p>
             <div className="flex-1 px-2">
               {SECTIONS.map(({ id, label, icon: Icon }) => (
@@ -725,28 +727,46 @@ export function SettingsDialog() {
                   )}
                 >
                   <Icon className="size-4 shrink-0" />
-                  {label}
+                  {t(label)}
                 </button>
               ))}
             </div>
             <div className="border-t border-border-subtle px-4 py-3">
               <div className="flex items-center gap-2">
                 <Logo size={18} className="text-foreground" />
-                <span className="text-xs text-faint">AngKorGit</span>
+                <span className="text-xs text-faint">GitMD</span>
               </div>
             </div>
           </nav>
 
           <div className="flex min-w-0 flex-1 flex-col bg-background">
             <header className="shrink-0 border-b border-border-subtle px-6 pb-4 pt-5">
-              <h2 className="text-base font-semibold">{active.label}</h2>
-              <p className="mt-0.5 text-xs text-muted">{active.description}</p>
+              <h2 className="text-base font-semibold">{t(active.label)}</h2>
+              <p className="mt-0.5 text-xs text-muted">{t(active.description)}</p>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto p-6">
               {section === 'appearance' && (
                 <div className="flex flex-col gap-4">
                   <SettingCard
-                    title="Theme"
+                    title={t('Interface language')}
+                    description={t('Language used throughout the app. Git and developer terms stay in English.')}
+                    action={
+                      <Select
+                        value={settings.uiLanguage}
+                        onValueChange={(value) => settings.setUiLanguage(value as 'english' | 'chinese')}
+                      >
+                        <SelectTrigger className="h-8 w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="chinese">中文</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    }
+                  />
+                  <SettingCard
+                    title={t('Theme')}
                     description="Popular editor palettes — surfaces and syntax colors follow the theme."
                   >
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -799,7 +819,7 @@ export function SettingsDialog() {
                   </SettingCard>
 
                   <SettingCard
-                    title="Accent color"
+                    title={t('Accent color')}
                     description="Buttons, highlights and focus follow your accent. Graph and diff colors keep their meaning."
                   >
                     <div className="flex items-center gap-3">
@@ -823,7 +843,7 @@ export function SettingsDialog() {
                   </SettingCard>
 
                   <SettingCard
-                    title="Zoom"
+                    title={t('Zoom')}
                     description={
                       <>
                         Also <Kbd>{modKey()}</Kbd> <Kbd>+</Kbd> / <Kbd>{modKey()}</Kbd> <Kbd>−</Kbd> anywhere
@@ -861,8 +881,8 @@ export function SettingsDialog() {
                   />
 
                   <SettingCard
-                    title="Reduce motion"
-                    description="Minimize animations across the app"
+                    title={t('Reduce motion')}
+                    description={t('Minimize animations across the app')}
                     action={<Switch checked={settings.reduceMotion} onCheckedChange={settings.setReduceMotion} />}
                   />
                 </div>
@@ -1215,8 +1235,8 @@ export function SettingsDialog() {
                     </div>
                   </SettingCard>
                   <SettingCard
-                    title="Commit message language"
-                    description="Language used when the AI generates a commit message."
+                    title="AI response language"
+                    description="Language used for commit messages, diff explanations, reviews and other AI responses."
                     action={
                       <Select
                         value={settings.aiCommitLanguage}

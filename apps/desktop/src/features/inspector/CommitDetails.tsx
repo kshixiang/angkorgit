@@ -21,6 +21,7 @@ import { ipc } from '@/core/ipc';
 import { FileFilterInput } from '@/components/FileFilterInput';
 import { useGraph } from '@/features/graph/store';
 import { useRepo } from '@/features/repository/store';
+import { useSettings } from '@/features/settings/store';
 import { focusRequests, useUi } from '@/features/ui/store';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { AiText } from '@/features/ai/AiText';
@@ -374,7 +375,11 @@ export function CommitDetails({
     try {
       const fullDiffs = await ipc.diffCommit(repoPath, commit.oid);
       if (!stillRunning()) return;
-      const text = await aiCapabilities.explainDiff(getAiProvider(), diffToText(fullDiffs));
+      const text = await aiCapabilities.explainDiff(
+        getAiProvider(),
+        diffToText(fullDiffs),
+        useSettings.getState().aiCommitLanguage,
+      );
       if (stillRunning()) useAiWork.getState().setExplain(key, text);
     } catch (error) {
       if (stillRunning()) {

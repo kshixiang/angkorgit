@@ -1,8 +1,8 @@
 [package]
 name = "angkorgit"
 version = "0.11.0"
-description = "AngKorGit — a modern, fast, beautiful Git client"
-authors = ["AngKorGit Contributors"]
+description = "GitMD — a modern, fast, beautiful Git client"
+authors = ["GitMD Contributors"]
 license = "MIT"
 edition = "2021"
 rust-version = "1.77"

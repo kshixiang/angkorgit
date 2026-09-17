@@ -26,7 +26,7 @@ export function SplashScreen() {
         className="text-center"
       >
         <h1 className="text-2xl font-semibold tracking-tight">
-          AngKor<span className="text-primary">Git</span>
+          Git<span className="text-primary">MD</span>
         </h1>
         <p className="mt-1 text-xs text-muted">Strength. Simplicity. Craftsmanship.</p>
       </motion.div>

@@ -10,6 +10,7 @@ import {
   type ReviewStyle,
 } from '@angkorgit/core';
 import { ipc, isTauri } from '@/core/ipc';
+import type { UiLanguage } from '@/shared/i18n';
 
 export type Theme =
   | 'dark'
@@ -147,6 +148,7 @@ interface SettingsState {
   aiKeysMigrated: boolean;
   aiStyle: AiStyleConfig;
   aiCommitLanguage: 'english' | 'chinese';
+  uiLanguage: UiLanguage;
   setTheme: (theme: Theme) => void;
   setAccent: (accent: AccentId) => void;
   setZoom: (zoom: number) => void;
@@ -169,6 +171,7 @@ interface SettingsState {
   setCommitStyle: (style: Partial<CommitStyle>) => void;
   setReviewStyle: (style: Partial<ReviewStyle>) => void;
   setAiCommitLanguage: (language: 'english' | 'chinese') => void;
+  setUiLanguage: (language: UiLanguage) => void;
 }
 
 const clampZoom = (zoom: number): number =>
@@ -224,6 +227,7 @@ export const useSettings = create<SettingsState>()(
       aiKeysMigrated: false,
       aiStyle: DEFAULT_AI_STYLE,
       aiCommitLanguage: 'english',
+      uiLanguage: 'english',
       setTheme: (theme) => {
         applyTheme(theme);
         set({ theme });
@@ -289,6 +293,7 @@ export const useSettings = create<SettingsState>()(
       setReviewStyle: (style) =>
         set((s) => ({ aiStyle: { ...s.aiStyle, review: { ...s.aiStyle.review, ...style } } })),
       setAiCommitLanguage: (aiCommitLanguage) => set({ aiCommitLanguage }),
+      setUiLanguage: (uiLanguage) => set({ uiLanguage }),
     }),
     {
       name: 'angkorgit-settings',

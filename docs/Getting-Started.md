@@ -3,21 +3,21 @@
 Download the latest release for your platform from the
 [releases page](https://github.com/cheat2001/angkorgit/releases).
 
-AngKorGit is free, open-source software and is **not signed with a paid
+GitMD is free, open-source software and is **not signed with a paid
 certificate**, so your OS asks for a few extra confirmations on first launch.
 
 ## macOS — first launch, step by step
 
-1. Open the `.dmg` and **drag AngKorGit into Applications**. Don't launch it
+1. Open the `.dmg` and **drag GitMD into Applications**. Don't launch it
    from inside the dmg window — macOS would run it from a temporary sandbox
    where permissions can never be saved.
-2. Launch it. macOS shows *"AngKorGit" cannot be opened* with **Move to
+2. Launch it. macOS shows *"GitMD" cannot be opened* with **Move to
    Trash** — this only means the app has no paid Apple certificate. Close it,
    then go to **System Settings → Privacy & Security**, scroll down, and click
-   **"Open Anyway"** next to the AngKorGit message. Confirm once more. This
+   **"Open Anyway"** next to the GitMD message. Confirm once more. This
    happens only on the very first launch.
 3. When you open a repository in Desktop/Documents/Downloads, macOS asks
-   *"AngKorGit would like to access files in your … folder"* → **Allow**.
+   *"GitMD would like to access files in your … folder"* → **Allow**.
    One prompt per folder, then it's remembered.
 4. If you connect a GitHub/GitLab account, the first git operation per app
    session asks to read the token from your Keychain → **Allow** (plain
@@ -36,15 +36,15 @@ tccutil reset All dev.angkorgit.app
 | Platform | First launch |
 | --- | --- |
 | **Windows** | SmartScreen: **More info → Run anyway** |
-| **Linux** | AppImage: `chmod +x AngKorGit_*.AppImage`, then run — or install the `.deb` |
+| **Linux** | AppImage: `chmod +x GitMD_*.AppImage`, then run — or install the `.deb` |
 
-After that, AngKorGit **updates itself**: every update is cryptographically
+After that, GitMD **updates itself**: every update is cryptographically
 verified (minisign) before installing, and all releases are built in public by
 GitHub Actions from this source tree. No telemetry, ever.
 
 ## Connecting to a remote
 
-AngKorGit picks its credential from the **remote URL**, not from a setting:
+GitMD picks its credential from the **remote URL**, not from a setting:
 
 | Remote | Credential |
 | --- | --- |
@@ -62,17 +62,17 @@ and shows the public key to copy into your host. Existing keys are never
 overwritten — generation always picks a free filename, so a second key becomes
 `angkorgit_ed25519_2` rather than replacing the first.
 
-If your key has a name AngKorGit does not try by default (`~/.ssh/id_ed25519`
+If your key has a name GitMD does not try by default (`~/.ssh/id_ed25519`
 and `~/.ssh/id_rsa`), set it in the **Private key** field or browse for it.
 
-Passphrase-protected keys only work through the SSH agent, because AngKorGit
+Passphrase-protected keys only work through the SSH agent, because GitMD
 never prompts for a passphrase. Run `ssh-add <key>` first, and leave
 **Use the SSH agent** on.
 
 ### More than one key
 
 Many people use a different key per host — one for work, one for personal.
-That works, with one thing to know: **AngKorGit does not read `~/.ssh/config`**.
+That works, with one thing to know: **GitMD does not read `~/.ssh/config`**.
 The library it uses for SSH has never parsed it, so `Host` aliases and
 `IdentityFile` rules that work in your terminal have no effect in the app.
 
@@ -81,12 +81,12 @@ Two ways to use several keys:
 - **The SSH agent** (recommended) — `ssh-add key1 key2 …`. The agent offers each
   key in turn and the host picks the one it knows. Leave **Use the SSH agent**
   on. This is also the only way a passphrase-protected key can work.
-- **Without the agent**, AngKorGit tries your configured key first, then
+- **Without the agent**, GitMD tries your configured key first, then
   `~/.ssh/id_ed25519` and `~/.ssh/id_rsa`, then any other keypair it finds in
   `~/.ssh` — up to five in total, since SSH servers cut you off after a handful
   of failed attempts.
 
-A key generated in AngKorGit is used by AngKorGit; other tools keep using
+A key generated in GitMD is used by GitMD; other tools keep using
 `~/.ssh/id_*` unless you point them at it with an `~/.ssh/config` entry:
 
 ```

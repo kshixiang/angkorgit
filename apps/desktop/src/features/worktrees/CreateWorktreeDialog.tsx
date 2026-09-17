@@ -50,7 +50,8 @@ export function CreateWorktreeDialog() {
     typeof rawContext === 'object' &&
     !('oids' in rawContext) &&
     !('baseOid' in rawContext) &&
-    !('paths' in rawContext)
+    !('paths' in rawContext) &&
+    !('folder' in rawContext)
       ? rawContext
       : null;
 

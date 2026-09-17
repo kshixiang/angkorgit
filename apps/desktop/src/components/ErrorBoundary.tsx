@@ -14,13 +14,13 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string | null }) {
-    console.error('AngKorGit crashed:', error, info.componentStack);
+    console.error('GitMD crashed:', error, info.componentStack);
   }
 
   private copyDetails = () => {
     const { error } = this.state;
     void navigator.clipboard.writeText(
-      `AngKorGit error report\n\n${error?.name}: ${error?.message}\n\n${error?.stack ?? ''}`,
+      `GitMD error report\n\n${error?.name}: ${error?.message}\n\n${error?.stack ?? ''}`,
     );
   };
 
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <h1 className="text-lg font-semibold text-foreground">Something went wrong</h1>
         </div>
         <p className="max-w-md text-sm text-muted">
-          AngKorGit hit an unexpected error. Your repositories are safe — this only affects the
+          GitMD hit an unexpected error. Your repositories are safe — this only affects the
           interface. Restarting usually fixes it; if it keeps happening, please report the details
           below.
         </p>

@@ -23,7 +23,7 @@
 | `cd apps/desktop/src-tauri && cargo test` | git engine integration tests (real temp repos) |
 | `pnpm tauri:build` | production bundles (.dmg/.msi/.deb/.AppImage) |
 | `pnpm release:mac` | build, then open the folder containing the .dmg |
-| `pnpm install:mac` | copy the built AngKorGit.app into /Applications and launch it |
+| `pnpm install:mac` | copy the built GitMD.app into /Applications and launch it |
 | `pnpm website` | dev-server the marketing site (http://localhost:4321/) |
 | `pnpm website:build` / `pnpm website:preview` | build / preview the static site |
 | `pnpm website:images` | regenerate WebP screenshots + og.png from `docs/assets` |

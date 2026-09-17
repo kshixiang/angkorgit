@@ -151,9 +151,17 @@ export const ipc = {
     if (!isTauri()) return;
     return invoke('stage_file', { path, file });
   },
+  async stageFiles(path: string, files: string[]): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('stage_files', { path, files });
+  },
   async unstageFile(path: string, file: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('unstage_file', { path, file });
+  },
+  async unstageFiles(path: string, files: string[]): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('unstage_files', { path, files });
   },
   async stageAll(path: string): Promise<void> {
     if (!isTauri()) return;
@@ -222,6 +230,14 @@ export const ipc = {
   async deleteFile(path: string, file: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('delete_file', { path, file });
+  },
+  async ignoreFiles(path: string, files: string[]): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('ignore_files', { path, files });
+  },
+  async exportFilesPatch(path: string, files: string[], output: string): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('export_files_patch', { path, files, output });
   },
   async commit(path: string, message: string): Promise<string> {
     if (!isTauri()) {
@@ -723,5 +739,14 @@ export async function pickFile(title: string, defaultPath?: string): Promise<str
   }
   const { open } = await import('@tauri-apps/plugin-dialog');
   const result = await open({ directory: false, multiple: false, title, defaultPath });
+  return typeof result === 'string' ? result : null;
+}
+
+export async function saveFile(title: string, defaultPath?: string): Promise<string | null> {
+  if (!isTauri()) {
+    return window.prompt(`${title} — enter a path (demo mode)`, defaultPath) || null;
+  }
+  const { save } = await import('@tauri-apps/plugin-dialog');
+  const result = await save({ title, defaultPath });
   return typeof result === 'string' ? result : null;
 }

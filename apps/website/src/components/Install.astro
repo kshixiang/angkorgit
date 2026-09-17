@@ -9,19 +9,19 @@ const platforms = [
   {
     name: 'macOS',
     detail: 'Intel and Apple Silicon, one file',
-    asset: `AngKorGit_${version}_universal.dmg`,
+    asset: `GitMD_${version}_universal.dmg`,
     note: 'Not signed with an Apple certificate, so macOS asks once. Right-click, Open, or use Homebrew below and it never asks.',
   },
   {
     name: 'Windows',
     detail: 'x64 installer',
-    asset: `AngKorGit_${version}_x64-setup.exe`,
+    asset: `GitMD_${version}_x64-setup.exe`,
     note: 'SmartScreen will say the publisher is unknown. More info, then Run anyway. An .msi is on the releases page too.',
   },
   {
     name: 'Linux',
     detail: 'AppImage, .deb and .rpm',
-    asset: `AngKorGit_${version}_amd64.AppImage`,
+    asset: `GitMD_${version}_amd64.AppImage`,
     note: 'chmod +x and run. Needs WebKitGTK 4.1 and libssl, which most desktops already have.',
   },
 ];
@@ -83,28 +83,28 @@ const brew = 'brew install --cask cheat2001/tap/angkorgit';
             <TerminalBlock
               label="macOS"
               lines={[
-                `curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_universal.dmg`)} -o ~/Downloads/AngKorGit.dmg`,
-                'xattr -cr ~/Downloads/AngKorGit.dmg',
-                'open ~/Downloads/AngKorGit.dmg',
+                `curl -L ${SITE.assetUrl(version, `GitMD_${version}_universal.dmg`)} -o ~/Downloads/GitMD.dmg`,
+                'xattr -cr ~/Downloads/GitMD.dmg',
+                'open ~/Downloads/GitMD.dmg',
               ]}
-              copy={`curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_universal.dmg`)} -o ~/Downloads/AngKorGit.dmg && xattr -cr ~/Downloads/AngKorGit.dmg && open ~/Downloads/AngKorGit.dmg`}
+              copy={`curl -L ${SITE.assetUrl(version, `GitMD_${version}_universal.dmg`)} -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg`}
             />
             <TerminalBlock
               label="Windows (PowerShell)"
               lines={[
-                `curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_x64-setup.exe`)} -o "$env:TEMP\\AngKorGit-setup.exe"`,
-                `Start-Process "$env:TEMP\\AngKorGit-setup.exe"`,
+                `curl -L ${SITE.assetUrl(version, `GitMD_${version}_x64-setup.exe`)} -o "$env:TEMP\\GitMD-setup.exe"`,
+                `Start-Process "$env:TEMP\\GitMD-setup.exe"`,
               ]}
-              copy={`curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_x64-setup.exe`)} -o "$env:TEMP\\AngKorGit-setup.exe"; Start-Process "$env:TEMP\\AngKorGit-setup.exe"`}
+              copy={`curl -L ${SITE.assetUrl(version, `GitMD_${version}_x64-setup.exe`)} -o "$env:TEMP\\GitMD-setup.exe"; Start-Process "$env:TEMP\\GitMD-setup.exe"`}
             />
             <TerminalBlock
               label="Linux"
               lines={[
-                `curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_amd64.AppImage`)} -o ~/Downloads/AngKorGit.AppImage`,
-                'chmod +x ~/Downloads/AngKorGit.AppImage',
-                '~/Downloads/AngKorGit.AppImage',
+                `curl -L ${SITE.assetUrl(version, `GitMD_${version}_amd64.AppImage`)} -o ~/Downloads/GitMD.AppImage`,
+                'chmod +x ~/Downloads/GitMD.AppImage',
+                '~/Downloads/GitMD.AppImage',
               ]}
-              copy={`curl -L ${SITE.assetUrl(version, `AngKorGit_${version}_amd64.AppImage`)} -o ~/Downloads/AngKorGit.AppImage && chmod +x ~/Downloads/AngKorGit.AppImage && ~/Downloads/AngKorGit.AppImage`}
+              copy={`curl -L ${SITE.assetUrl(version, `GitMD_${version}_amd64.AppImage`)} -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage`}
             />
           </div>
         </details>

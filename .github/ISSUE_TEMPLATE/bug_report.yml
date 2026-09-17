@@ -26,7 +26,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: AngKorGit version
+      label: GitMD version
       placeholder: '0.11.0 (Settings rail shows it)'
     validations:
       required: true

@@ -2,15 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Folder } from 'lucide-react';
 import { Button, Hint, cn } from '@angkorgit/design-system';
 
-interface TreeFolder<T> {
+export interface TreeFolder<T> {
   name: string;
   path: string;
   folders: TreeFolder<T>[];
   files: T[];
+  filePaths: string[];
   count: number;
 }
 
-function buildFileTree<T>(items: T[], pathOf: (item: T) => string): TreeFolder<T> {
+export function buildFileTree<T>(items: T[], pathOf: (item: T) => string): TreeFolder<T> {
   interface Node {
     name: string;
     path: string;
@@ -49,12 +50,14 @@ function buildFileTree<T>(items: T[], pathOf: (item: T) => string): TreeFolder<T
       .map(finalize)
       .sort((a, b) => a.name.localeCompare(b.name));
     const files = [...current.files].sort((a, b) => pathOf(a).localeCompare(pathOf(b)));
+    const filePaths = [...files.map(pathOf), ...folders.flatMap((folder) => folder.filePaths)];
     return {
       name,
       path: current.path,
       folders,
       files,
-      count: files.length + folders.reduce((sum, f) => sum + f.count, 0),
+      filePaths,
+      count: filePaths.length,
     };
   };
   return finalize(root);
@@ -174,7 +177,10 @@ export function FileTree<T>({
   renderFile: (item: T, depth: number) => React.ReactNode;
   fold?: FileTreeFold;
   onFoldState?: (state: FileTreeFoldState) => void;
-  onFolderContextMenu?: (event: React.MouseEvent, folder: { path: string; count: number }) => void;
+  onFolderContextMenu?: (
+    event: React.MouseEvent,
+    folder: { path: string; count: number; filePaths: string[] },
+  ) => void;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const root = useMemo(() => buildFileTree(items, pathOf), [items, pathOf]);

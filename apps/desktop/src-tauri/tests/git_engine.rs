@@ -86,6 +86,39 @@ fn stage_commit_and_history() {
 }
 
 #[test]
+fn stage_and_unstage_files_updates_nested_paths_as_one_batch() {
+    let repo = TempRepo::new();
+    repo.write(
+        "web/classic/src/components/table/tokens/modals/CCSwitchModal.jsx",
+        "classic\n",
+    );
+    repo.write(
+        "web/default/src/features/keys/components/dialogs/cc-switch-dialog.tsx",
+        "default\n",
+    );
+    let files = vec![
+        "web/classic/src/components/table/tokens/modals/CCSwitchModal.jsx".to_string(),
+        "web/default/src/features/keys/components/dialogs/cc-switch-dialog.tsx".to_string(),
+    ];
+
+    core::stage_files(repo.path(), &files).unwrap();
+    let status = core::status(repo.path()).unwrap();
+    assert_eq!(
+        status
+            .files
+            .iter()
+            .filter(|file| file.staged.is_some())
+            .count(),
+        2
+    );
+
+    core::unstage_files(repo.path(), &files).unwrap();
+    let status = core::status(repo.path()).unwrap();
+    assert!(status.files.iter().all(|file| file.staged.is_none()));
+    assert_eq!(status.files.len(), 2);
+}
+
+#[test]
 fn unstage_and_amend() {
     let repo = TempRepo::new();
     repo.write("a.txt", "one\n");

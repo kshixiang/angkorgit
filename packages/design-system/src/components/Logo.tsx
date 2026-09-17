@@ -26,7 +26,7 @@ export function Logo({
       fill="none"
       className={className}
       role="img"
-      aria-label="AngKorGit"
+      aria-label="GitMD"
     >
       {animated && (
         <style>{`@keyframes angkor-draw { to { stroke-dashoffset: 0; } }

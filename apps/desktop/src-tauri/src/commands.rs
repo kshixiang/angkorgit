@@ -95,8 +95,18 @@ pub async fn stage_file(path: String, file: String) -> AppResult<()> {
 }
 
 #[tauri::command]
+pub async fn stage_files(path: String, files: Vec<String>) -> AppResult<()> {
+    blocking(move || stage::stage_files(&path, &files)).await
+}
+
+#[tauri::command]
 pub async fn unstage_file(path: String, file: String) -> AppResult<()> {
     blocking(move || stage::unstage_file(&path, &file)).await
+}
+
+#[tauri::command]
+pub async fn unstage_files(path: String, files: Vec<String>) -> AppResult<()> {
+    blocking(move || stage::unstage_files(&path, &files)).await
 }
 
 #[tauri::command]
@@ -254,6 +264,51 @@ pub async fn delete_file(path: String, file: String) -> AppResult<()> {
         } else if full.is_dir() {
             std::fs::remove_dir_all(full)?;
         }
+        Ok(())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn ignore_files(path: String, files: Vec<String>) -> AppResult<()> {
+    blocking(move || {
+        let ignore_path = std::path::Path::new(&path).join(".gitignore");
+        let mut content = std::fs::read_to_string(&ignore_path).unwrap_or_default();
+        if !content.is_empty() && !content.ends_with('\n') {
+            content.push('\n');
+        }
+        for file in files {
+            let entry = format!("/{}", file.trim_start_matches('/'));
+            if !content.lines().any(|line| line.trim() == entry) {
+                content.push_str(&entry);
+                content.push('\n');
+            }
+        }
+        std::fs::write(ignore_path, content)?;
+        Ok(())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn export_files_patch(path: String, files: Vec<String>, output: String) -> AppResult<()> {
+    blocking(move || {
+        let repo = repo::open(&path)?;
+        let head = repo.head()?.peel_to_tree()?;
+        let mut options = git2::DiffOptions::new();
+        for file in files {
+            options.pathspec(file);
+        }
+        let diff = repo.diff_tree_to_workdir_with_index(Some(&head), Some(&mut options))?;
+        let mut patch = String::new();
+        diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            if matches!(line.origin(), '+' | '-' | ' ') {
+                patch.push(line.origin());
+            }
+            patch.push_str(&String::from_utf8_lossy(line.content()));
+            true
+        })?;
+        std::fs::write(output, patch)?;
         Ok(())
     })
     .await

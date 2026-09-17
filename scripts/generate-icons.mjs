@@ -1,12 +1,23 @@
 #!/usr/bin/env node
 import { deflateSync } from 'node:zlib';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, 'apps/desktop/src-tauri/icons');
 mkdirSync(outDir, { recursive: true });
+
+const sourceIcon = join(outDir, 'icon.svg');
+if (existsSync(sourceIcon)) {
+  const result = spawnSync(
+    'pnpm',
+    ['--filter', '@angkorgit/desktop', 'exec', 'tauri', 'icon', 'src-tauri/icons/icon.svg'],
+    { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' },
+  );
+  process.exit(result.status ?? 1);
+}
 
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;

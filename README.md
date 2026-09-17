@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="apps/desktop/src-tauri/icons/icon.png" width="96" alt="AngKorGit" />
+  <img src="apps/desktop/src-tauri/icons/icon.png" width="96" alt="GitMD" />
 </p>
 
-<h1 align="center">AngKorGit</h1>
+<h1 align="center">GitMD</h1>
 
 <p align="center">
   A native Git client for everyday work. macOS, Windows and Linux.
@@ -123,20 +123,20 @@ Grab the file for your platform from the [releases page](https://github.com/chea
 brew install --cask cheat2001/tap/angkorgit
 
 # macOS, direct download
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/AngKorGit_0.11.0_universal.dmg -o ~/Downloads/AngKorGit.dmg && xattr -cr ~/Downloads/AngKorGit.dmg && open ~/Downloads/AngKorGit.dmg
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_universal.dmg -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg
 
 # Windows (PowerShell)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/AngKorGit_0.11.0_x64-setup.exe -o "$env:TEMP\AngKorGit-setup.exe"; Start-Process "$env:TEMP\AngKorGit-setup.exe"
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_x64-setup.exe -o "$env:TEMP\GitMD-setup.exe"; Start-Process "$env:TEMP\GitMD-setup.exe"
 
 # Linux (AppImage)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/AngKorGit_0.11.0_amd64.AppImage -o ~/Downloads/AngKorGit.AppImage && chmod +x ~/Downloads/AngKorGit.AppImage && ~/Downloads/AngKorGit.AppImage
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_amd64.AppImage -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage
 ```
 
 The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://angkorgit.app/docs/getting-started/).
 
 ### macOS, first launch
 
-1. Open the `.dmg` and drag AngKorGit into Applications. Don't run it from inside the dmg window, macOS would start it from a temporary location where permissions can't be saved.
+1. Open the `.dmg` and drag GitMD into Applications. Don't run it from inside the dmg window, macOS would start it from a temporary location where permissions can't be saved.
 2. Launch it. macOS says the app cannot be opened. Close that, go to System Settings, Privacy & Security, scroll down and click Open Anyway. This happens once.
 3. The first time you open a repository in Desktop, Documents or Downloads, macOS asks for access to that folder. Allow, once per folder.
 4. If you connect a GitHub or GitLab account, the first git operation per session asks to read the token from your Keychain. Plain Allow is enough, Always Allow has no effect on unsigned apps.

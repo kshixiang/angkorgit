@@ -561,7 +561,13 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
     const stillRunning = () => aiRunRef.current === run;
     setAiBusy(true);
     try {
-      const text = await aiCapabilities.explainConflict(getAiProvider(), file, current, incoming);
+      const text = await aiCapabilities.explainConflict(
+        getAiProvider(),
+        file,
+        current,
+        incoming,
+        useSettings.getState().aiCommitLanguage,
+      );
       if (stillRunning()) setAiText(text);
     } catch (error) {
       if (stillRunning()) {

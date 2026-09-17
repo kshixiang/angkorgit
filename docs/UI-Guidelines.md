@@ -1,6 +1,6 @@
 # UI Guidelines
 
-AngKorGit's interface should feel like a professional developer tool: minimal, fast, discoverable. Visual influences — Linear's restraint, Raycast's keyboard focus, VS Code's density, GitKraken's graph clarity — reinterpreted, never copied.
+GitMD's interface should feel like a professional developer tool: minimal, fast, discoverable. Visual influences — Linear's restraint, Raycast's keyboard focus, VS Code's density, GitKraken's graph clarity — reinterpreted, never copied.
 
 ## Layout
 

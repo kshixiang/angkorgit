@@ -16,6 +16,7 @@ import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { capCount, currentPullRequestUrl } from '@/shared/utils';
 import { forgeNoun, pickForgeRemote } from '@angkorgit/core';
+import { useUiText } from '@/shared/i18n';
 
 const ZOOM_LEVELS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
 
@@ -26,6 +27,7 @@ export function StatusBar() {
   const zoom = useSettings((s) => s.zoom);
   const setZoom = useSettings((s) => s.setZoom);
   const [version, setVersion] = useState('');
+  const t = useUiText();
 
   useEffect(() => {
     void appVersion().then(setVersion);
@@ -72,13 +74,13 @@ export function StatusBar() {
       )}
       <span className={cn('flex items-center gap-1.5', changes > 0 && 'text-primary')}>
         {changes > 0 ? <Pencil className="size-3" /> : <Check className="size-3 text-success" />}
-        {changes > 0 ? `${changes} change${changes === 1 ? '' : 's'}` : 'Clean'}
+        {changes > 0 ? `${changes} ${t('Changes').toLowerCase()}` : t('Clean')}
       </span>
       {prUrl && (
         <Hint
           label={
             createInApp
-              ? `Create a ${prNoun} for ${repo?.headBranch} without leaving AngKorGit`
+              ? `Create a ${prNoun} for ${repo?.headBranch} without leaving GitMD`
               : `Open a pre-filled pull request page for ${repo?.headBranch}`
           }
         >
@@ -128,7 +130,7 @@ export function StatusBar() {
               .finally(() => toast.dismiss('updater'));
           }}
         >
-          {version ? `v${version}` : 'AngKorGit'}
+          {version ? `v${version}` : 'GitMD'}
         </button>
       </Hint>
     </footer>

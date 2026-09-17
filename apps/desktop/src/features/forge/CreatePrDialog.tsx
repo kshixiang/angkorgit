@@ -29,6 +29,7 @@ import {
 import { aiCapabilities, forgeNoun, type ForgeUser } from '@angkorgit/core';
 import { ipc, openExternal } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
+import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { forgeProviderFor, useForge } from './store';
@@ -199,7 +200,12 @@ export function CreatePrDialog() {
         const page = await ipc.history(path, { skip: 0, limit: 15, branch: source });
         commitLines = page.commits.map((c) => `${c.shortOid} ${c.summary}`).join('\n');
       }
-      const text = await aiCapabilities.generatePrDescription(getAiProvider(), commitLines, '');
+      const text = await aiCapabilities.generatePrDescription(
+        getAiProvider(),
+        commitLines,
+        '',
+        useSettings.getState().aiCommitLanguage,
+      );
       if (run !== aiRun.current) return;
       setBody(text);
       setGenerating(false);

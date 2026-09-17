@@ -51,6 +51,7 @@ import { useUndo } from '@/features/history/undoStore';
 import { useSettings, type IdentityProfile } from '@/features/settings/store';
 import { applyProfileToRepo, ensureRepoProfile } from '@/features/settings/profiles';
 import { capCount, modKey } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 function RepoSwitcher() {
   const repo = useRepo((s) => s.repo);
@@ -372,6 +373,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const navigate = useNavigate();
   const [spinning, setSpinning] = useState(false);
+  const t = useUiText();
 
   if (!repo) return null;
   const remote = remotes[0]?.name ?? 'origin';
@@ -405,8 +407,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-border-subtle bg-surface px-2">
-      <Hint label="Back to repositories">
-        <Button variant="ghost" size="icon" aria-label="Home" onClick={() => navigate('/welcome')}>
+      <Hint label={t('Back to repositories')}>
+        <Button variant="ghost" size="icon" aria-label={t('Home')} onClick={() => navigate('/welcome')}>
           <Home />
         </Button>
       </Hint>
@@ -435,40 +437,40 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label={`Fetch ${remote}`}>
+      <Hint label={`${t('Fetch')} ${remote}`}>
         <Button
           variant="ghost"
           size="sm"
           disabled={!!busy}
-          onClick={() => void run('Fetch', () => ipc.fetch(repo.path, remote, true, true))}
+          onClick={() => void run(t('Fetch'), () => ipc.fetch(repo.path, remote, true, true))}
         >
           <RefreshCw className={busy === 'Fetch' ? 'animate-spin' : ''} />
-          Fetch
+          {t('Fetch')}
         </Button>
       </Hint>
-      <Hint label={`Pull from ${remote}${status?.behind ? ` (${status.behind} behind)` : ''}`}>
+      <Hint label={`${t('Pull')} ${remote}${status?.behind ? ` (${status.behind} behind)` : ''}`}>
         <Button
           variant="ghost"
           size="sm"
           disabled={!!busy}
-          onClick={() => void run('Pull', () => ipc.pull(repo.path, remote))}
+          onClick={() => void run(t('Pull'), () => ipc.pull(repo.path, remote))}
         >
           <ArrowDownToLine />
-          Pull
+          {t('Pull')}
           {status && status.behind > 0 && <Badge tone="info">{capCount(status.behind)}</Badge>}
         </Button>
       </Hint>
       <div className="flex items-center">
-        <Hint label={`Push to ${remote}${status?.ahead ? ` (${status.ahead} ahead)` : ''}`}>
+        <Hint label={`${t('Push')} ${remote}${status?.ahead ? ` (${status.ahead} ahead)` : ''}`}>
           <Button
             variant="ghost"
             size="sm"
             className="rounded-r-none"
             disabled={!!busy}
-            onClick={() => runPush('Push', () => ipc.push(repo.path, remote, false, false, true))}
+            onClick={() => runPush(t('Push'), () => ipc.push(repo.path, remote, false, false, true))}
           >
             <ArrowUpFromLine />
-            Push
+            {t('Push')}
             {status && status.ahead > 0 && <Badge tone="primary">{capCount(status.ahead)}</Badge>}
           </Button>
         </Hint>
@@ -480,14 +482,14 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => runPush('Push (force)', () => ipc.push(repo.path, remote, true, false, true))} destructive>
-              Force push
+              {t('Force push')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => runPush('Push with tags', () => ipc.push(repo.path, remote, false, true, true))}>
-              Push with tags
+              {t('Push with tags')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void run('Fetch tags', () => ipc.fetch(repo.path, remote, true, false))}>
-              Fetch tags
+              {t('Fetch tags')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -495,18 +497,18 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label="Create branch">
-        <Button variant="ghost" size="icon" aria-label="Create branch" onClick={() => openDialog('createBranch')}>
+      <Hint label={t('Create branch')}>
+        <Button variant="ghost" size="icon" aria-label={t('Create branch')} onClick={() => openDialog('createBranch')}>
           <GitBranchPlus />
         </Button>
       </Hint>
-      <Hint label="Create tag">
-        <Button variant="ghost" size="icon" aria-label="Create tag" onClick={() => openDialog('createTag')}>
+      <Hint label={t('Create tag')}>
+        <Button variant="ghost" size="icon" aria-label={t('Create tag')} onClick={() => openDialog('createTag')}>
           <Tag />
         </Button>
       </Hint>
-      <Hint label="Stash changes">
-        <Button variant="ghost" size="icon" aria-label="Stash changes" onClick={() => openDialog('createStash')}>
+      <Hint label={t('Stash changes')}>
+        <Button variant="ghost" size="icon" aria-label={t('Stash changes')} onClick={() => openDialog('createStash')}>
           <Archive />
         </Button>
       </Hint>
@@ -552,7 +554,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             <SquareTerminal />
           </Button>
         </Hint>
-        <Hint label="Refresh">
+        <Hint label={t('Refresh')}>
           <Button
             variant="ghost"
             size="icon"
@@ -565,8 +567,8 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             <RefreshCw className={spinning ? 'animate-spin' : ''} />
           </Button>
         </Hint>
-        <Hint label="Settings">
-          <Button variant="ghost" size="icon" aria-label="Settings" onClick={() => openDialog('settings')}>
+        <Hint label={t('Settings')}>
+          <Button variant="ghost" size="icon" aria-label={t('Settings')} onClick={() => openDialog('settings')}>
             <Settings />
           </Button>
         </Hint>

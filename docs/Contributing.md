@@ -1,11 +1,11 @@
-# Contributing to AngKorGit
+# Contributing to GitMD
 
 Thank you for helping make everyday Git delightful! 🙏
 
 ## Ground rules
 
 - Be kind. We follow the [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
-- **Quality over quantity.** AngKorGit deliberately implements few features exceptionally well. New feature proposals should explain why the feature is *daily-use* — "GitKraken has it" is not a reason.
+- **Quality over quantity.** GitMD deliberately implements few features exceptionally well. New feature proposals should explain why the feature is *daily-use* — "GitKraken has it" is not a reason.
 - Discuss before building: open an issue for anything larger than a fix.
 
 ## Workflow

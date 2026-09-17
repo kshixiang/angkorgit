@@ -30,6 +30,7 @@ export type DialogKind =
   | 'createPullRequest'
   | 'cherryPick'
   | 'createWorktree'
+  | 'createFile'
   | null;
 
 export interface CenterDiffTarget {
@@ -58,12 +59,17 @@ export interface StashPreset {
   paths: string[];
 }
 
+export interface CreateFilePreset {
+  folder: string;
+}
+
 export type DialogContext =
   | string
   | InteractiveRebasePreset
   | CherryPickPreset
   | CreateWorktreePreset
   | StashPreset
+  | CreateFilePreset
   | null;
 
 interface UiState {

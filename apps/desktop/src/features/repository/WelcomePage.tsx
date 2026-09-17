@@ -39,6 +39,7 @@ import { CloneDialog } from './CloneDialog';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { SettingEmpty } from '@/features/settings/SettingCard';
 import { isMac, timeAgo } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 function shortenHome(path: string): string {
   return path.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Z]:\\Users\\[^\\]+)(?=[/\\]|$)/, '~');
@@ -54,6 +55,7 @@ export function WelcomePage() {
   const [missing, setMissing] = useState<Set<string>>(new Set());
   const [menu, setMenu] = useState<{ x: number; y: number; repo: RecentRepository } | null>(null);
   const [version, setVersion] = useState('');
+  const t = useUiText();
 
   useEffect(() => {
     void appVersion()
@@ -145,13 +147,13 @@ export function WelcomePage() {
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              AngKor<span className="text-primary">Git</span>
+              Git<span className="text-primary">MD</span>
             </h1>
-            <p className="text-sm text-muted">Everyday Git, made delightful.</p>
+            <p className="text-sm text-muted">{t('Everyday Git, made delightful.')}</p>
           </div>
           <div className="ml-auto">
-            <Hint label="Settings">
-              <Button variant="ghost" size="icon" onClick={() => openDialog('settings')} aria-label="Settings">
+            <Hint label={t('Settings')}>
+              <Button variant="ghost" size="icon" onClick={() => openDialog('settings')} aria-label={t('Settings')}>
                 <Settings />
               </Button>
             </Hint>
@@ -167,8 +169,8 @@ export function WelcomePage() {
               <FolderOpen className="size-5" />
             </span>
             <span>
-              <span className="block font-medium">Open repository</span>
-              <span className="block text-xs text-muted">Browse for a local folder</span>
+              <span className="block font-medium">{t('Open repository')}</span>
+              <span className="block text-xs text-muted">{t('Browse for a local folder')}</span>
             </span>
           </button>
           <button
@@ -179,8 +181,8 @@ export function WelcomePage() {
               <GitBranchPlus className="size-5" />
             </span>
             <span>
-              <span className="block font-medium">Clone repository</span>
-              <span className="block text-xs text-muted">From a remote URL</span>
+              <span className="block font-medium">{t('Clone repository')}</span>
+              <span className="block text-xs text-muted">{t('From a remote URL')}</span>
             </span>
           </button>
         </div>
@@ -188,7 +190,7 @@ export function WelcomePage() {
         <div className="rounded-lg border border-border bg-surface shadow-soft">
           <div className="flex items-center gap-2 border-b border-border-subtle px-4 py-3">
             <Clock className="size-4 text-muted" />
-            <span className="text-sm font-medium">Recent repositories</span>
+            <span className="text-sm font-medium">{t('Recent repositories')}</span>
             {recents.length > 0 && <span className="text-xs text-faint">{recents.length}</span>}
             {recents.length > 0 && (
               <div className="relative ml-auto w-56">
@@ -198,8 +200,8 @@ export function WelcomePage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onSearchKey}
-                  placeholder="Search, ↑↓ to choose, ⏎ to open"
-                  aria-label="Search recent repositories"
+                  placeholder={t('Search recent repositories')}
+                  aria-label={t('Search recent repositories')}
                   className="h-7 pl-8 text-xs"
                 />
               </div>
@@ -214,16 +216,16 @@ export function WelcomePage() {
                 action={
                   <span className="flex gap-2">
                     <Button variant="secondary" size="sm" onClick={browse}>
-                      <FolderOpen className="size-3.5" /> Open
+                      <FolderOpen className="size-3.5" /> {t('Open')}
                     </Button>
                     <Button variant="secondary" size="sm" onClick={() => openDialog('clone')}>
-                      <GitBranchPlus className="size-3.5" /> Clone
+                      <GitBranchPlus className="size-3.5" /> {t('Clone')}
                     </Button>
                   </span>
                 }
               />
             ) : filtered.length === 0 ? (
-              <p className="px-3 py-8 text-center text-sm text-faint">No repositories match “{query.trim()}”.</p>
+              <p className="px-3 py-8 text-center text-sm text-faint">{t('No repositories match')} “{query.trim()}”.</p>
             ) : (
               filtered.map((repo, index) => {
                 const gone = missing.has(repo.path);
@@ -265,7 +267,7 @@ export function WelcomePage() {
                         </span>
                         {gone && (
                           <span className="flex shrink-0 items-center gap-1 text-[11px] text-danger">
-                            <AlertTriangle className="size-3" /> folder missing
+                            <AlertTriangle className="size-3" /> {t('folder missing')}
                           </span>
                         )}
                       </span>
@@ -299,7 +301,7 @@ export function WelcomePage() {
         </div>
 
         <p className="mt-6 flex items-center justify-center gap-2 text-[11px] text-faint">
-          <span>{version ? `AngKorGit v${version}` : 'AngKorGit'}</span>
+          <span>{version ? `GitMD v${version}` : 'GitMD'}</span>
           <span aria-hidden>·</span>
           <button
             type="button"
@@ -310,7 +312,7 @@ export function WelcomePage() {
               )
             }
           >
-            Check for updates
+            {t('Check for updates')}
           </button>
         </p>
       </div>
@@ -323,7 +325,7 @@ export function WelcomePage() {
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuLabel className="max-w-72 truncate font-mono">{shortenHome(menu.repo.path)}</DropdownMenuLabel>
             <DropdownMenuItem disabled={missing.has(menu.repo.path)} onClick={() => void openRepository(menu.repo.path)}>
-              <FolderGit2 /> Open
+              <FolderGit2 /> {t('Open')}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={missing.has(menu.repo.path)} onClick={() => void ipc.revealPath(menu.repo.path)}>
               <FolderOpen /> {isMac ? 'Reveal in Finder' : 'Show in file manager'}
@@ -334,11 +336,11 @@ export function WelcomePage() {
                 toast.success('Path copied');
               }}
             >
-              <Copy /> Copy path
+              <Copy /> {t('Copy path')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onClick={() => void removeRecent(menu.repo.path)}>
-              {missing.has(menu.repo.path) ? <Trash2 /> : <X />} Remove from recents
+              {missing.has(menu.repo.path) ? <Trash2 /> : <X />} {t('Remove from recents')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

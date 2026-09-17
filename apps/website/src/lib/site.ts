@@ -15,12 +15,12 @@ async function latestReleaseVersion(): Promise<string> {
 }
 
 export const SITE = {
-  name: 'AngKorGit',
-  alternateNames: ['Angkor Git', 'AngkorGit', 'angkorgit', 'Git Angkor', 'GitAngkor', 'gitangkor'],
+  name: 'GitMD',
+  alternateNames: ['GitMD', 'gitmd'],
   title:
-    'AngKorGit (Angkor Git) — fast, free Git client and Git GUI for macOS, Windows & Linux',
+    'GitMD — fast, free Git client and Git GUI for macOS, Windows & Linux',
   description:
-    'Angkor Git (AngKorGit) is a fast, free, open-source Git client and Git GUI for macOS, Windows, and Linux, built native with Tauri v2, Rust and libgit2. Visual commit graphs, side-by-side diff review, visual conflict resolution, and AI assistance.',
+    'GitMD is a fast, free, open-source Git client and Git GUI for macOS, Windows, and Linux, built native with Tauri v2, Rust and libgit2. Visual commit graphs, side-by-side diff review, visual conflict resolution, and AI assistance.',
   repo: 'https://github.com/cheat2001/angkorgit',
   releases: 'https://github.com/cheat2001/angkorgit/releases',
   license: 'https://github.com/cheat2001/angkorgit/blob/main/LICENSE',

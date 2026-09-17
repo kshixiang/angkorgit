@@ -27,6 +27,7 @@ import { AUTHOR_COL_WIDTH, CommitRow, FLAT_GUTTER_WIDTH, GUTTER_GAP, GraphTailDe
 import { WipRow } from './WipRow';
 import { confirmDialog } from '@/components/confirm';
 import { useShortcuts } from '@/shared/useShortcuts';
+import { useUiText } from '@/shared/i18n';
 
 const HASH_QUERY = /^[0-9a-f]{4,40}$/i;
 const AMBIGUOUS_HASH_MAX = 6;
@@ -46,6 +47,7 @@ interface RefMenuState {
 const stashIndexOf = (ref: RefInfo) => Number(/\{(\d+)\}/.exec(ref.name)?.[1] ?? 0);
 
 export function CommitGraph() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const refresh = useRepo((s) => s.refresh);
   const worktrees = useRepo((s) => s.worktrees);
@@ -358,7 +360,7 @@ export function CommitGraph() {
   );
 
   return (
-    <section className="relative flex h-full flex-col bg-background" aria-label="Commit history">
+    <section className="relative flex h-full flex-col bg-background" aria-label={t('Commit history')}>
       <GraphTailDefs />
       <div className="flex shrink-0 items-center gap-2 border-b border-border-subtle bg-surface px-3 py-2">
         <div className="relative w-64">
@@ -375,17 +377,17 @@ export function CommitGraph() {
                 runJump(trimmed);
               }
             }}
-            placeholder="Search commits…"
+            placeholder={t('Search commits…')}
             className="h-7 pl-8 text-xs"
           />
         </div>
-        {jumpMiss && <span className="text-xs text-danger">Commit not found</span>}
+        {jumpMiss && <span className="text-xs text-danger">{t('Commit not found')}</span>}
         <div className="relative w-44">
           <User className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
           <Input
             value={authorDraft}
             onChange={(e) => setAuthorDraft(e.target.value)}
-            placeholder="Filter author…"
+            placeholder={t('Filter author…')}
             className="h-7 pl-8 text-xs"
           />
         </div>
@@ -413,14 +415,14 @@ export function CommitGraph() {
               </DropdownMenuTrigger>
             </Hint>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Show in graph</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('Show in graph')}</DropdownMenuLabel>
               {(
                 [
-                  ['refs', 'Branches and tags'],
-                  ['message', 'Commit message'],
-                  ['author', 'Author'],
-                  ['hash', 'Hash'],
-                  ['date', 'Date'],
+                  ['refs', t('Branches and tags')],
+                  ['message', t('Commit message')],
+                  ['author', t('Author')],
+                  ['hash', t('Hash')],
+                  ['date', t('Date')],
                 ] as const
               ).map(([key, label]) => (
                 <DropdownMenuCheckboxItem
@@ -437,7 +439,7 @@ export function CommitGraph() {
                 onSelect={(e) => e.preventDefault()}
                 onCheckedChange={(checked) => setGraphTail(checked === true)}
               >
-                Lane color band
+                {t('Lane color band')}
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -453,7 +455,7 @@ export function CommitGraph() {
       >
         {!flat && graphColumns.refs && (
           <span className="-mr-2 shrink-0 truncate" style={{ width: REF_COL_WIDTH }}>
-            Branch / tag
+            {t('Branch / tag')}
           </span>
         )}
         <span className="shrink-0 truncate" style={{ width: gutterWidth, marginRight: flat ? 0 : GUTTER_GAP }}>
@@ -461,7 +463,7 @@ export function CommitGraph() {
         </span>
         {(graphColumns.message || flat) && (
           <span className="min-w-0 flex-1 truncate">
-            {flat && graphColumns.refs ? 'Branch / tag · message' : graphColumns.message ? 'Message' : ''}
+            {flat && graphColumns.refs ? `${t('Branch / tag')} · ${t('Message')}` : graphColumns.message ? t('Message') : ''}
           </span>
         )}
         {graphColumns.author && (

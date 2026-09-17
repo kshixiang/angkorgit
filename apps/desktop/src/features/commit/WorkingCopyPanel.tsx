@@ -20,7 +20,7 @@ import {
   Textarea,
   cn,
 } from '@angkorgit/design-system';
-import { ipc } from '@/core/ipc';
+import { ipc, saveFile } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
 import { focusRequests, useUi } from '@/features/ui/store';
@@ -37,6 +37,7 @@ import { confirmDialog } from '@/components/confirm';
 import { FileFilterInput } from '@/components/FileFilterInput';
 import { FileTree, treeIndent as sharedTreeIndent, FileTreeFoldButton, INITIAL_FOLD, nextFold, type FileTreeFold, type FileTreeFoldState } from '@/components/FileTree';
 import { basename, dirname } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 function statusBadge(kind: string | null) {
   switch (kind) {
@@ -207,6 +208,7 @@ export function WorkingCopyPanel() {
   const openEditor = useUi((s) => s.openEditor);
   const openConflict = useUi((s) => s.openConflict);
   const fileTree = useUi((s) => s.fileTree);
+  const t = useUiText();
   const path = repo?.path ?? '';
   const message = useCommitDraft((s) => (path ? (s.drafts[path] ?? '') : ''));
   const amend = useCommitDraft((s) => !!path && s.amendFor === path);
@@ -247,7 +249,13 @@ export function WorkingCopyPanel() {
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const [waitIndex, setWaitIndex] = useState(0);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; staged: boolean } | null>(null);
-  const [folderMenu, setFolderMenu] = useState<{ x: number; y: number; path: string; staged: boolean } | null>(null);
+  const [folderMenu, setFolderMenu] = useState<{
+    x: number;
+    y: number;
+    path: string;
+    paths: string[];
+    staged: boolean;
+  } | null>(null);
   const [multi, setMulti] = useState<{ staged: boolean; paths: string[] } | null>(null);
   const messageRef = useRef<HTMLTextAreaElement | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
@@ -424,7 +432,7 @@ export function WorkingCopyPanel() {
 
   const stageMany = (paths: string[], staged: boolean) =>
     run(
-      () => Promise.all(paths.map((file) => (staged ? ipc.unstageFile(path, file) : ipc.stageFile(path, file)))),
+      () => (staged ? ipc.unstageFiles(path, paths) : ipc.stageFiles(path, paths)),
       staged ? 'Unstage failed' : 'Stage failed',
     );
 
@@ -464,9 +472,7 @@ export function WorkingCopyPanel() {
     });
   };
 
-  const requestDiscardFolder = (folder: string, staged: boolean) => {
-    const source = staged ? allStaged : allUnstaged;
-    const paths = source.filter((file) => file.path.startsWith(`${folder}/`)).map((file) => file.path);
+  const requestDiscardFolder = (folder: string, paths: string[], staged: boolean) => {
     if (paths.length === 0) return;
     void confirmDialog({
       title: `Discard all ${paths.length} change${paths.length === 1 ? '' : 's'} in ${folder}?`,
@@ -479,6 +485,27 @@ export function WorkingCopyPanel() {
     }).then((ok) => {
       if (ok) void discardMany(paths, staged);
     });
+  };
+
+  const stashFolder = (paths: string[]) => {
+    if (paths.length > 0) useUi.getState().openDialog('createStash', { paths });
+  };
+
+  const ignoreFolderFiles = (paths: string[]) => {
+    void run(() => ipc.ignoreFiles(path, paths), 'Ignore files failed');
+  };
+
+  const exportFolderPatch = (folder: string, paths: string[]) => {
+    void (async () => {
+      const output = await saveFile('Save patch', `${folder.replaceAll('/', '-')}.patch`);
+      if (!output) return;
+      try {
+        await ipc.exportFilesPatch(path, paths, output);
+        toast.success('Patch saved');
+      } catch (error) {
+        toast.error(`Create patch failed: ${(error as { message?: string }).message ?? error}`);
+      }
+    })();
   };
 
   const discardAllStaged = async () => {
@@ -513,10 +540,20 @@ export function WorkingCopyPanel() {
     setFileMenu({ x: event.clientX, y: event.clientY, file, staged });
   }, []);
 
-  const openFolderMenu = useCallback((event: React.MouseEvent, folder: { path: string }, staged: boolean) => {
+  const openFolderMenu = useCallback((
+    event: React.MouseEvent,
+    folder: { path: string; filePaths: string[] },
+    staged: boolean,
+  ) => {
     event.preventDefault();
     setFileMenu(null);
-    setFolderMenu({ x: event.clientX, y: event.clientY, path: folder.path, staged });
+    setFolderMenu({
+      x: event.clientX,
+      y: event.clientY,
+      path: folder.path,
+      paths: [...folder.filePaths],
+      staged,
+    });
   }, []);
 
   const requestDiscard = useCallback(
@@ -607,6 +644,7 @@ export function WorkingCopyPanel() {
       const text = await aiCapabilities.reviewStagedChanges(getAiProvider(), patch, {
         instructions: useSettings.getState().aiStyle.review.instructions,
         projectInstructions,
+        language: useSettings.getState().aiCommitLanguage,
       });
       if (!stillRunning()) return;
       if (!text) {
@@ -858,14 +896,14 @@ export function WorkingCopyPanel() {
             onChange={setFileQuery}
             onClose={() => useUi.getState().setFileFilterOpen(false)}
             focusSeq={fileFilterFocusSeq}
-            placeholder="Filter changed files…"
+            placeholder={t('Filter changed files…')}
           />
         </div>
       )}
       <div
         ref={listScrollRef}
         tabIndex={0}
-        aria-label="Changed files"
+        aria-label={t('Changed files')}
         onKeyDown={onListKeyDown}
         className="relative min-h-0 flex-1 overflow-y-auto p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
       >
@@ -880,10 +918,10 @@ export function WorkingCopyPanel() {
             <div className="mb-1 flex items-center justify-between px-2">
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-danger">
                 <AlertTriangle className="size-3.5" />
-                Conflicts <span className="font-normal text-faint">{conflicts.length}</span>
+                {t('Conflicts')} <span className="font-normal text-faint">{conflicts.length}</span>
               </span>
               <Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => openConflict(conflicts[0])}>
-                Resolve
+                {t('Resolve')}
               </Button>
             </div>
             <p className="mb-1 px-2 text-[11px] text-faint">
@@ -902,7 +940,7 @@ export function WorkingCopyPanel() {
                     <span className="max-w-full shrink-0 truncate font-medium text-foreground">{basename(file)}</span>
                     {dirname(file) && <span className="min-w-0 flex-1 truncate text-[11px] text-faint">{dirname(file)}</span>}
                   </span>
-                  <span className="shrink-0 text-[11px] text-danger opacity-0 transition-opacity group-hover:opacity-100">Resolve</span>
+                  <span className="shrink-0 text-[11px] text-danger opacity-0 transition-opacity group-hover:opacity-100">{t('Resolve')}</span>
                 </button>
               ))}
             </div>
@@ -910,7 +948,7 @@ export function WorkingCopyPanel() {
         )}
         <div className="mb-1 flex items-center justify-between px-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Changes {countLabel(unstagedFiles.length, allUnstaged.length)}
+            {t('Changes')} {countLabel(unstagedFiles.length, allUnstaged.length)}
           </span>
           {allUnstaged.length > 0 && (
             <span className="flex items-center">
@@ -921,7 +959,7 @@ export function WorkingCopyPanel() {
                 />
               )}
               <Button variant="ghost" size="sm" onClick={() => void run(() => ipc.stageAll(path), 'Stage all failed')}>
-                <Plus className="size-3" /> Stage all
+                <Plus className="size-3" /> {t('Stage all')}
               </Button>
               <Hint label="Discard all changes">
                 <Button
@@ -949,7 +987,7 @@ export function WorkingCopyPanel() {
         </div>
         {unstagedFiles.length === 0 && (
           <p className="px-2 pb-2 text-xs text-faint">
-            {filtering && allUnstaged.length > 0 ? 'No changes match the filter.' : 'Working tree clean.'}
+            {filtering && allUnstaged.length > 0 ? t('No changes match the filter.') : t('Working tree clean.')}
           </p>
         )}
         {fileTree ? (
@@ -971,7 +1009,7 @@ export function WorkingCopyPanel() {
         )}
         <div className="mb-1 mt-3 flex items-center justify-between px-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Staged {countLabel(stagedFiles.length, allStaged.length)}
+            {t('Staged')} {countLabel(stagedFiles.length, allStaged.length)}
           </span>
           {allStaged.length > 0 && (
             <span className="flex items-center">
@@ -982,7 +1020,7 @@ export function WorkingCopyPanel() {
                 />
               )}
               <Button variant="ghost" size="sm" onClick={() => void run(() => ipc.unstageAll(path), 'Unstage all failed')}>
-                <Minus className="size-3" /> Unstage all
+                <Minus className="size-3" /> {t('Unstage all')}
               </Button>
               <Hint label="Discard all staged changes">
                 <Button
@@ -1010,7 +1048,7 @@ export function WorkingCopyPanel() {
         </div>
         {stagedFiles.length === 0 && (
           <p className="px-2 pb-2 text-xs text-faint">
-            {filtering && allStaged.length > 0 ? 'No staged files match the filter.' : 'Nothing staged yet.'}
+            {filtering && allStaged.length > 0 ? t('No staged files match the filter.') : t('Nothing staged yet.')}
           </p>
         )}
         {fileTree ? (
@@ -1162,12 +1200,42 @@ export function WorkingCopyPanel() {
             <span style={{ position: 'fixed', left: folderMenu.x, top: folderMenu.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
-            <DropdownMenuLabel className="max-w-64 truncate font-mono">{folderMenu.path}</DropdownMenuLabel>
+            <DropdownMenuLabel className="max-w-64 truncate font-mono">
+              {folderMenu.path} · {folderMenu.paths.length} files
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => stageMany(folderMenu.paths, folderMenu.staged)}>
+              {folderMenu.staged ? <Minus /> : <Plus />}
+              {folderMenu.staged ? 'Unstage folder' : 'Stage folder'}
+            </DropdownMenuItem>
             <DropdownMenuItem
               destructive
-              onClick={() => requestDiscardFolder(folderMenu.path, folderMenu.staged)}
+              onClick={() => requestDiscardFolder(folderMenu.path, folderMenu.paths, folderMenu.staged)}
             >
-              <Trash2 /> Discard all…
+              <Trash2 /> Discard all changes in folder…
+            </DropdownMenuItem>
+            {!folderMenu.staged && (
+              <DropdownMenuItem onClick={() => ignoreFolderFiles(folderMenu.paths)}>
+                <Minus /> Ignore all files in {folderMenu.path}/
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => stashFolder(folderMenu.paths)}>
+              <Archive /> Stash folder…
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportFolderPatch(folderMenu.path, folderMenu.paths)}>
+              <Copy /> Create patch from changes in directory…
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() =>
+                void ipc.openPath(`${path}/${folderMenu.path}`).catch((error) =>
+                  toast.error(`Could not open the folder: ${(error as { message?: string }).message ?? error}`),
+                )
+              }
+            >
+              <FolderOpen /> Open folder
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => useUi.getState().openDialog('createFile', { folder: folderMenu.path })}>
+              <Pencil /> Create a file in this folder
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

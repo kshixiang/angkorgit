@@ -38,7 +38,7 @@ function newSession(): TerminalSession {
 function spawnShell(session: TerminalSession, repoPath: string): void {
   const { terminal } = session;
   if (!isTauri()) {
-    terminal.writeln('AngKorGit demo terminal — PTY available in the desktop app.');
+    terminal.writeln('GitMD demo terminal — PTY available in the desktop app.');
     terminal.write('$ ');
     terminal.onData((data) => {
       if (data === '\r') terminal.write('\r\n$ ');
