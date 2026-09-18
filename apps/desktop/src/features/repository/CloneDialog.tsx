@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Input,
   Spinner,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, listen, pickDirectory } from '@/core/ipc';
 import { useUi, type ClonePreset, type DialogContext } from '@/features/ui/store';
 import { useSettings } from '@/features/settings/store';

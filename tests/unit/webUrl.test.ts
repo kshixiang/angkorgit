@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { remoteWebUrl } from '@angkorgit/core';
+import { remoteWebUrl } from '@gitmd/core';
 
 describe('remoteWebUrl', () => {
   it('turns an https remote into the repository page', () => {
-    expect(remoteWebUrl('https://github.com/cheat2001/angkorgit.git')).toBe('https://github.com/cheat2001/angkorgit');
+    expect(remoteWebUrl('https://github.com/cheat2001/gitmd.git')).toBe('https://github.com/cheat2001/gitmd');
   });
 
   it('turns an scp-style ssh remote into an https page', () => {
@@ -29,7 +29,7 @@ describe('remoteWebUrl', () => {
   });
 
   it('strips a trailing slash before the .git suffix check', () => {
-    expect(remoteWebUrl('https://github.com/cheat2001/angkorgit.git/')).toBe('https://github.com/cheat2001/angkorgit');
+    expect(remoteWebUrl('https://github.com/cheat2001/gitmd.git/')).toBe('https://github.com/cheat2001/gitmd');
   });
 
   it('returns null for a local path remote', () => {

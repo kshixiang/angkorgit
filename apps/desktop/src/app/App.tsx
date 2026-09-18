@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
-import { Spinner, TooltipProvider } from '@angkorgit/design-system';
+import { Spinner, TooltipProvider } from '@gitmd/design-system';
 import { SplashScreen } from './SplashScreen';
 import { ConfirmHost } from '@/components/confirm';
 import { ProfilePromptHost } from '@/components/profilePrompt';
@@ -106,17 +106,11 @@ function Shell() {
       if (cancelled) fn();
       else unlisten = fn;
     });
-    const updateTimer = setTimeout(() => {
-      void import('@/features/updater/check').then(({ checkForUpdates }) =>
-        checkForUpdates({ silent: true }),
-      );
-    }, 5000);
     return () => {
       cancelled = true;
       unlisten?.();
       clearTimeout(splashFallback);
       if (readyTimer !== undefined) clearTimeout(readyTimer);
-      clearTimeout(updateTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

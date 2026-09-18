@@ -25,8 +25,8 @@ import {
   SelectValue,
   Spinner,
   Textarea,
-} from '@angkorgit/design-system';
-import { aiCapabilities, defaultForgeTarget, forgeNoun, forgeTargets, sameForgeRepo, type ForgeUser } from '@angkorgit/core';
+} from '@gitmd/design-system';
+import { aiCapabilities, defaultForgeTarget, forgeNoun, forgeTargets, sameForgeRepo, type ForgeUser } from '@gitmd/core';
 import { ipc, openExternal } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';

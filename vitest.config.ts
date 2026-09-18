@@ -4,7 +4,8 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@angkorgit/core': path.resolve(__dirname, 'packages/core/src/index.ts'),
+      '@gitmd/core': path.resolve(__dirname, 'packages/core/src/index.ts'),
+      '@gitmd/design-system': path.resolve(__dirname, 'packages/design-system/src/index.ts'),
       '@/shared/highlight': path.resolve(__dirname, 'apps/desktop/src/shared/highlight.ts'),
       'highlight.js': path.resolve(__dirname, 'apps/desktop/node_modules/highlight.js'),
     },

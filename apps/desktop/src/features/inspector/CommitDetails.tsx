@@ -19,8 +19,8 @@ import {
   Tag as TagIcon,
   UserRoundSearch,
 } from 'lucide-react';
-import type { CommitFileInfo, CommitInfo, FileDiff } from '@angkorgit/core';
-import { aiCapabilities, filterFiles } from '@angkorgit/core';
+import type { CommitFileInfo, CommitInfo, FileDiff } from '@gitmd/core';
+import { aiCapabilities, filterFiles } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -34,7 +34,7 @@ import {
   Hint,
   Logo,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc } from '@/core/ipc';
 import { FileFilterInput } from '@/components/FileFilterInput';
 import { useGraph } from '@/features/graph/store';

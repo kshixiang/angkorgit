@@ -1,5 +1,5 @@
 #!/bin/sh
-# angkorgit-cli
+# gitmd-cli
 set -e
 APP=@APP@
 KIND=@KIND@
@@ -13,7 +13,7 @@ EOF
 resolve() {
   target=$1
   if [ ! -e "$target" ]; then
-    echo "angkorgit: $target: no such file or directory" >&2
+    echo "gitmd: $target: no such file or directory" >&2
     exit 1
   fi
   if [ -d "$target" ]; then
@@ -84,7 +84,7 @@ case "$1" in
       case "$1" in
         -b|--branch)
           if [ -z "$2" ]; then
-            echo "angkorgit: clone: missing branch after $1" >&2
+            echo "gitmd: clone: missing branch after $1" >&2
             exit 1
           fi
           branch=$2
@@ -95,7 +95,7 @@ case "$1" in
           exit 0
           ;;
         -*)
-          echo "angkorgit: unknown option: $1" >&2
+          echo "gitmd: unknown option: $1" >&2
           usage >&2
           exit 1
           ;;
@@ -106,7 +106,7 @@ case "$1" in
       esac
     done
     if [ -z "$url" ]; then
-      echo "angkorgit: clone: missing url or owner/repo" >&2
+      echo "gitmd: clone: missing url or owner/repo" >&2
       usage >&2
       exit 1
     fi
@@ -114,7 +114,7 @@ case "$1" in
     exit 0
     ;;
   -*)
-    echo "angkorgit: unknown option: $1" >&2
+    echo "gitmd: unknown option: $1" >&2
     usage >&2
     exit 1
     ;;

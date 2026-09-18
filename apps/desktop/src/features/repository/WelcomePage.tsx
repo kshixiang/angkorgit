@@ -30,8 +30,8 @@ import {
   Spinner,
   TemplePattern,
   cn,
-} from '@angkorgit/design-system';
-import type { RecentRepository } from '@angkorgit/core';
+} from '@gitmd/design-system';
+import type { RecentRepository } from '@gitmd/core';
 import { appVersion, ipc, pickDirectory } from '@/core/ipc';
 import { useRepo } from './store';
 import { useUi } from '@/features/ui/store';

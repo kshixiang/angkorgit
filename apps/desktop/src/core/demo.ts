@@ -1,5 +1,5 @@
 import type { EditorInfo } from './ipc';
-import type { BlameHunk, FileBlame } from '@angkorgit/core';
+import type { BlameHunk, FileBlame } from '@gitmd/core';
 import type {
   BranchInfo,
   CliAgentInfo,
@@ -20,12 +20,12 @@ import type {
   HistoryPosition,
   HistorySearch,
   HistorySearchQuery,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 const AUTHORS = [
-  { name: 'Sokha Chan', email: 'sokha@angkorgit.dev' },
-  { name: 'Dara Kim', email: 'dara@angkorgit.dev' },
-  { name: 'Maly Sok', email: 'maly@angkorgit.dev' },
+  { name: 'Sokha Chan', email: 'sokha@gitmd.dev' },
+  { name: 'Dara Kim', email: 'dara@gitmd.dev' },
+  { name: 'Maly Sok', email: 'maly@gitmd.dev' },
 ];
 
 const SUBJECTS = [
@@ -92,8 +92,8 @@ function makeCommits(count: number): CommitInfo[] {
 const ALL_COMMITS = makeCommits(400);
 
 export const demoRepo: RepositoryInfo = {
-  path: '/Users/demo/projects/angkorgit',
-  name: 'angkorgit (demo)',
+  path: '/Users/demo/projects/gitmd',
+  name: 'gitmd (demo)',
   headBranch: 'main',
   headOid: ALL_COMMITS[0].oid,
   isDetached: false,
@@ -104,7 +104,7 @@ export const demoRepo: RepositoryInfo = {
 };
 
 export const demoRecents: RecentRepository[] = [
-  { path: '/Users/demo/projects/angkorgit', name: 'angkorgit', lastOpenedAt: 1754200000 },
+  { path: '/Users/demo/projects/gitmd', name: 'gitmd', lastOpenedAt: 1754200000 },
   { path: '/Users/demo/projects/temple-ui', name: 'temple-ui', lastOpenedAt: 1754100000 },
   { path: '/Users/demo/work/api-gateway', name: 'api-gateway', lastOpenedAt: 1753900000 },
 ];
@@ -192,8 +192,8 @@ export const demoTags: TagInfo[] = [
 
 export const demoWorktrees: WorktreeInfo[] = [
   {
-    name: 'angkorgit',
-    path: '/Users/demo/projects/angkorgit',
+    name: 'gitmd',
+    path: '/Users/demo/projects/gitmd',
     branch: 'main',
     headOid: ALL_COMMITS[0].oid,
     isMain: true,
@@ -204,8 +204,8 @@ export const demoWorktrees: WorktreeInfo[] = [
     isDirty: null,
   },
   {
-    name: 'angkorgit-feature-diff-viewer',
-    path: '/Users/demo/projects/angkorgit-feature-diff-viewer',
+    name: 'gitmd-feature-diff-viewer',
+    path: '/Users/demo/projects/gitmd-feature-diff-viewer',
     branch: 'feature/diff-viewer',
     headOid: ALL_COMMITS[7].oid,
     isMain: false,
@@ -216,8 +216,8 @@ export const demoWorktrees: WorktreeInfo[] = [
     isDirty: true,
   },
   {
-    name: 'angkorgit-fix-stash-race',
-    path: '/Users/demo/projects/angkorgit-fix-stash-race',
+    name: 'gitmd-fix-stash-race',
+    path: '/Users/demo/projects/gitmd-fix-stash-race',
     branch: 'fix/stash-race',
     headOid: ALL_COMMITS[12].oid,
     isMain: false,
@@ -344,7 +344,7 @@ function largeDiffRows(): FileDiff['hunks'][number]['lines'] {
     kind: 'addition',
     oldLineNo: null,
     newLineNo: newNo++,
-    content: `INSERT INTO palette (id, hex, label) VALUES (482, '${hex(482)}', 'angkor dusk');`,
+    content: `INSERT INTO palette (id, hex, label) VALUES (482, '${hex(482)}', 'gitmd dusk');`,
   });
   rows.push({
     kind: 'addition',
@@ -441,7 +441,7 @@ export function laneLabel(lane: Lane): string {
 >>>>>>> feature/lane-colors
 }
 
-export const defaultPalette = paletteFor('angkor-dusk');
+export const defaultPalette = paletteFor('gitmd-dusk');
 `;
 
 const DEMO_CONFLICT_FILES = new Map<string, string>();
@@ -484,7 +484,7 @@ const demoPull = (
 ) => ({
   number,
   title,
-  html_url: `https://github.com/demo/angkorgit/pull/${number}`,
+  html_url: `https://github.com/demo/gitmd/pull/${number}`,
   state: 'open',
   draft,
   merged_at: null,
@@ -494,7 +494,7 @@ const demoPull = (
   head: {
     ref: branch,
     sha: ALL_COMMITS[7].oid,
-    repo: { full_name: fork ? `${author}/angkorgit` : 'demo/angkorgit' },
+    repo: { full_name: fork ? `${author}/gitmd` : 'demo/gitmd' },
   },
   base: { ref: 'main' },
 });

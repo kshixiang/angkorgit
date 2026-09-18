@@ -1,5 +1,5 @@
 {
-  "name": "@angkorgit/desktop",
+  "name": "@gitmd/desktop",
   "version": "0.15.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@angkorgit/core": "workspace:*",
-    "@angkorgit/design-system": "workspace:*",
+    "@gitmd/core": "workspace:*",
+    "@gitmd/design-system": "workspace:*",
     "@fontsource-variable/inter": "^5.1.0",
     "@fontsource/jetbrains-mono": "^5.1.1",
     "@tanstack/react-virtual": "^3.10.9",

@@ -40,7 +40,7 @@ jobs:
       - name: Build static site
         run: pnpm website:build
         env:
-          SITE_URL: https://angkorgit.app
+          SITE_URL: https://gitmd.app
           SITE_BASE: /
       - uses: actions/upload-pages-artifact@v3
         with:

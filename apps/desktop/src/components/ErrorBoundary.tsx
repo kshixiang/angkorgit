@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { AlertTriangle, ClipboardCopy, RotateCcw } from 'lucide-react';
-import { Button, Logo } from '@angkorgit/design-system';
+import { Button, Logo } from '@gitmd/design-system';
 
 interface State {
   error: Error | null;

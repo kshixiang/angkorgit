@@ -8,7 +8,7 @@ import {
   type AiCompletionRequest,
   type AiProvider,
   type CommitStyle,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 function style(overrides: Partial<CommitStyle> = {}): CommitStyle {
   return { ...DEFAULT_COMMIT_STYLE, prefixRules: [], ...overrides };

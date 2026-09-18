@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { useSettings, type IdentityProfile } from '@/features/settings/store';
 
 interface ProfilePromptState {

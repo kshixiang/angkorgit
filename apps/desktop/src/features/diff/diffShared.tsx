@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
-import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
-import { MAX_RENDERED_LINE, clipRenderedLine, wordDiff, type WordSegment } from '@angkorgit/core';
-import { cn } from '@angkorgit/design-system';
+import type { DiffHunk, DiffLine, FileDiff } from '@gitmd/core';
+import { MAX_RENDERED_LINE, clipRenderedLine, wordDiff, type WordSegment } from '@gitmd/core';
+import { cn } from '@gitmd/design-system';
 import { highlightLineState, supportsBlockComments } from '@/shared/highlight';
 
 const WRAP_LINE_LIMIT = 3000;

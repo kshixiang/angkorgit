@@ -34,7 +34,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { Kbd, Spinner } from '@angkorgit/design-system';
+import { Kbd, Spinner } from '@gitmd/design-system';
 import { ipc, openExternal, pickDirectory } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
@@ -46,7 +46,7 @@ import { installCliTool } from '@/features/settings/cliTool';
 import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { useUndo } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
-import { forgeNoun, pickForgeRemote, remoteWebUrl } from '@angkorgit/core';
+import { forgeNoun, pickForgeRemote, remoteWebUrl } from '@gitmd/core';
 import { currentPullRequestUrl, modKey } from '@/shared/utils';
 
 export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }) {

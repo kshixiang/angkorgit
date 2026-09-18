@@ -34,7 +34,7 @@ import { useShortcuts } from '@/shared/useShortcuts';
 import { useUndo } from '@/features/history/undoStore';
 import { useSettings } from '@/features/settings/store';
 import { ipc, listen } from '@/core/ipc';
-import { Logo, cn } from '@angkorgit/design-system';
+import { Logo, cn } from '@gitmd/design-system';
 import { basename } from '@/shared/utils';
 
 const OVERLAY_SHOW_DELAY = 250;
@@ -325,7 +325,7 @@ export function RepositoryPage() {
       <Toolbar onRefresh={refreshAll} />
       <div className="relative min-h-0 flex-1">
         <RepoLoadingOverlay />
-        <PanelGroup direction="horizontal" autoSaveId="angkorgit-main-v2">
+        <PanelGroup direction="horizontal" autoSaveId="gitmd-main-v2">
           <Panel
             ref={sidebarPanel}
             id="sidebar"
@@ -363,7 +363,7 @@ export function RepositoryPage() {
             }}
           />
           <Panel id="center" order={2} defaultSize={54} minSize={30}>
-            <PanelGroup direction="vertical" autoSaveId="angkorgit-center">
+            <PanelGroup direction="vertical" autoSaveId="gitmd-center">
               <Panel minSize={30}>
                 <div className={centerDiff || centerEditor || centerFileHistory ? 'hidden' : 'h-full'}>
                   <CommitGraph key={repo.path} />

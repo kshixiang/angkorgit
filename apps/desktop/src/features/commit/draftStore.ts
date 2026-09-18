@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+if (typeof localStorage !== 'undefined' && !localStorage.getItem('gitmd-commit-drafts')) {
+  const legacy = localStorage.getItem('angkorgit-commit-drafts');
+  if (legacy) localStorage.setItem('gitmd-commit-drafts', legacy);
+}
+
 interface CommitDraftState {
   drafts: Record<string, string>;
   amendFor: string | null;
@@ -31,7 +36,7 @@ export const useCommitDraft = create<CommitDraftState>()(
       setAmend: (path, amend) => set({ amendFor: amend ? path : null }),
     }),
     {
-      name: 'angkorgit-commit-drafts',
+      name: 'gitmd-commit-drafts',
       partialize: (s) => ({ drafts: s.drafts }),
     },
   ),

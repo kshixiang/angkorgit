@@ -30,7 +30,7 @@ import {
   SelectValue,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, openExternal, type AccountCheckStatus, type HostingAccount } from '@/core/ipc';
 import { timeAgo } from '@/shared/utils';
 import { confirmDialog } from '@/components/confirm';

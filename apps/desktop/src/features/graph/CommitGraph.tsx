@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { toastOutcome } from '@/shared/toastOutcome';
 import { Archive, ArchiveRestore, ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Combine, Copy, FastForward, Filter, FolderTree, GitBranchPlus, Settings2, GitMerge, ListOrdered, ListRestart, RotateCcw, Search, Tag as TagIcon, Trash2, Undo2, User, X } from 'lucide-react';
-import type { CommitInfo, RefInfo } from '@angkorgit/core';
+import type { CommitInfo, RefInfo } from '@gitmd/core';
 import {
   Button,
   DropdownMenu,
@@ -17,7 +17,7 @@ import {
   Input,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc } from '@/core/ipc';
 import { ensureRepoProfile } from '@/features/settings/profiles';
 import { useRepo } from '@/features/repository/store';

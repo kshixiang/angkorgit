@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Input,
   Textarea,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, type OpOutcome } from '@/core/ipc';
 import { toastOutcome } from '@/shared/toastOutcome';
 import { useRepo } from './store';

@@ -13,7 +13,7 @@ GitMD follows Clean Architecture with feature-based folders. Dependencies point 
 │  State: Zustand stores per feature (repository, graph, ui,  │
 │  settings) — no cross-feature imports of internals          │
 ├─────────────────────────────────────────────────────────────┤
-│  Domain: @angkorgit/core (pure TypeScript, no React)        │
+│  Domain: @gitmd/core (pure TypeScript, no React)        │
 │  git types · graph lane layout · word diff · conflict       │
 │  parser · AI provider registry + capabilities               │
 ├─────────────────────────────────────────────────────────────┤
@@ -25,7 +25,7 @@ GitMD follows Clean Architecture with feature-based folders. Dependencies point 
 │  branch, remote, accounts, misc, diff, conflict) over       │
 │  git2/libgit2 · terminal.rs (portable-pty) · watcher.rs     │
 │  (filesystem events) · http.rs (AI proxy) · ai_cli.rs       │
-│  (installed AI-CLI runner) · cli.rs (angkorgit . opener) ·  │
+│  (installed AI-CLI runner) · cli.rs (gitmd . opener) ·  │
 │  state.rs (recents) · error.rs                              │
 └─────────────────────────────────────────────────────────────┘
 ```

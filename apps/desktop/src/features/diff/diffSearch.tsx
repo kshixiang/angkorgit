@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CaseSensitive, ChevronDown, ChevronUp, X } from 'lucide-react';
-import type { DiffLine, FileDiff } from '@angkorgit/core';
-import { Button, Hint, Kbd, cn } from '@angkorgit/design-system';
+import type { DiffLine, FileDiff } from '@gitmd/core';
+import { Button, Hint, Kbd, cn } from '@gitmd/design-system';
 import { useUi } from '@/features/ui/store';
 import type { SearchRange, SearchRanges } from './diffShared';
 import { flattenDiff, HEADER_H, LINE_H, panControllers } from './VirtualDiff';

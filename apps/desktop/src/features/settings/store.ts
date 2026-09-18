@@ -9,15 +9,15 @@ import {
   type AiStyleConfig,
   type CommitStyle,
   type ReviewStyle,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 import { ipc, isTauri } from '@/core/ipc';
 import type { UiLanguage } from '@/shared/i18n';
 
 export type Theme =
   | 'dark'
   | 'light'
-  | 'angkor-dusk'
-  | 'angkor-dawn'
+  | 'gitmd-dusk'
+  | 'gitmd-dawn'
   | 'vscode-dark'
   | 'vscode-light'
   | 'github-dark'
@@ -39,10 +39,10 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'dark', label: 'AngKor Dark', base: 'dark', swatch: { bg: '#0d1220', fg: '#e5e9f0', dots: ['#d97706', '#22c55e', '#38bdf8'] } },
-  { id: 'light', label: 'AngKor Light', base: 'light', swatch: { bg: '#f5f7fa', fg: '#1b2437', dots: ['#d97706', '#15803d', '#0369a1'] } },
-  { id: 'angkor-dusk', label: 'Angkor Dusk', base: 'dark', swatch: { bg: '#1e150d', fg: '#eae1d1', dots: ['#e08c16', '#22c55e', '#38bdf8'] } },
-  { id: 'angkor-dawn', label: 'Angkor Dawn', base: 'light', swatch: { bg: '#f3edde', fg: '#31251a', dots: ['#b45f06', '#15803d', '#0369a1'] } },
+  { id: 'dark', label: 'GitMD Dark', base: 'dark', swatch: { bg: '#0d1220', fg: '#e5e9f0', dots: ['#d97706', '#22c55e', '#38bdf8'] } },
+  { id: 'light', label: 'GitMD Light', base: 'light', swatch: { bg: '#f5f7fa', fg: '#1b2437', dots: ['#d97706', '#15803d', '#0369a1'] } },
+  { id: 'gitmd-dusk', label: 'GitMD Dusk', base: 'dark', swatch: { bg: '#1e150d', fg: '#eae1d1', dots: ['#e08c16', '#22c55e', '#38bdf8'] } },
+  { id: 'gitmd-dawn', label: 'GitMD Dawn', base: 'light', swatch: { bg: '#f3edde', fg: '#31251a', dots: ['#b45f06', '#15803d', '#0369a1'] } },
   { id: 'vscode-dark', label: 'VS Code Dark+', base: 'dark', swatch: { bg: '#1e1e1e', fg: '#d4d4d4', dots: ['#569cd6', '#ce9178', '#dcdcaa'] } },
   { id: 'vscode-light', label: 'VS Code Light+', base: 'light', swatch: { bg: '#ffffff', fg: '#333333', dots: ['#0000ff', '#a31515', '#795e26'] } },
   { id: 'github-dark', label: 'GitHub Dark', base: 'dark', swatch: { bg: '#0d1117', fg: '#c9d1d9', dots: ['#ff7b72', '#a5d6ff', '#d2a8ff'] } },
@@ -105,6 +105,25 @@ export interface IdentityProfile {
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 2;
 export const ZOOM_STEP = 0.1;
+
+function migratePersistedSettings(): void {
+  if (typeof localStorage === 'undefined') return;
+  const currentKey = 'gitmd-settings';
+  const legacyKey = 'angkorgit-settings';
+  if (localStorage.getItem(currentKey) || !localStorage.getItem(legacyKey)) return;
+  try {
+    const raw = JSON.parse(localStorage.getItem(legacyKey) ?? '{}') as {
+      state?: { theme?: string };
+    };
+    if (raw.state?.theme === 'angkor-dusk') raw.state.theme = 'gitmd-dusk';
+    if (raw.state?.theme === 'angkor-dawn') raw.state.theme = 'gitmd-dawn';
+    localStorage.setItem(currentKey, JSON.stringify(raw));
+  } catch {
+    localStorage.setItem(currentKey, localStorage.getItem(legacyKey) ?? '{}');
+  }
+}
+
+migratePersistedSettings();
 
 function applyZoom(zoom: number): void {
   if (isTauri()) {
@@ -220,7 +239,7 @@ const staleStatus = (status: AiConnectionStatus): AiConnectionStatus =>
 export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => ({
-      theme: 'angkor-dusk',
+      theme: 'gitmd-dusk',
       accent: 'gold',
       zoom: 1,
       sshKeyPath: '',
@@ -320,7 +339,7 @@ export const useSettings = create<SettingsState>()(
       setUiLanguage: (uiLanguage) => set({ uiLanguage }),
     }),
     {
-      name: 'angkorgit-settings',
+      name: 'gitmd-settings',
       partialize: (state) => ({
         ...state,
         ai: { ...state.ai, apiKey: '' },
@@ -341,7 +360,7 @@ export const useSettings = create<SettingsState>()(
         };
       },
       onRehydrateStorage: () => (state) => {
-        applyTheme(state?.theme ?? 'angkor-dusk');
+        applyTheme(state?.theme ?? 'gitmd-dusk');
         const zoom = state?.zoom ?? 1;
         if (zoom !== 1) applyZoom(zoom);
         applyAccent(state?.accent ?? 'gold');

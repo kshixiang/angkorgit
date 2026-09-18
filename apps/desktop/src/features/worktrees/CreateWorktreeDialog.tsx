@@ -21,8 +21,8 @@ import {
   TabsList,
   TabsTrigger,
   cn,
-} from '@angkorgit/design-system';
-import { parentDirectory, suggestWorktreePath } from '@angkorgit/core';
+} from '@gitmd/design-system';
+import { parentDirectory, suggestWorktreePath } from '@gitmd/core';
 import { ipc, pickDirectory } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';

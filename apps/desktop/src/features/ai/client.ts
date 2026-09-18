@@ -1,4 +1,4 @@
-import { createAiProvider, type AiProvider } from '@angkorgit/core';
+import { createAiProvider, type AiProvider } from '@gitmd/core';
 import { ipc } from '@/core/ipc';
 import { useSettings } from '@/features/settings/store';
 

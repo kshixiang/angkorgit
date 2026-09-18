@@ -13,7 +13,7 @@ const sourceIcon = join(outDir, 'icon.svg');
 if (existsSync(sourceIcon)) {
   const result = spawnSync(
     'pnpm',
-    ['--filter', '@angkorgit/desktop', 'exec', 'tauri', 'icon', 'src-tauri/icons/icon.svg'],
+    ['--filter', '@gitmd/desktop', 'exec', 'tauri', 'icon', 'src-tauri/icons/icon.svg'],
     { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' },
   );
   process.exit(result.status ?? 1);
@@ -166,4 +166,4 @@ for (const [name, size] of [
   writeFileSync(join(outDir, name), png(size, pixel));
   console.log(`generated icons/${name}`);
 }
-console.log('\nDone. For .icns/.ico run: pnpm --filter @angkorgit/desktop exec tauri icon src-tauri/icons/icon.png');
+console.log('\nDone. For .icns/.ico run: pnpm --filter @gitmd/desktop exec tauri icon src-tauri/icons/icon.png');

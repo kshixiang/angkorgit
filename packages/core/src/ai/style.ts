@@ -35,7 +35,8 @@ export const DEFAULT_AI_STYLE: AiStyleConfig = {
   review: DEFAULT_REVIEW_STYLE,
 };
 
-export const PROJECT_REVIEW_FILE = '.angkorgit/review.md';
+export const PROJECT_REVIEW_FILE = '.gitmd/review.md';
+export const LEGACY_PROJECT_REVIEW_FILE = '.angkorgit/review.md';
 
 export const COMMIT_STYLE_PRESETS: Record<CommitStylePreset, { label: string; description: string }> = {
   conventional: {

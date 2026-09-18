@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 
 export interface ConfirmOptions {
   title: string;

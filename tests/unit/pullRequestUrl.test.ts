@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { pullRequestUrl } from '@angkorgit/core';
+import { pullRequestUrl } from '@gitmd/core';
 
 describe('pullRequestUrl', () => {
   it('builds a GitHub compare URL from an https remote', () => {
-    expect(pullRequestUrl('https://github.com/cheat2001/angkorgit.git', 'feature/test1')).toBe(
-      'https://github.com/cheat2001/angkorgit/compare/feature%2Ftest1?expand=1',
+    expect(pullRequestUrl('https://github.com/cheat2001/gitmd.git', 'feature/test1')).toBe(
+      'https://github.com/cheat2001/gitmd/compare/feature%2Ftest1?expand=1',
     );
   });
 
   it('builds a GitHub compare URL from an scp-style remote', () => {
-    expect(pullRequestUrl('git@github.com:cheat2001/angkorgit.git', 'main')).toBe(
-      'https://github.com/cheat2001/angkorgit/compare/main?expand=1',
+    expect(pullRequestUrl('git@github.com:cheat2001/gitmd.git', 'main')).toBe(
+      'https://github.com/cheat2001/gitmd/compare/main?expand=1',
     );
   });
 

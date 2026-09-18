@@ -24,8 +24,8 @@ import type {
   TagInfo,
   WorktreeAddRequest,
   WorktreeInfo,
-} from '@angkorgit/core';
-import type { FileBlame } from '@angkorgit/core';
+} from '@gitmd/core';
+import type { FileBlame } from '@gitmd/core';
 let demo = null as unknown as typeof import('./demo');
 
 export interface OpOutcome {
@@ -99,7 +99,11 @@ export async function listen(event: string, handler: (payload: unknown) => void)
 
 const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 
-const DEMO_AI_KEYS = 'angkorgit-demo-ai-keys';
+const DEMO_AI_KEYS = 'gitmd-demo-ai-keys';
+if (typeof localStorage !== 'undefined' && !localStorage.getItem(DEMO_AI_KEYS)) {
+  const legacy = localStorage.getItem('angkorgit-demo-ai-keys');
+  if (legacy) localStorage.setItem(DEMO_AI_KEYS, legacy);
+}
 let demoCli: CliToolStatus | null = null;
 
 function demoAiKeys(): Record<string, string> {
@@ -159,7 +163,7 @@ export const ipc = {
   },
 
   async configGet(path: string | null, key: string): Promise<string | null> {
-    if (!isTauri()) return key === 'user.name' ? 'Demo User' : key === 'user.email' ? 'demo@angkorgit.dev' : null;
+    if (!isTauri()) return key === 'user.name' ? 'Demo User' : key === 'user.email' ? 'demo@gitmd.dev' : null;
     return invoke('config_get', { path, key });
   },
   async configSet(path: string | null, key: string, value: string, global: boolean): Promise<void> {
@@ -409,7 +413,7 @@ export const ipc = {
   },
 
   async remotes(path: string): Promise<RemoteInfo[]> {
-    if (!isTauri()) return [{ name: 'origin', url: 'git@github.com:demo/angkorgit.git' }];
+    if (!isTauri()) return [{ name: 'origin', url: 'git@github.com:demo/gitmd.git' }];
     return invoke('remote_list', { path });
   },
   async remoteAdd(path: string, name: string, url: string): Promise<void> {
@@ -625,12 +629,12 @@ export const ipc = {
     return invoke('credential_prefs_set', { sshKeyPath, useAgent, useCredentialHelper });
   },
   async sshPublicKey(path: string): Promise<string> {
-    if (!isTauri()) return 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5DEMO demo@angkorgit';
+    if (!isTauri()) return 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5DEMO demo@gitmd';
     return invoke('ssh_public_key', { path });
   },
   async sshKeyGenerate(path: string, comment: string): Promise<GeneratedKey> {
     if (!isTauri()) {
-      return { path, publicKey: 'ssh-rsa AAAAB3NzaC1yc2EDEMO demo@angkorgit' };
+      return { path, publicKey: 'ssh-rsa AAAAB3NzaC1yc2EDEMO demo@gitmd' };
     }
     return invoke('ssh_key_generate', { path, comment });
   },
@@ -759,7 +763,7 @@ export const ipc = {
   },
   async cliInstall(): Promise<CliToolStatus> {
     if (!isTauri()) {
-      demoCli = { path: '/usr/local/bin/angkorgit', aliasPath: '/usr/local/bin/akg' };
+      demoCli = { path: '/usr/local/bin/gitmd', aliasPath: '/usr/local/bin/gmd' };
       return demoCli;
     }
     return invoke('cli_install');

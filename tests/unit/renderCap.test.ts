@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_RENDERED_LINE, clipRenderedLine } from '@angkorgit/core';
+import { MAX_RENDERED_LINE, clipRenderedLine } from '@gitmd/core';
 
 describe('clipRenderedLine', () => {
   it('leaves ordinary lines untouched', () => {

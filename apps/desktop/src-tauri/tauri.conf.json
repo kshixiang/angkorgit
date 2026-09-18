@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "GitMD",
   "version": "0.15.0",
-  "identifier": "dev.angkorgit.app",
+  "identifier": "dev.gitmd.app",
   "build": {
     "beforeDevCommand": "pnpm dev:vite",
     "devUrl": "http://localhost:1420",
@@ -32,7 +32,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJCOTlBMDVERkYyNjQ4NQpSV1NGWlBMZkJacTVDNUpPR0lTZmxaNEJxSXNKMU0vVmRCQ3JFWG5NdFNLNHlta09hRUUxcC9lNgo=",
       "endpoints": [
-        "https://github.com/cheat2001/angkorgit/releases/latest/download/latest.json"
+        "https://github.com/cheat2001/gitmd/releases/latest/download/latest.json"
       ]
     }
   },

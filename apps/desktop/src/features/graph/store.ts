@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { CommitInfo, HistoryPage, HistoryPosition } from '@angkorgit/core';
-import { GraphLayout, type GraphRow } from '@angkorgit/core';
+import type { CommitInfo, HistoryPage, HistoryPosition } from '@gitmd/core';
+import { GraphLayout, type GraphRow } from '@gitmd/core';
 import { ipc } from '@/core/ipc';
 
 const PAGE_SIZE = 200;

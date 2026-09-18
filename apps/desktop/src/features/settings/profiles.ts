@@ -18,10 +18,10 @@ export async function applyProfileToRepo(
     await ipc.configSet(repoPath, 'user.name', profile.name, false);
     await ipc.configSet(repoPath, 'user.email', profile.email, false);
   }
-  await ipc.configSet(repoPath, 'angkorgit.profile', profile.id, false);
+  await ipc.configSet(repoPath, 'gitmd.profile', profile.id, false);
   await ipc.configSet(
     repoPath,
-    'angkorgit.accounts',
+    'gitmd.accounts',
     serializeAccountBindings(profile.accounts),
     false,
   );
@@ -36,6 +36,7 @@ export async function ensureRepoProfile(repoPath: string): Promise<IdentityProfi
   const repoState = useRepo.getState();
   const assignedId =
     (repoState.repo?.path === repoPath ? repoState.profileId : null) ??
+    (await ipc.configGet(repoPath, 'gitmd.profile')) ??
     (await ipc.configGet(repoPath, 'angkorgit.profile'));
   if (assignedId) {
     const assigned = profiles.find((p) => p.id === assignedId);

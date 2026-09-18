@@ -56,7 +56,7 @@ import {
   Input,
   Logo,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, openExternal } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
@@ -66,8 +66,8 @@ import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
 import { useSettings } from '@/features/settings/store';
-import { forgeNoun, pullRequestCheckoutSpec, remoteWebUrl } from '@angkorgit/core';
-import type { BranchInfo, PullRequestInfo, RemoteInfo, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo } from '@angkorgit/core';
+import { forgeNoun, pullRequestCheckoutSpec, remoteWebUrl } from '@gitmd/core';
+import type { BranchInfo, PullRequestInfo, RemoteInfo, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo } from '@gitmd/core';
 import { capCount, isMac } from '@/shared/utils';
 import { killTerminalSession } from '@/features/terminal/sessions';
 
@@ -625,7 +625,7 @@ export function Sidebar() {
       draggable
       onDragStart={(e) => {
         setDragging(branch.name);
-        e.dataTransfer.setData('text/angkorgit-branch', branch.name);
+        e.dataTransfer.setData('text/gitmd-branch', branch.name);
         e.dataTransfer.effectAllowed = 'link';
       }}
       onDragEnd={() => {
@@ -643,7 +643,7 @@ export function Sidebar() {
       onDragLeave={() => setDropTarget((t) => (t === branch.name ? null : t))}
       onDrop={(e) => {
         e.preventDefault();
-        const source = e.dataTransfer.getData('text/angkorgit-branch');
+        const source = e.dataTransfer.getData('text/gitmd-branch');
         setDropTarget(null);
         setDragging(null);
         if (source && source !== branch.name) {
@@ -725,7 +725,7 @@ export function Sidebar() {
       draggable
       onDragStart={(e) => {
         setDragging(branch.name);
-        e.dataTransfer.setData('text/angkorgit-branch', branch.name);
+        e.dataTransfer.setData('text/gitmd-branch', branch.name);
         e.dataTransfer.effectAllowed = 'link';
       }}
       onDragEnd={() => {

@@ -7,7 +7,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { AiText } from './AiText';
 
 export function AiResultDialog({

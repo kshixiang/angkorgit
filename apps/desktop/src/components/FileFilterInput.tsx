@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
-import { Button, Input, cn } from '@angkorgit/design-system';
+import { Button, Input, cn } from '@gitmd/design-system';
 
 let consumedFocusSeq = 0;
 

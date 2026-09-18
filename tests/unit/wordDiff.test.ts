@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wordDiff } from '@angkorgit/core';
+import { wordDiff } from '@gitmd/core';
 
 describe('wordDiff', () => {
   it('marks identical lines as fully equal', () => {

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { CommitFileInfo, CommitInfo } from '@angkorgit/core';
+import type { CommitFileInfo, CommitInfo } from '@gitmd/core';
 import { FolderTree, List, Search, X } from 'lucide-react';
-import { Hint, Button, cn } from '@angkorgit/design-system';
+import { Hint, Button, cn } from '@gitmd/design-system';
 import { useGraph } from '@/features/graph/store';
 import { useRepo } from '@/features/repository/store';
 import { useUi } from '@/features/ui/store';

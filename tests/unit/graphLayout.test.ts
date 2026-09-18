@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GraphLayout, flatGraphRows, layoutGraph, type CommitInfo } from '@angkorgit/core';
+import { GraphLayout, flatGraphRows, layoutGraph, type CommitInfo } from '@gitmd/core';
 
 const sig = { name: 'Test', email: 't@example.com', time: 0 };
 

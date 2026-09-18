@@ -9,7 +9,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 900 },
   },
   webServer: {
-    command: 'pnpm --filter @angkorgit/desktop dev',
+    command: 'pnpm --filter @gitmd/desktop dev',
     url: 'http://localhost:1420',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

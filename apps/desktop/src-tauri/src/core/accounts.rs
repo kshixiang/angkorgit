@@ -9,7 +9,8 @@ use crate::error::{AppError, AppResult};
 
 pub static CONFIG_DIR: OnceLock<PathBuf> = OnceLock::new();
 
-const KEYRING_SERVICE: &str = "AngKorGit";
+const KEYRING_SERVICE: &str = "GitMD";
+const LEGACY_KEYRING_SERVICE: &str = "AngKorGit";
 
 type TokenCache = Mutex<HashMap<String, Option<String>>>;
 static TOKEN_CACHE: OnceLock<TokenCache> = OnceLock::new();
@@ -160,13 +161,13 @@ pub fn token_of(host: &str, username: &str) -> Option<String> {
 }
 
 fn read_or_migrate_token(host: &str, username: &str, name: &str) -> Option<String> {
-    if let Some(token) = keyring::Entry::new(KEYRING_SERVICE, name)
-        .ok()
-        .and_then(|entry| entry.get_password().ok())
-    {
+    let current = keyring::Entry::new(KEYRING_SERVICE, name).ok();
+    if let Some(token) = current.as_ref().and_then(|entry| entry.get_password().ok()) {
         return Some(token);
     }
-    let legacy = keyring::Entry::new(KEYRING_SERVICE, host).ok()?;
+    let legacy = keyring::Entry::new(LEGACY_KEYRING_SERVICE, name)
+        .ok()
+        .or_else(|| keyring::Entry::new(LEGACY_KEYRING_SERVICE, host).ok())?;
     let token = legacy.get_password().ok()?;
     let owner_matches = list()
         .iter()
@@ -175,7 +176,7 @@ fn read_or_migrate_token(host: &str, username: &str, name: &str) -> Option<Strin
     if !owner_matches {
         return None;
     }
-    if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, name) {
+    if let Some(entry) = current {
         if entry.set_password(&token).is_ok() {
             let _ = legacy.delete_credential();
         }

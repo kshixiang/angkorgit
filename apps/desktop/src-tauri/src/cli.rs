@@ -9,7 +9,7 @@ use crate::ai_cli::home_dir;
 use crate::error::{AppError, AppResult};
 
 const EVENT: &str = "cli-request";
-const SHIM_MARK: &str = "angkorgit-cli";
+const SHIM_MARK: &str = "gitmd-cli";
 pub const HELP: &str = include_str!("../cli/help.txt");
 
 static PENDING: Mutex<Option<CliRequest>> = Mutex::new(None);
@@ -279,17 +279,17 @@ fn write_alias(shim: &Path, body: &str) -> std::io::Result<()> {
 
 fn shim_name() -> &'static str {
     if cfg!(windows) {
-        "angkorgit.cmd"
+        "gitmd.cmd"
     } else {
-        "angkorgit"
+        "gitmd"
     }
 }
 
 fn alias_name() -> &'static str {
     if cfg!(windows) {
-        "akg.cmd"
+        "gmd.cmd"
     } else {
-        "akg"
+        "gmd"
     }
 }
 
@@ -305,7 +305,7 @@ fn dest_dirs() -> Vec<PathBuf> {
     #[cfg(windows)]
     {
         if let Some(base) = std::env::var_os("LOCALAPPDATA") {
-            candidates.push(PathBuf::from(base).join("angkorgit").join("bin"));
+            candidates.push(PathBuf::from(base).join("gitmd").join("bin"));
         }
     }
     candidates
@@ -379,14 +379,14 @@ fn sh_quote(value: &str) -> String {
 }
 
 fn unix_shim(app: &Path, kind: &str) -> String {
-    include_str!("../cli/angkorgit.sh")
+    include_str!("../cli/gitmd.sh")
         .replace("@APP@", &sh_quote(&app.to_string_lossy()))
         .replace("@KIND@", kind)
         .replace("@HELP@", HELP.trim_end())
 }
 
 fn windows_shim(exe: &Path) -> String {
-    include_str!("../cli/angkorgit.cmd").replace("@APP@", &exe.to_string_lossy().replace('"', ""))
+    include_str!("../cli/gitmd.cmd").replace("@APP@", &exe.to_string_lossy().replace('"', ""))
 }
 
 #[cfg(test)]
@@ -394,7 +394,7 @@ mod tests {
     use super::*;
 
     fn args(parts: &[&str]) -> Vec<String> {
-        std::iter::once("angkorgit".to_string())
+        std::iter::once("gitmd".to_string())
             .chain(parts.iter().map(|s| (*s).to_string()))
             .collect()
     }
@@ -497,12 +497,12 @@ mod tests {
 
     #[test]
     fn unix_shim_lists_the_github_desktop_commands() {
-        let body = unix_shim(Path::new("/Applications/AngKorGit.app"), "app");
+        let body = unix_shim(Path::new("/Applications/GitMD.app"), "app");
         assert!(body.contains(SHIM_MARK));
-        assert!(body.contains("APP='/Applications/AngKorGit.app'"));
+        assert!(body.contains("APP='/Applications/GitMD.app'"));
         assert!(body.contains("open -a \"$APP\""));
-        assert!(body.contains("angkorgit open [path]"));
-        assert!(body.contains("angkorgit clone [-b branch] <url>"));
+        assert!(body.contains("gitmd open [path]"));
+        assert!(body.contains("gitmd clone [-b branch] <url>"));
         assert!(body.contains("torvalds/linux"));
         assert!(body.contains("abs=$(resolve \"$2\") || exit 1"));
         assert!(!body.contains("launch_open \"$(resolve"));
@@ -512,15 +512,15 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn alias_is_a_symlink_next_to_the_shim_and_uninstall_takes_both() {
-        let dir = std::env::temp_dir().join(format!("angkorgit-cli-alias-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-cli-alias-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let shim = dir.join(shim_name());
-        let body = unix_shim(Path::new("/Applications/AngKorGit.app"), "app");
+        let body = unix_shim(Path::new("/Applications/GitMD.app"), "app");
         write_shim(&shim, &body).unwrap();
         assert_eq!(status_of(&shim).alias_path, None);
         write_alias(&shim, &body).unwrap();
-        let alias = dir.join("akg");
-        assert_eq!(std::fs::read_link(&alias).unwrap(), Path::new("angkorgit"));
+        let alias = dir.join("gmd");
+        assert_eq!(std::fs::read_link(&alias).unwrap(), Path::new("gitmd"));
         assert!(is_our_shim(&alias));
         assert_eq!(
             status_of(&shim).alias_path.as_deref(),

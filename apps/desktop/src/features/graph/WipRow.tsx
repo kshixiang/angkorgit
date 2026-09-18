@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Pencil } from 'lucide-react';
-import { Badge, cn } from '@angkorgit/design-system';
+import { Badge, cn } from '@gitmd/design-system';
 import { useRepo } from '@/features/repository/store';
 import { GUTTER_GAP, laneX, REF_COL_WIDTH } from './GraphRow';
 import { useGraph } from './store';

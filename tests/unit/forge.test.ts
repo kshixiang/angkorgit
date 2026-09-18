@@ -12,7 +12,7 @@ import {
   pickForgeRemote,
   type HttpRequest,
   type HttpResponse,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 function fakeHttp(handler: (request: HttpRequest) => HttpResponse) {
   const calls: HttpRequest[] = [];
@@ -24,7 +24,7 @@ function fakeHttp(handler: (request: HttpRequest) => HttpResponse) {
 }
 
 const githubRemote = () => {
-  const remote = parseForgeRemote('git@github.com:cheat2001/angkorgit.git');
+  const remote = parseForgeRemote('git@github.com:cheat2001/gitmd.git');
   if (!remote) throw new Error('expected a parsed remote');
   return remote;
 };
@@ -32,14 +32,14 @@ const githubRemote = () => {
 const samplePull = (overrides: Record<string, unknown> = {}) => ({
   number: 12,
   title: 'Add worktrees',
-  html_url: 'https://github.com/cheat2001/angkorgit/pull/12',
+  html_url: 'https://github.com/cheat2001/gitmd/pull/12',
   state: 'open',
   draft: false,
   merged_at: null,
   created_at: '2026-08-20T10:00:00Z',
   updated_at: '2026-08-21T11:30:00Z',
   user: { login: 'dara', avatar_url: 'https://avatars.example/dara' },
-  head: { ref: 'feature/worktrees', sha: 'abc123', repo: { full_name: 'cheat2001/angkorgit' } },
+  head: { ref: 'feature/worktrees', sha: 'abc123', repo: { full_name: 'cheat2001/gitmd' } },
   base: { ref: 'main' },
   ...overrides,
 });
@@ -47,15 +47,15 @@ const samplePull = (overrides: Record<string, unknown> = {}) => ({
 describe('parseForgeRemote', () => {
   it('parses github https, scp and ssh remotes', () => {
     for (const url of [
-      'https://github.com/cheat2001/angkorgit.git',
-      'git@github.com:cheat2001/angkorgit.git',
-      'ssh://git@github.com/cheat2001/angkorgit',
+      'https://github.com/cheat2001/gitmd.git',
+      'git@github.com:cheat2001/gitmd.git',
+      'ssh://git@github.com/cheat2001/gitmd',
     ]) {
       const remote = parseForgeRemote(url);
       expect(remote?.kind).toBe('github');
       expect(remote?.host).toBe('github.com');
       expect(remote?.owner).toBe('cheat2001');
-      expect(remote?.repo).toBe('angkorgit');
+      expect(remote?.repo).toBe('gitmd');
     }
   });
 
@@ -118,14 +118,14 @@ describe('githubForgeProvider', () => {
         samplePull({
           number: 13,
           draft: true,
-          head: { ref: 'fix/typo', sha: 'def456', repo: { full_name: 'someone/angkorgit' } },
+          head: { ref: 'fix/typo', sha: 'def456', repo: { full_name: 'someone/gitmd' } },
         }),
         samplePull({ number: 14, head: { ref: 'gone', sha: 'ffff00', repo: null } }),
       ]),
     }));
     const prs = await githubForgeProvider(githubRemote(), http).listOpenPullRequests();
     expect(calls[0].url).toBe(
-      'https://api.github.com/repos/cheat2001/angkorgit/pulls?state=open&sort=updated&direction=desc&per_page=50',
+      'https://api.github.com/repos/cheat2001/gitmd/pulls?state=open&sort=updated&direction=desc&per_page=50',
     );
     expect(prs).toHaveLength(3);
     expect(prs[0]).toMatchObject({
@@ -157,7 +157,7 @@ describe('githubForgeProvider', () => {
       draft: true,
     });
     expect(calls[0].method).toBe('POST');
-    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/angkorgit/pulls');
+    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/gitmd/pulls');
     expect(JSON.parse(calls[0].body ?? '{}')).toEqual({
       title: 'New feature',
       head: 'feature/thing',
@@ -188,7 +188,7 @@ describe('githubForgeProvider', () => {
   it('reads the default branch with a fallback', async () => {
     const { http } = fakeHttp((request) => ({
       status: 200,
-      body: request.url.endsWith('/repos/cheat2001/angkorgit')
+      body: request.url.endsWith('/repos/cheat2001/gitmd')
         ? JSON.stringify({ default_branch: 'develop' })
         : '{}',
     }));
@@ -689,7 +689,7 @@ describe('authorAvatar', () => {
     );
     const provider = createForgeProvider(githubRemote(), http)!;
     expect(await provider.authorAvatar({ email: 'dara@example.com', sha: 'abc123' })).toBe('https://a/dara');
-    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/angkorgit/commits/abc123');
+    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/gitmd/commits/abc123');
     const { http: unknown } = fakeHttp(() => ({ status: 200, headers: {}, body: JSON.stringify({ author: null }) }));
     expect(await createForgeProvider(githubRemote(), unknown)!.authorAvatar({ email: 'x', sha: 'abc' })).toBeNull();
   });
@@ -722,11 +722,11 @@ describe('authorAvatar', () => {
 });
 
 describe('pull requests from a fork into upstream', () => {
-  const fork = { owner: 'dara', repo: 'angkorgit' };
+  const fork = { owner: 'dara', repo: 'gitmd' };
 
   it('github sends the fork owner in the head', async () => {
     const { http, calls } = fakeHttp(() => ({ status: 201, body: JSON.stringify(samplePull({ number: 30 })) }));
-    const upstream = parseForgeRemote('git@github.com:cheat2001/angkorgit.git');
+    const upstream = parseForgeRemote('git@github.com:cheat2001/gitmd.git');
     if (!upstream) throw new Error('expected a parsed remote');
     const pr = await githubForgeProvider(upstream, http).createPullRequest({
       title: 'From my fork',
@@ -736,7 +736,7 @@ describe('pull requests from a fork into upstream', () => {
       draft: false,
       sourceRepo: fork,
     });
-    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/angkorgit/pulls');
+    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/gitmd/pulls');
     expect(JSON.parse(calls[0].body ?? '{}')).toMatchObject({ head: 'dara:feature/x', base: 'main' });
     expect(pr.number).toBe(30);
   });
@@ -784,14 +784,14 @@ describe('pull requests from a fork into upstream', () => {
   });
 
   it('lists same-host targets once and prefers upstream over the source remote', () => {
-    const source = parseForgeRemote('git@github.com:dara/angkorgit.git');
+    const source = parseForgeRemote('git@github.com:dara/gitmd.git');
     if (!source) throw new Error('expected a parsed remote');
     const targets = forgeTargets(
       [
-        { name: 'origin', url: 'git@github.com:dara/angkorgit.git' },
-        { name: 'upstream', url: 'https://github.com/cheat2001/angkorgit.git' },
-        { name: 'mirror', url: 'https://github.com/cheat2001/angkorgit' },
-        { name: 'lab', url: 'git@gitlab.com:dara/angkorgit.git' },
+        { name: 'origin', url: 'git@github.com:dara/gitmd.git' },
+        { name: 'upstream', url: 'https://github.com/cheat2001/gitmd.git' },
+        { name: 'mirror', url: 'https://github.com/cheat2001/gitmd' },
+        { name: 'lab', url: 'git@gitlab.com:dara/gitmd.git' },
         { name: 'local', url: '/tmp/repo' },
       ],
       source,

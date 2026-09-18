@@ -1,4 +1,4 @@
-import { pullRequestUrl } from '@angkorgit/core';
+import { pullRequestUrl } from '@gitmd/core';
 
 export function timeAgo(unixSeconds: number): string {
   const diff = Math.max(0, Date.now() / 1000 - unixSeconds);

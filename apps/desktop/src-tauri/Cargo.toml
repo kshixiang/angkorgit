@@ -1,5 +1,5 @@
 [package]
-name = "angkorgit"
+name = "gitmd"
 version = "0.15.0"
 description = "GitMD — a modern, fast, beautiful Git client"
 authors = ["GitMD Contributors"]
@@ -8,7 +8,7 @@ edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "angkorgit_lib"
+name = "gitmd_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Columns2, Copy, FileText, GitCommitHorizontal, History, Pencil, Rows3, TextSelect, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
-import type { CommitInfo, FileDiff } from '@angkorgit/core';
+import type { CommitInfo, FileDiff } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -15,7 +15,7 @@ import {
   Kbd,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { Avatar } from '@/components/Avatar';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';

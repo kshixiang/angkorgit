@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { Copy, GitCommitHorizontal, UserRoundSearch } from 'lucide-react';
-import type { BlameHunk, FileBlame } from '@angkorgit/core';
+import type { BlameHunk, FileBlame } from '@gitmd/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { Avatar } from '@/components/Avatar';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';

@@ -154,10 +154,7 @@ fn temp_file(suffix: &str) -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or_default();
-    std::env::temp_dir().join(format!(
-        "angkorgit-sign-{}-{nanos}{suffix}",
-        std::process::id()
-    ))
+    std::env::temp_dir().join(format!("gitmd-sign-{}-{nanos}{suffix}", std::process::id()))
 }
 
 fn is_literal_ssh_key(key: &str) -> bool {
@@ -272,7 +269,7 @@ mod tests {
 
     fn temp_repo() -> (PathBuf, Repository) {
         let dir = std::env::temp_dir().join(format!(
-            "angkorgit-sign-test-{}-{}",
+            "gitmd-sign-test-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -324,11 +321,11 @@ mod tests {
     fn openpgp_falls_back_to_the_committer_identity() {
         let (dir, repo) = temp_repo();
         set(&repo, "user.name", "Test User");
-        set(&repo, "user.email", "test@angkorgit.dev");
+        set(&repo, "user.email", "test@gitmd.dev");
         set(&repo, "commit.gpgsign", "true");
         let config = signing_config(&repo).unwrap().unwrap();
         assert!(matches!(config.format, SigningFormat::OpenPgp));
-        assert_eq!(config.key, "Test User <test@angkorgit.dev>");
+        assert_eq!(config.key, "Test User <test@gitmd.dev>");
         assert_eq!(config.program, "gpg");
         std::fs::remove_dir_all(dir).ok();
     }

@@ -92,7 +92,7 @@ const websiteLd = {
 
     <script is:inline>
       (() => {
-        const stored = localStorage.getItem('angkorgit-theme');
+        const stored = localStorage.getItem('gitmd-theme');
         const theme = stored === 'light' ? 'light' : 'dark';
         const root = document.documentElement;
         root.classList.toggle('dark', theme === 'dark');
@@ -105,11 +105,11 @@ const websiteLd = {
       (() => {
         const root = document.documentElement;
         try {
-          const seen = sessionStorage.getItem('angkorgit-splash');
+          const seen = sessionStorage.getItem('gitmd-splash');
           if (seen === '1' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             root.classList.add('no-splash');
           } else {
-            sessionStorage.setItem('angkorgit-splash', '1');
+            sessionStorage.setItem('gitmd-splash', '1');
           }
         } catch {
           root.classList.add('no-splash');

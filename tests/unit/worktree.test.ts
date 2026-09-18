@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parentDirectory, suggestWorktreePath, worktreeFolderName } from '@angkorgit/core';
+import { parentDirectory, suggestWorktreePath, worktreeFolderName } from '@gitmd/core';
 
 describe('worktreeFolderName', () => {
   it('joins the repository name with a slug of the branch', () => {
-    expect(worktreeFolderName('angkorgit', 'feature/diff-viewer')).toBe('angkorgit-feature-diff-viewer');
+    expect(worktreeFolderName('gitmd', 'feature/diff-viewer')).toBe('gitmd-feature-diff-viewer');
   });
 
   it('strips refs/heads and collapses unsafe characters', () => {
@@ -18,8 +18,8 @@ describe('worktreeFolderName', () => {
 
 describe('suggestWorktreePath', () => {
   it('places the folder beside the repository', () => {
-    expect(suggestWorktreePath('/Users/me/code/', 'angkorgit', 'hotfix/login')).toBe(
-      '/Users/me/code/angkorgit-hotfix-login',
+    expect(suggestWorktreePath('/Users/me/code/', 'gitmd', 'hotfix/login')).toBe(
+      '/Users/me/code/gitmd-hotfix-login',
     );
   });
 
@@ -30,8 +30,8 @@ describe('suggestWorktreePath', () => {
 
 describe('parentDirectory', () => {
   it('returns the containing folder', () => {
-    expect(parentDirectory('/Users/me/code/angkorgit')).toBe('/Users/me/code');
-    expect(parentDirectory('/Users/me/code/angkorgit/')).toBe('/Users/me/code');
+    expect(parentDirectory('/Users/me/code/gitmd')).toBe('/Users/me/code');
+    expect(parentDirectory('/Users/me/code/gitmd/')).toBe('/Users/me/code');
   });
 
   it('keeps a root-level path intact', () => {

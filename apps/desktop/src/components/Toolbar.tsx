@@ -42,7 +42,7 @@ import {
   Separator,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, pickDirectory } from '@/core/ipc';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';

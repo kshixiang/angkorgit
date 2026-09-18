@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAiProvider, type AiConfig, type HttpRequest } from '@angkorgit/core';
+import { createAiProvider, type AiConfig, type HttpRequest } from '@gitmd/core';
 
 function fakeHttp(body: string, status = 200) {
   return async (_req: HttpRequest) => ({ status, body });

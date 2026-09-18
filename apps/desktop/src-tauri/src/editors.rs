@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn launch_runs_the_binary_with_the_target() {
         use std::os::unix::fs::PermissionsExt;
-        let dir = std::env::temp_dir().join(format!("angkorgit-editor-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-editor-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let log = dir.join("launched.log");
         let script = dir.join("fake-editor");

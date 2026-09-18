@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GripVertical } from 'lucide-react';
-import type { CommitInfo, RebaseTodoAction, RebaseTodoEntry } from '@angkorgit/core';
+import type { CommitInfo, RebaseTodoAction, RebaseTodoEntry } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -20,7 +20,7 @@ import {
   Spinner,
   Textarea,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from './store';
@@ -208,7 +208,7 @@ export function InteractiveRebaseDialog() {
                 draggable
                 onDragStart={(e) => {
                   setDraggingOid(row.commit.oid);
-                  e.dataTransfer.setData('text/angkorgit-rebase-row', row.commit.oid);
+                  e.dataTransfer.setData('text/gitmd-rebase-row', row.commit.oid);
                   e.dataTransfer.effectAllowed = 'move';
                 }}
                 onDragEnd={() => {
@@ -225,7 +225,7 @@ export function InteractiveRebaseDialog() {
                 onDragLeave={() => setDropOid((o) => (o === row.commit.oid ? null : o))}
                 onDrop={(e) => {
                   e.preventDefault();
-                  const source = e.dataTransfer.getData('text/angkorgit-rebase-row');
+                  const source = e.dataTransfer.getData('text/gitmd-rebase-row');
                   setDraggingOid(null);
                   setDropOid(null);
                   if (source && source !== row.commit.oid) move(source, row.commit.oid);

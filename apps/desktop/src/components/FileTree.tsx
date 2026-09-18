@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Folder } from 'lucide-react';
-import { Button, Hint, cn } from '@angkorgit/design-system';
+import { Button, Hint, cn } from '@gitmd/design-system';
 
 export interface TreeFolder<T> {
   name: string;

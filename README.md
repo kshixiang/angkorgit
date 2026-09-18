@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/cheat2001/angkorgit/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/cheat2001/angkorgit/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/cheat2001/gitmd/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/cheat2001/gitmd/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-D97706.svg" /></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-374151.svg" />
   <img alt="Built with Tauri" src="https://img.shields.io/badge/built%20with-Tauri%20v2%20%2B%20Rust-D97706.svg" />
-  <a href="https://angkorgit.app/"><img alt="Website" src="https://img.shields.io/badge/website-angkorgit.app-8B5CF6.svg" /></a>
+  <a href="https://gitmd.app/"><img alt="Website" src="https://img.shields.io/badge/website-gitmd.app-8B5CF6.svg" /></a>
 </p>
 
 ---
@@ -24,13 +24,13 @@
 
 I use Git all day and every client I tried felt like a website wearing a coat. Slow to open, heavy on disk, a login screen before the first commit. So I wrote one. The engine is libgit2 through Rust, the window is the webview your OS already ships, and the rule for what gets in is simple: the things you do every day, done properly, and not much else.
 
-It's free, MIT licensed, and there is no account, no telemetry and no cloud. Everything on this page is on [angkorgit.app](https://angkorgit.app/) as well.
+It's free and MIT licensed. A GitMD account is required to use the app; local repositories remain on your machine, and account-linked features are built for the GitMD service. Everything on this page is on [gitmd.app](https://gitmd.app/) as well.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/graph.png" />
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/graph-light.png" />
-    <img src="docs/assets/graph.png" alt="The commit graph in the Angkor Dusk theme, with branches, working copy and staged changes" width="920" />
+    <img src="docs/assets/graph.png" alt="The commit graph in the GitMD Dusk theme, with branches, working copy and staged changes" width="920" />
   </picture>
 </p>
 
@@ -115,23 +115,23 @@ It's free, MIT licensed, and there is no account, no telemetry and no cloud. Eve
 
 ## Install
 
-Grab the file for your platform from the [releases page](https://github.com/cheat2001/angkorgit/releases), or use the terminal. The commands below are pinned to the current release, so bump the version if a newer one is out.
+Grab the file for your platform from the [releases page](https://github.com/cheat2001/gitmd/releases), or use the terminal. The commands below are pinned to the current release, so bump the version if a newer one is out.
 
 ```bash
 # macOS with Homebrew (also clears the Gatekeeper flag for you)
-brew install --cask cheat2001/tap/angkorgit
+brew install --cask cheat2001/tap/gitmd
 
 # macOS, direct download
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_universal.dmg -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg
+curl -L https://github.com/cheat2001/gitmd/releases/download/v0.15.0/GitMD_0.15.0_universal.dmg -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg
 
 # Windows (PowerShell)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_x64-setup.exe -o "$env:TEMP\GitMD-setup.exe"; Start-Process "$env:TEMP\GitMD-setup.exe"
+curl -L https://github.com/cheat2001/gitmd/releases/download/v0.15.0/GitMD_0.15.0_x64-setup.exe -o "$env:TEMP\GitMD-setup.exe"; Start-Process "$env:TEMP\GitMD-setup.exe"
 
 # Linux (AppImage)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_amd64.AppImage -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage
+curl -L https://github.com/cheat2001/gitmd/releases/download/v0.15.0/GitMD_0.15.0_amd64.AppImage -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage
 ```
 
-The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://angkorgit.app/docs/getting-started/).
+The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://gitmd.app/docs/getting-started/).
 
 ### macOS, first launch
 
@@ -143,7 +143,7 @@ The builds aren't signed with a paid certificate, so your OS asks once on first 
 If a permission dialog ever loops, reset the stale records and try again:
 
 ```sh
-tccutil reset All dev.angkorgit.app
+tccutil reset All dev.gitmd.app
 ```
 
 ### Windows and Linux
@@ -189,14 +189,14 @@ cd apps/desktop/src-tauri && cargo test   # git engine integration tests on real
 | Path | Contents |
 | --- | --- |
 | `apps/desktop` | The Tauri v2 desktop app, React frontend and Rust engine |
-| `apps/website` | The website (Astro, static), live at [angkorgit.app](https://angkorgit.app/), docs rendered on site |
+| `apps/website` | The website (Astro, static), live at [gitmd.app](https://gitmd.app/), docs rendered on site |
 | `packages/core` | Domain types, graph layout, word diff, conflict parsing, forge and AI adapters |
 | `packages/design-system` | Design tokens, Tailwind preset, UI primitives, logo |
 | `docs` | Architecture, UI guidelines, development, contributing, distribution, roadmap, coding standards |
 | `tests` | Unit and e2e tests |
 | `scripts` | Icon generation and tooling |
 
-More in [docs/Architecture.md](docs/Architecture.md) and [docs/Development.md](docs/Development.md). Bugs and ideas go in [issues](https://github.com/cheat2001/angkorgit/issues), I read them all.
+More in [docs/Architecture.md](docs/Architecture.md) and [docs/Development.md](docs/Development.md). Bugs and ideas go in [issues](https://github.com/cheat2001/gitmd/issues), I read them all.
 
 ## License
 

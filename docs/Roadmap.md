@@ -16,15 +16,15 @@ direction.
 - [x] Stash: create (whole tree or chosen files), apply, pop (one click from the toolbar), drop; stashes as rows in the graph with their own node and menu; apply single files from a stash · Tags: create (annotated/lightweight), delete, checkout · Submodules: list & update
 - [x] Built-in PTY terminal at repo root; built-in file editor
 - [x] Diff: inline & side-by-side, syntax highlight, word diff, image diff, find in diff (⌘F), minimap, previous/next change and file navigation (N/P, [/]), opens directly at the first change (no scroll animation), reloads live as the file changes on disk, file history one click from the header; → / ↑ ↓ / ← walk from the graph into a commit's files and back
-- [x] Settings: sixteen themes (Angkor Dusk default) with accents & zoom, identity profiles (repo-local) with linked accounts, SSH key management & generation, hosting accounts with verified tokens (Secret Service on Linux, missing tokens flagged), AI providers & commit style, keyboard reference
+- [x] Settings: sixteen themes (GitMD Dusk default) with accents & zoom, identity profiles (repo-local) with linked accounts, SSH key management & generation, hosting accounts with verified tokens (Secret Service on Linux, missing tokens flagged), AI providers & commit style, keyboard reference
 - [x] Sidebar: accordion sections with pinned headers and collapse-all, row menus on hover and right-click everywhere, empty-state cards; graph display options and column headers; welcome page with keyboard navigation and missing-folder detection
-- [x] AI: provider-agnostic (OpenAI, Anthropic, Gemini, Ollama, LM Studio) plus installed AI CLIs (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) — commit messages, diff/conflict explanations, PR descriptions, staged-change review with team conventions (global + per-repo `.angkorgit/review.md`), background execution with stop, full-size reading views
+- [x] AI: provider-agnostic (OpenAI, Anthropic, Gemini, Ollama, LM Studio) plus installed AI CLIs (Claude Code, Codex, Gemini CLI, OpenCode, Antigravity) — commit messages, diff/conflict explanations, PR descriptions, staged-change review with team conventions (global + per-repo `.gitmd/review.md`), background execution with stop, full-size reading views
 - [x] Undo/redo for recent operations; drag-and-drop merge/rebase
 - [x] Auto-update: pull-based from GitHub releases, signature-verified
 - [x] Commit signing: SSH and GPG, driven by existing git config (commit.gpgSign, gpg.format, user.signingKey) — covers commit, amend, merge
 - [x] Pull requests: sidebar list, checkout and in-app create with reviewer selection for GitHub, GitLab (incl. self-hosted) and Bitbucket Cloud, through the connected account; browser fallback without one
 - [x] Graph search: message text, a hash or prefix, and author all find matches in the full graph, centered and highlighted, with an n of m control; ⌘F focuses the search
-- [x] Command line: `angkorgit` / `akg` installed from Settings — open the current folder, a path, or clone by URL or owner/repo into the app
+- [x] Command line: `gitmd` / `gmd` installed from Settings — open the current folder, a path, or clone by URL or owner/repo into the app
 - [x] Blame: a pane of file history with a Working copy row, per-hunk authors, jump to the commit, blame at or before any commit
 - [x] External editor: detected editors (VS Code, Cursor, Zed, Sublime, JetBrains, Xcode, GNOME Builder…) from the toolbar, palette and file menus
 - [x] Pull with rebase following `pull.rebase`, a merge/rebase choice per pull, and a status bar note of the last fetch

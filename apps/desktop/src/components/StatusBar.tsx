@@ -8,16 +8,16 @@ import {
   DropdownMenuTrigger,
   Hint,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { appVersion, openExternal } from '@/core/ipc';
 import { useForge } from '@/features/forge/store';
 import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { capCount, currentPullRequestUrl, timeAgo } from '@/shared/utils';
-import { forgeNoun, pickForgeRemote } from '@angkorgit/core';
+import { forgeNoun, pickForgeRemote } from '@gitmd/core';
 import { useUiText } from '@/shared/i18n';
-import { AI_PROVIDER_PRESETS, CLI_AGENTS } from '@angkorgit/core';
+import { AI_PROVIDER_PRESETS, CLI_AGENTS } from '@gitmd/core';
 
 const ZOOM_LEVELS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
 

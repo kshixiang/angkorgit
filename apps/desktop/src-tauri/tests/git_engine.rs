@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use angkorgit_lib::test_api as core;
+use gitmd_lib::test_api as core;
 
 struct TempRepo {
     dir: PathBuf,
@@ -11,7 +11,7 @@ impl TempRepo {
     fn new() -> Self {
         static SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "angkorgit-test-{}-{}-{}",
+            "gitmd-test-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -23,7 +23,7 @@ impl TempRepo {
         let path = dir.to_str().unwrap();
         core::init(path).unwrap();
         core::set_config(Some(path), "user.name", "Test User", false).unwrap();
-        core::set_config(Some(path), "user.email", "test@angkorgit.dev", false).unwrap();
+        core::set_config(Some(path), "user.email", "test@gitmd.dev", false).unwrap();
         core::set_config(Some(path), "core.autocrlf", "false", false).unwrap();
         Self { dir }
     }
@@ -725,7 +725,7 @@ fn cherry_pick_many_stops_at_the_first_conflict_and_reports_progress() {
 fn cherry_pick_record_origin_matches_git_cli() {
     let messages = [
         "feat: add picked file\n\nSome body text.",
-        "fix: adjust\n\nSigned-off-by: Test User <test@angkorgit.dev>",
+        "fix: adjust\n\nSigned-off-by: Test User <test@gitmd.dev>",
     ];
     for message in messages {
         let repo = TempRepo::new();
@@ -1512,7 +1512,7 @@ struct SigningKey {
 impl SigningKey {
     fn generate() -> Self {
         let dir = std::env::temp_dir().join(format!(
-            "angkorgit-signkey-{}-{}",
+            "gitmd-signkey-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -1573,7 +1573,7 @@ fn commit_signs_with_ssh_key_when_config_enables_it() {
 
     let pubkey = std::fs::read_to_string(signing.key.with_extension("pub")).unwrap();
     let signers = signing.dir.join("allowed_signers");
-    std::fs::write(&signers, format!("test@angkorgit.dev {pubkey}")).unwrap();
+    std::fs::write(&signers, format!("test@gitmd.dev {pubkey}")).unwrap();
     let verify = Command::new("git")
         .args([
             "-c",
@@ -2378,13 +2378,7 @@ fn clone_of(origin: &std::path::Path, local: &TempRepo, suffix: &str) -> TempRep
     assert!(status.success());
     let clone = TempRepo { dir };
     core::set_config(Some(clone.path()), "user.name", "Other User", false).unwrap();
-    core::set_config(
-        Some(clone.path()),
-        "user.email",
-        "other@angkorgit.dev",
-        false,
-    )
-    .unwrap();
+    core::set_config(Some(clone.path()), "user.email", "other@gitmd.dev", false).unwrap();
     core::set_config(Some(clone.path()), "core.autocrlf", "false", false).unwrap();
     clone
 }
@@ -2458,7 +2452,7 @@ fn blame_of_an_uncommitted_edit_inside_a_committed_block_keeps_the_author() {
     for hunk in blame.hunks.iter().filter(|h| h.committed) {
         assert_eq!(hunk.oid, base);
         assert_eq!(hunk.author_name, "Test User");
-        assert_eq!(hunk.author_email, "test@angkorgit.dev");
+        assert_eq!(hunk.author_email, "test@gitmd.dev");
         assert_eq!(hunk.summary, "base");
         assert!(hunk.time > 0);
     }

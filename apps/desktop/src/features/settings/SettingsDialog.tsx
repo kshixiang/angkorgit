@@ -33,7 +33,7 @@ import {
   type AiProviderKind,
   type CliAgentInfo,
   type CommitStylePreset,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -58,7 +58,7 @@ import {
   Switch,
   Textarea,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, pickDirectory, pickFile, type CliToolStatus, type HostingAccount } from '@/core/ipc';
 import { Avatar } from '@/components/Avatar';
 import { confirmDialog } from '@/components/confirm';
@@ -111,7 +111,7 @@ function SshCard() {
   const generate = async () => {
     setBusy(true);
     try {
-      const created = await ipc.sshKeyGenerate('~/.ssh/angkorgit_ed25519', 'GitMD');
+      const created = await ipc.sshKeyGenerate('~/.ssh/gitmd_ed25519', 'GitMD');
       settings.setSshKeyPath(created.path);
       setPublicKey(created.publicKey);
       toast.success(`Created ${created.path} — add the public key to your host`, {
@@ -603,7 +603,7 @@ function CliToolCard() {
   return (
     <SettingCard
       title="Command line tool"
-      description="Open or clone a repository from the terminal as angkorgit or the short akg. Run akg --help for the full usage."
+      description="Open or clone a repository from the terminal as gitmd or the short gmd. Run gmd --help for the full usage."
       action={
         status ? (
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => void uninstall()}>
@@ -617,19 +617,19 @@ function CliToolCard() {
       }
     >
       <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted">
-        {`angkorgit
-angkorgit open [path]
-angkorgit clone [-b branch] <url>`}
+        {`gitmd
+gitmd open [path]
+gitmd clone [-b branch] <url>`}
       </pre>
       {status && (
         <p className="mt-1 text-[11px] leading-relaxed text-faint">
           {status.path}
-          {status.aliasPath && ' · also akg'}
+          {status.aliasPath && ' · also gmd'}
         </p>
       )}
       {status && status.path.includes('/.local/bin/') && (
         <p className="mt-1 text-[11px] leading-relaxed text-muted">
-          ~/.local/bin is not on PATH in every shell. If akg is not found, add this line to your shell profile:{' '}
+          ~/.local/bin is not on PATH in every shell. If gmd is not found, add this line to your shell profile:{' '}
           <code className="rounded bg-surface-raised px-1 font-mono">export PATH="$HOME/.local/bin:$PATH"</code>
         </p>
       )}

@@ -45,7 +45,7 @@ jobs:
       - name: Generate icons
         run: |
           pnpm icons
-          pnpm --filter @angkorgit/desktop exec tauri icon src-tauri/icons/icon.png
+          pnpm --filter @gitmd/desktop exec tauri icon src-tauri/icons/icon.png
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

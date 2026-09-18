@@ -1,8 +1,8 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { DiffLine, FileDiff } from '@angkorgit/core';
-import { clipRenderedLine } from '@angkorgit/core';
-import { cn } from '@angkorgit/design-system';
+import type { DiffLine, FileDiff } from '@gitmd/core';
+import { clipRenderedLine } from '@gitmd/core';
+import { cn } from '@gitmd/design-system';
 import { CodeLine, lineBg, pairHunkLines, type SearchRanges } from './diffShared';
 import { useStableSelection } from './diffSelection';
 

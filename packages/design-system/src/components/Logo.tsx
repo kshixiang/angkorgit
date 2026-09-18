@@ -13,11 +13,11 @@ export function Logo({
         strokeDasharray: 300,
         strokeDashoffset: 300,
         animation: loop
-          ? 'angkor-draw-loop 2.6s cubic-bezier(0.6, 0, 0.2, 1) infinite'
-          : 'angkor-draw 1.6s cubic-bezier(0.6, 0, 0.2, 1) forwards',
+          ? 'gitmd-draw-loop 2.6s cubic-bezier(0.6, 0, 0.2, 1) infinite'
+          : 'gitmd-draw 1.6s cubic-bezier(0.6, 0, 0.2, 1) forwards',
       }
     : undefined;
-  const dots = loop ? { animation: 'angkor-dots-loop 2.6s ease-in-out infinite' } : undefined;
+  const dots = loop ? { animation: 'gitmd-dots-loop 2.6s ease-in-out infinite' } : undefined;
   return (
     <svg
       width={size}
@@ -29,9 +29,9 @@ export function Logo({
       aria-label="GitMD"
     >
       {animated && (
-        <style>{`@keyframes angkor-draw { to { stroke-dashoffset: 0; } }
-@keyframes angkor-draw-loop { 0% { stroke-dashoffset: 300; opacity: 1; } 55% { stroke-dashoffset: 0; opacity: 1; } 82% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
-@keyframes angkor-dots-loop { 0%, 40% { opacity: 0; } 60%, 82% { opacity: 1; } 100% { opacity: 0; } }`}</style>
+        <style>{`@keyframes gitmd-draw { to { stroke-dashoffset: 0; } }
+@keyframes gitmd-draw-loop { 0% { stroke-dashoffset: 300; opacity: 1; } 55% { stroke-dashoffset: 0; opacity: 1; } 82% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes gitmd-dots-loop { 0%, 40% { opacity: 0; } 60%, 82% { opacity: 1; } 100% { opacity: 0; } }`}</style>
       )}
       <g stroke="#D97706" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={draw}>
         <path d="M32 6 L27 20 L27 30 L37 30 L37 20 Z" />

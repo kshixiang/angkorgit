@@ -51,7 +51,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter @angkorgit/desktop build
+      - run: pnpm --filter @gitmd/desktop build
 
   e2e:
     name: Playwright (demo mode)

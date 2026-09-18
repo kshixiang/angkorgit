@@ -24,8 +24,8 @@ import {
   type Block,
   type ConflictBlock,
   type RepoState,
-} from '@angkorgit/core';
-import { Badge, Button, Checkbox, Hint, Kbd, Logo, Spinner, cn } from '@angkorgit/design-system';
+} from '@gitmd/core';
+import { Badge, Button, Checkbox, Hint, Kbd, Logo, Spinner, cn } from '@gitmd/design-system';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
@@ -1231,7 +1231,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
           <Spinner className="size-6" />
         </div>
       ) : (
-        <PanelGroup direction="vertical" autoSaveId="angkorgit-conflict" className="min-h-0 flex-1">
+        <PanelGroup direction="vertical" autoSaveId="gitmd-conflict" className="min-h-0 flex-1">
           <Panel defaultSize={60} minSize={25} className="relative">
             <div ref={topScrollRef} className="relative h-full overflow-y-auto pb-6">
               <div className="sticky top-0 z-10 grid grid-cols-2 border-b border-border-subtle bg-surface">

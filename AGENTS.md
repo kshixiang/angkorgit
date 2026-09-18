@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-AngKorGit is a pnpm workspace monorepo. The desktop client is in `apps/desktop`: React/TypeScript UI lives in `src/`, while the Tauri/Rust host and Git engine live in `src-tauri/`. The static documentation and marketing site is in `apps/website`. Shared framework-free logic belongs in `packages/core/src/`; reusable UI primitives and design tokens belong in `packages/design-system/src/`. Vitest unit tests are under `tests/unit/`, Playwright flows under `tests/e2e/`, and Rust integration tests are in `apps/desktop/src-tauri/tests/`. Product and architecture documentation is in `docs/`.
+GitMD is a pnpm workspace monorepo. The desktop client is in `apps/desktop`: React/TypeScript UI lives in `src/`, while the Tauri/Rust host and Git engine live in `src-tauri/`. The static documentation and marketing site is in `apps/website`. Shared framework-free logic belongs in `packages/core/src/`; reusable UI primitives and design tokens belong in `packages/design-system/src/`. Vitest unit tests are under `tests/unit/`, Playwright flows under `tests/e2e/`, and Rust integration tests are in `apps/desktop/src-tauri/tests/`. Product and architecture documentation is in `docs/`.
 
 ## Build, Test, and Development Commands
 

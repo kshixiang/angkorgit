@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAiTextSegments } from '@angkorgit/core';
+import { parseAiTextSegments } from '@gitmd/core';
 
 describe('parseAiTextSegments', () => {
   it('parses bold and code tokens between plain text', () => {

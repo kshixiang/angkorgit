@@ -268,7 +268,11 @@ pub(crate) fn parse_account_bindings(raw: &str) -> HashMap<String, String> {
 pub(crate) fn read_account_bindings(repo: &Repository) -> HashMap<String, String> {
     repo.config()
         .ok()
-        .and_then(|c| c.get_string("angkorgit.accounts").ok())
+        .and_then(|c| {
+            c.get_string("gitmd.accounts")
+                .ok()
+                .or_else(|| c.get_string("angkorgit.accounts").ok())
+        })
         .map(|raw| parse_account_bindings(&raw))
         .unwrap_or_default()
 }
@@ -650,7 +654,7 @@ pub fn pull_branch(path: &str, branch_name: &str) -> AppResult<OpOutcome> {
     })
 }
 
-const PR_HEAD_TMP_REF: &str = "refs/angkorgit/pr-head";
+const PR_HEAD_TMP_REF: &str = "refs/gitmd/pr-head";
 
 pub fn checkout_remote_ref(
     path: &str,
@@ -817,17 +821,17 @@ mod tests {
 
     #[test]
     fn generation_uses_the_base_name_when_it_is_free() {
-        let base = PathBuf::from("/Users/tester/.ssh/angkorgit_rsa");
+        let base = PathBuf::from("/Users/tester/.ssh/gitmd_rsa");
         assert_eq!(free_key_path(&base, |_| false), Some(base.clone()));
     }
 
     #[test]
     fn generation_never_targets_an_existing_key() {
-        let base = PathBuf::from("/Users/tester/.ssh/angkorgit_rsa");
-        let taken = |p: &Path| p == base || p.ends_with("angkorgit_rsa_2");
+        let base = PathBuf::from("/Users/tester/.ssh/gitmd_rsa");
+        let taken = |p: &Path| p == base || p.ends_with("gitmd_rsa_2");
         assert_eq!(
             free_key_path(&base, taken),
-            Some(PathBuf::from("/Users/tester/.ssh/angkorgit_rsa_3"))
+            Some(PathBuf::from("/Users/tester/.ssh/gitmd_rsa_3"))
         );
     }
 

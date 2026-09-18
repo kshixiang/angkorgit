@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+if (typeof localStorage !== 'undefined' && !localStorage.getItem('gitmd-ui')) {
+  const legacy = localStorage.getItem('angkorgit-ui');
+  if (legacy) localStorage.setItem('gitmd-ui', legacy);
+}
+
 export type DiffViewMode = 'inline' | 'split';
 
 export interface GraphColumns {
@@ -286,7 +291,7 @@ export const useUi = create<UiState>()(
     set((s) => ({ fileFilterOpen, fileFilterFocusSeq: fileFilterOpen ? s.fileFilterFocusSeq + 1 : s.fileFilterFocusSeq })),
     }),
     {
-      name: 'angkorgit-ui',
+      name: 'gitmd-ui',
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<UiState>;
         return {

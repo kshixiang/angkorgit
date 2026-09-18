@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FolderTree, Plus, X } from 'lucide-react';
-import { Button, Hint, cn } from '@angkorgit/design-system';
+import { Button, Hint, cn } from '@gitmd/design-system';
 import { pickDirectory } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { killTerminalSession } from '@/features/terminal/sessions';
@@ -86,7 +86,7 @@ export function RepoTabs() {
               draggable
               onDragStart={(e) => {
                 setDraggingTab(path);
-                e.dataTransfer.setData('text/angkorgit-repo-tab', path);
+                e.dataTransfer.setData('text/gitmd-repo-tab', path);
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onDragEnd={() => {
@@ -103,7 +103,7 @@ export function RepoTabs() {
               onDragLeave={() => setDropTab((t) => (t === path ? null : t))}
               onDrop={(e) => {
                 e.preventDefault();
-                const source = e.dataTransfer.getData('text/angkorgit-repo-tab');
+                const source = e.dataTransfer.getData('text/gitmd-repo-tab');
                 setDraggingTab(null);
                 setDropTab(null);
                 if (source && source !== path) useUi.getState().moveRepoTab(source, path);

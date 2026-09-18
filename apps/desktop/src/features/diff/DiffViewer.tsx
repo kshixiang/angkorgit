@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
-import { cn } from '@angkorgit/design-system';
+import type { DiffHunk, DiffLine, FileDiff } from '@gitmd/core';
+import { cn } from '@gitmd/design-system';
 import { useUi } from '@/features/ui/store';
 import { languageOf } from '@/shared/highlight';
 import { CodeLine, gutter, lineBg, pairHunkLines, prepareCommentStates, wrapUnavailable, type SearchRanges } from './diffShared';

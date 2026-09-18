@@ -42,7 +42,7 @@ keyed to the app's code signature. One installed build → one prompt per
 folder, then it persists. Each UPDATE (new ad-hoc signature) may re-ask once.
 An endless prompt loop means stale/conflicting records from replaced binaries
 (typical on a dev machine installing many builds): fix with
-`tccutil reset All dev.angkorgit.app`, then relaunch and Allow once. Users
+`tccutil reset All dev.gitmd.app`, then relaunch and Allow once. Users
 must drag the app out of the dmg into /Applications — running it from inside
 the dmg triggers app translocation, where grants can never persist.
 
@@ -58,7 +58,7 @@ Updates are pull-based from GitHub releases and verified with the project's
 **own minisign key** before installing — a tampered download will never run.
 
 Already wired in the codebase:
-- Keypair generated; **private key: `~/.tauri/angkorgit.key` on the owner's
+- Keypair generated; **private key: `~/.tauri/gitmd.key` on the owner's
   machine — BACK IT UP. If lost, existing installs can never update again.**
   Public key: embedded in `tauri.conf.json → plugins.updater.pubkey`.
 - `tauri-plugin-updater` + `tauri-plugin-process` registered; capability
@@ -71,16 +71,16 @@ Already wired in the codebase:
 
 **[owner] one-time — done**: both GitHub secrets are configured (releases since
 0.2.0 ship `.sig` files and `latest.json`):
-- `TAURI_SIGNING_PRIVATE_KEY` — the contents of `~/.tauri/angkorgit.key`
+- `TAURI_SIGNING_PRIVATE_KEY` — the contents of `~/.tauri/gitmd.key`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — set to an **empty value** (required:
   without the env var Tauri tries an interactive prompt and headless builds fail).
 
 ## 4. Homebrew cask **[live — own tap]**
 
-Published at `cheat2001/homebrew-tap` (`Casks/angkorgit.rb`). Install:
+Published at `cheat2001/homebrew-tap` (`Casks/gitmd.rb`). Install:
 
 ```sh
-brew install --cask cheat2001/tap/angkorgit
+brew install --cask cheat2001/tap/gitmd
 ```
 
 One command only: the cask runs `xattr -cr` on the installed app in a
@@ -91,17 +91,17 @@ cask eventually moves there, signing/notarization must replace the postflight.
 
 **On every release** the cask must be bumped: update `version` and `sha256`
 (`shasum -a 256` of the new universal dmg) in
-`cheat2001/homebrew-tap/Casks/angkorgit.rb`. The cask sets `auto_updates true`
+`cheat2001/homebrew-tap/Casks/gitmd.rb`. The cask sets `auto_updates true`
 (the app self-updates), so tap users who installed once still get new versions
 in-app; the bump matters for fresh installs. Add this to the release checklist.
 
 Once the project has traction (75+ stars, 30+ forks) AND the app is
 signed/notarized, submit to homebrew-cask proper for
-`brew install --cask angkorgit`.
+`brew install --cask gitmd`.
 
 ## 5. Website (live)
 
-- Live at `https://angkorgit.app/` (Astro, static, GitHub Pages via
+- Live at `https://gitmd.app/` (Astro, static, GitHub Pages via
   `.github/workflows/website.yml`; custom domain + HTTPS enforced).
 - Sections: hero with graph screenshot, features, gallery, performance, AI,
   install (per-OS download cards + terminal one-liners with copy buttons),

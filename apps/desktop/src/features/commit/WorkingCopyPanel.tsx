@@ -2,8 +2,8 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { AlertTriangle, Archive, Code, Copy, ExternalLink, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
-import type { FileStatus } from '@angkorgit/core';
-import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
+import type { FileStatus } from '@gitmd/core';
+import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, LEGACY_PROJECT_REVIEW_FILE, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -19,7 +19,7 @@ import {
   Spinner,
   Textarea,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { ipc, saveFile } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
@@ -639,7 +639,10 @@ export function WorkingCopyPanel() {
         toast.info('The staged changes have no reviewable text diff');
         return;
       }
-      const projectInstructions = await ipc.readFile(target, PROJECT_REVIEW_FILE).catch((error) => {
+      const projectInstructions = await ipc.readFile(target, PROJECT_REVIEW_FILE).catch(async (error) => {
+        if ((error as { code?: string } | null)?.code === 'not_found') {
+          return ipc.readFile(target, LEGACY_PROJECT_REVIEW_FILE).catch(() => '');
+        }
         if (stillRunning() && (error as { code?: string } | null)?.code !== 'not_found') {
           toast.warning(`Could not read ${PROJECT_REVIEW_FILE} — reviewing without project conventions`);
         }

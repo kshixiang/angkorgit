@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasCommittedHistory } from '@angkorgit/core';
+import { hasCommittedHistory } from '@gitmd/core';
 
 describe('hasCommittedHistory', () => {
   it('is true for tracked files whatever their change kind', () => {

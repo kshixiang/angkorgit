@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
+import { joinCommitMessage, splitCommitMessage } from '@gitmd/core';
 
 describe('splitCommitMessage', () => {
   it('separates the summary from a body after a blank line', () => {

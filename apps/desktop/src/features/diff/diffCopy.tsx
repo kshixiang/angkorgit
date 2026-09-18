@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
-import type { FileDiff } from '@angkorgit/core';
+import type { FileDiff } from '@gitmd/core';
 import { useUi } from '@/features/ui/store';
 
 interface CaretState {

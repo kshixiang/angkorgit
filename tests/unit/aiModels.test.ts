@@ -7,7 +7,7 @@ import {
   parseOpenAiModels,
   type AiConfig,
   type HttpRequest,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 const baseConfig: AiConfig = { provider: 'openai', apiKey: 'sk-test', model: '' };
 

@@ -8,8 +8,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@angkorgit/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
-      '@angkorgit/design-system': path.resolve(__dirname, '../../packages/design-system/src/index.ts'),
+      '@gitmd/core': path.resolve(__dirname, '../../packages/core/src/index.ts'),
+      '@gitmd/design-system': path.resolve(__dirname, '../../packages/design-system/src/index.ts'),
     },
   },
   // Tauri expects a fixed port in dev

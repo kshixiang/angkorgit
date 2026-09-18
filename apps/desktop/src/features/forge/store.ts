@@ -6,7 +6,7 @@ import {
   type ForgeProvider,
   type ForgeRemote,
   type PullRequestInfo,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 

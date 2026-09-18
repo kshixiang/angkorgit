@@ -284,7 +284,7 @@ fn temp_output_path() -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or_default();
-    std::env::temp_dir().join(format!("angkorgit-ai-{}-{nanos}.txt", std::process::id()))
+    std::env::temp_dir().join(format!("gitmd-ai-{}-{nanos}.txt", std::process::id()))
 }
 
 pub fn run(request: CliRunRequest) -> AppResult<CliRunResult> {
@@ -378,7 +378,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn runs_supported_cli_and_captures_stdout() {
-        let dir = std::env::temp_dir().join(format!("angkorgit-ai-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-ai-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let agent = fake_agent(&dir, "cat > /dev/null\necho pong");
         let result = run(CliRunRequest {
@@ -396,8 +396,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn substitutes_and_reads_output_file() {
-        let dir =
-            std::env::temp_dir().join(format!("angkorgit-ai-test-out-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-ai-test-out-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let agent = fake_agent(&dir, "printf from-file > \"$2\"");
         let result = run(CliRunRequest {
@@ -414,8 +413,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn leaves_prompt_args_containing_placeholder_text_untouched() {
-        let dir =
-            std::env::temp_dir().join(format!("angkorgit-ai-test-prompt-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-ai-test-prompt-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let agent = fake_agent(&dir, "printf '%s' \"$1\"");
         let prompt = format!("diff mentioning {OUTPUT_FILE_PLACEHOLDER} literally");
@@ -434,8 +432,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn kills_process_on_timeout() {
-        let dir =
-            std::env::temp_dir().join(format!("angkorgit-ai-test-slow-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("gitmd-ai-test-slow-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let agent = fake_agent(&dir, "sleep 20");
         let started = Instant::now();

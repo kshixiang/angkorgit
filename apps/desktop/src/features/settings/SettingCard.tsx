@@ -1,4 +1,4 @@
-import { cn } from '@angkorgit/design-system';
+import { cn } from '@gitmd/design-system';
 
 export function Field({
   label,

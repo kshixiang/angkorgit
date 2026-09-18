@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildStagedReviewSignature, hashText } from '@angkorgit/core';
+import { buildStagedReviewSignature, hashText } from '@gitmd/core';
 
 const file = (path: string, staged: string | null, unstaged: string | null) => ({
   path,

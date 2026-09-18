@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to AngKorGit are documented here. The format follows
+All notable changes to GitMD are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
 [Semantic Versioning](https://semver.org/).
 
@@ -137,22 +137,22 @@ only worked on the first hunk.
 - The commit and working copy file menus said "Show in Finder" on Linux and
   Windows; they say "Show in file manager" there. (#18)
 - On Windows the command line tool installed into a folder that was never on PATH,
-  so `akg` could not be found. Install now adds that folder to the user PATH and
+  so `gmd` could not be found. Install now adds that folder to the user PATH and
   uninstall removes it. On macOS, when the install falls back to `~/.local/bin`,
   the Settings card says how to put it on PATH.
 
 ## [0.13.0] — 2026-09-12
 
-The terminal and editor release. `akg` opens or clones a repository from the shell,
-your editor opens from AngKorGit, blame joins file history with a commit list to
+The terminal and editor release. `gmd` opens or clones a repository from the shell,
+your editor opens from GitMD, blame joins file history with a commit list to
 travel through, and pull finally follows your rebase setting. Two community reports
 and one pull request shaped it.
 
 ### Added
 - **Open or clone a repository from the terminal.** Settings → Git (or the command
-  palette) installs an `angkorgit` command with a short `akg` alias. `akg` and
-  `akg open [path]` open a local folder; `akg clone [-b branch] <url>` opens the
-  clone dialog with the URL, folder and branch filled in. `akg --help` lists the
+  palette) installs an `gitmd` command with a short `gmd` alias. `gmd` and
+  `gmd open [path]` open a local folder; `gmd clone [-b branch] <url>` opens the
+  clone dialog with the URL, folder and branch filled in. `gmd --help` lists the
   commands.
 - **Blame.** File history now has a Diff / Blame toggle. Pick a commit on the left
   and the blame pane shows the file as it was then, every line with who changed it,
@@ -207,7 +207,7 @@ and one pull request shaped it.
 - **Pushing a branch that is already up to date no longer pushes.** The toolbar
   Push, ⌘P and the branch menu used to send the push anyway and toast "Pushed
   <branch>", so hosts that react to every receive-pack started CI for nothing.
-  When the tip matches the remote-tracking branch AngKorGit now says the branch
+  When the tip matches the remote-tracking branch GitMD now says the branch
   is already up to date and never contacts the remote, like `git push` (#17).
 
 ## [0.12.0] — 2026-09-10
@@ -489,7 +489,7 @@ where a change came from — written exactly as git itself writes it.
 
 ## [0.8.0] — 2026-09-01
 
-The fast release. AngKorGit now gets out of your way: launch lands on your
+The fast release. GitMD now gets out of your way: launch lands on your
 repositories in a fraction of the old splash time, half the code waits until
 you actually need it, and the app stays quiet while you work in your editor.
 A long list of paper cuts went with it, from text selections lost to the
@@ -544,7 +544,7 @@ commit hashes now jump straight to their commit.
 - Switching repositories no longer shows the previous repository's branches,
   status and file lists while the new one loads; opening a repository from the
   welcome screen shows progress on the row. When a switch takes longer than a
-  moment, the content area shows a themed loading overlay with the Angkor logo
+moment, the content area shows a themed loading overlay with the GitMD logo
   drawing itself and the repository's name — fast switches stay instant and
   never flash it.
 - A failed history, commit, diff, file-history or file-list load now shows a
@@ -568,7 +568,7 @@ commit hashes now jump straight to their commit.
 
 ## [0.7.0] — 2026-08-28
 
-The pull request release. AngKorGit now closes the loop between your local
+The pull request release. GitMD now closes the loop between your local
 branches and the forge they live on: open pull requests appear in the sidebar,
 check out locally in one move, and new ones are created from inside the app
 with reviewers attached, on GitHub, GitLab and Bitbucket Cloud alike. The
@@ -583,7 +583,7 @@ graph takes you straight there.
   menu checks the pull request out locally (same-repo branches get proper
   tracking, fork PRs land on a `pr/<number>` branch via the forge's pull
   ref), opens it in the browser, or copies its URL.
-- **Create pull requests without leaving AngKorGit** — the status bar button,
+- **Create pull requests without leaving GitMD** — the status bar button,
   palette command and sidebar "+" now open an in-app dialog when a connected
   account matches the remote: pick the target branch (pre-selected from the
   forge's default branch), write or AI-generate the description, optionally
@@ -624,7 +624,7 @@ graph takes you straight there.
   back to `origin`), instead of whichever remote happens to be listed first.
   GitHub validation errors now spell out the failing field, so "Validation
   Failed" on a branch that only exists on another remote explains itself.
-- Every forge loading state shows the AngKorGit mark drawing itself, matching
+- Every forge loading state shows the GitMD mark drawing itself, matching
   the AI panels.
 - A pull request list that cannot be fetched shows one short line ("Could not
   reach <host>, check your network or VPN") with click-to-retry, instead of
@@ -644,11 +644,11 @@ graph takes you straight there.
 
 ## [0.6.6] — 2026-08-23
 
-The review release. AngKorGit now gives your staged changes a second pair of
+The review release. GitMD now gives your staged changes a second pair of
 eyes: one click asks your AI for a real code review, shaped by your team's
 conventions, running in the background while you keep working, and stoppable
 the moment you change your mind. AI answers everywhere got the same care: a
-full-size reading view, proper formatting, and the AngKorGit mark drawing
+full-size reading view, proper formatting, and the GitMD mark drawing
 itself while you wait.
 
 ### Added
@@ -658,11 +658,11 @@ itself while you wait.
   the commit box. Long reviews open in a full-size reading view with one
   click, and bold or code formatting in the AI's answer renders properly
   instead of showing raw markers. While the AI works, the panel shows the
-  AngKorGit mark drawing itself alongside rotating status notes, with a stop
+  GitMD mark drawing itself alongside rotating status notes, with a stop
   button if you change your mind. Reviews and commit explanations keep
   working in the background: click around the graph while one runs and the
   result is waiting when you come back. Explanations open in the same
-  full-size reading view as reviews, and every AI action shows the AngKorGit
+  full-size reading view as reviews, and every AI action shows the GitMD
   mark while it thinks — and every one of them can be stopped mid-flight if
   it takes too long. Works with every provider the commit
   message generator supports, including local CLI agents and Ollama. The
@@ -670,7 +670,7 @@ itself while you wait.
 - **Your conventions, the AI's checklist** — tell the reviewer what your team
   cares about in Settings → AI (naming rules, framework do's and don'ts, how
   strict to be) and it applies everywhere. For per-project rules, commit an
-  `.angkorgit/review.md` to the repository: its content is picked up
+  `.gitmd/review.md` to the repository: its content is picked up
   automatically for that repository and shared with everyone on the team,
   and project rules win over your global ones when they disagree.
 
@@ -683,14 +683,14 @@ itself while you wait.
 
 ## [0.6.5] — 2026-08-23
 
-The signing release. Commits made in AngKorGit finally carry your signature:
+The signing release. Commits made in GitMD finally carry your signature:
 if your git config says sign, the app signs — SSH or GPG, the same key and the
 same rules as your terminal, with nothing to set up in the app. Alongside it,
 the AI settings grew a real model picker and the repository switcher learned
 to scroll.
 
 ### Added
-- **Commit signing** — commits, amends and merge commits made in AngKorGit now
+- **Commit signing** — commits, amends and merge commits made in GitMD now
   honor your existing git signing setup with no configuration inside the app:
   if `commit.gpgSign` is on, the engine signs with your SSH key
   (`gpg.format=ssh`, via `ssh-keygen -Y sign`) or GPG key (via `gpg`), reading
@@ -973,11 +973,11 @@ you to expect, and explains itself along the way — dressed in new signature
 themes and kept fresh by background fetching.
 
 ### Added
-- **Angkor Dusk and Angkor Dawn signature themes** — a warm laterite dark and a
-  sandstone light, with a kbach-inspired colonnade pattern (Angkor's baluster
-  window columns) etched at low opacity into the welcome and splash screens.
+- **GitMD Dusk and GitMD Dawn signature themes** — a warm laterite dark and a
+  sandstone light, with a kbach-inspired colonnade pattern etched at low opacity
+  into the welcome and splash screens.
   The ornament never appears behind the graph, diffs, or code, is invisible in
-  every other theme, and your accent colour still applies on top. **Angkor Dusk
+  every other theme, and your accent colour still applies on top. **GitMD Dusk
   is the default for new installs**; existing users keep their chosen theme
 - **Auto fetch** — the app fetches from your remote in the background (Settings
   → Git, default every minute, also on window focus), so teammates' commits
@@ -1049,7 +1049,7 @@ like they worked and did not; those are fixed or gone.
   (the thing you paste into GitHub/GitLab/Bitbucket), and generate a new ed25519
   key without leaving the app. Generation always picks a free filename, so an
   existing key can never be overwritten
-- **A toggle for the system credential helper**: turn it off to stop AngKorGit
+- **A toggle for the system credential helper**: turn it off to stop GitMD
   falling back to credentials saved by git or another client, so a configured
   account can be tested on its own
 
@@ -1094,7 +1094,7 @@ like they worked and did not; those are fixed or gone.
   `~/.ssh/id_ed25519` and `~/.ssh/id_rsa` were ever offered, so a second key
   under any other name was never tried. The other keypairs in `~/.ssh` are now
   offered too, up to five in total (servers refuse after a handful of failed
-  attempts). Note that AngKorGit does not read `~/.ssh/config` — `Host` and
+  attempts). Note that GitMD does not read `~/.ssh/config` — `Host` and
   `IdentityFile` rules that work in your terminal do not apply here; use the
   SSH agent for per-host keys
 - **OpenCode installed the recommended way is now detected**: the official
@@ -1138,7 +1138,7 @@ like they worked and did not; those are fixed or gone.
   "Commit message style" section — pick Conventional commits, Plain summary, or
   describe your own convention in plain words. Branch prefix rules
   (`staging → [support]`, `feature/* → [{suffix}]`, tokens `{branch}`,
-  `{suffix}`, `{ticket}`; first match wins) are enforced by AngKorGit itself
+  `{suffix}`, `{ticket}`; first match wins) are enforced by GitMD itself
   after generation, so the prefix always holds even if the model ignores it. A
   live preview shows what the current branch would produce. The style config is
   structured per capability so future AI features (e.g. code review) can carry
@@ -1148,7 +1148,7 @@ like they worked and did not; those are fixed or gone.
   Codex CLI, Gemini CLI, OpenCode and Antigravity CLI (`agy`, model overrides
   like `gemini-3.1-pro-high`) on your machine and runs them locally for
   commit messages, diff explanations, conflict help and reviews. Requests go
-  through the CLI's own login and quota — AngKorGit stores no key and sends
+  through the CLI's own login and quota — GitMD stores no key and sends
   nothing anywhere itself. Each request is a one-shot prompt executed in a
   neutral directory (Codex runs sandboxed read-only), with a timeout and
   ANSI-clean output parsing; an optional model override passes through to the
@@ -1189,11 +1189,11 @@ like they worked and did not; those are fixed or gone.
 ### Added
 - **Marketing website** (`apps/website`, Astro 5): hero, features, screenshot
   gallery, performance, AI, install, and open-source sections with dark/light
-  themes — deployed to GitHub Pages at `https://angkorgit.app/` (custom domain,
+  themes — deployed to GitHub Pages at `https://gitmd.app/` (custom domain,
   root base path) with SEO meta, Open Graph, sitemap, and JSON-LD
   `SoftwareApplication` structured data
 - **Docs on the website**: repo `docs/*.md` now render on-site at
-  `https://angkorgit.app/docs/` (sidebar navigation, breadcrumbs, sitemap) —
+  `https://gitmd.app/docs/` (sidebar navigation, breadcrumbs, sitemap) —
   no more tab-switching to GitHub; the GitHub repo stays for source/releases
 - **One-line terminal installs** on the website: copy-button quick-install
   commands per OS (dmg with `xattr -cr`, NSIS exe, AppImage)
@@ -1315,28 +1315,28 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...HEAD
-[0.15.0]: https://github.com/cheat2001/angkorgit/compare/v0.14.0...v0.15.0
-[0.14.0]: https://github.com/cheat2001/angkorgit/compare/v0.13.0...v0.14.0
-[0.13.0]: https://github.com/cheat2001/angkorgit/compare/v0.12.0...v0.13.0
-[0.12.0]: https://github.com/cheat2001/angkorgit/compare/v0.11.0...v0.12.0
-[0.11.0]: https://github.com/cheat2001/angkorgit/compare/v0.10.0...v0.11.0
-[0.10.0]: https://github.com/cheat2001/angkorgit/compare/v0.9.0...v0.10.0
-[0.9.0]: https://github.com/cheat2001/angkorgit/compare/v0.8.0...v0.9.0
-[0.8.0]: https://github.com/cheat2001/angkorgit/compare/v0.7.0...v0.8.0
-[0.7.0]: https://github.com/cheat2001/angkorgit/compare/v0.6.6...v0.7.0
-[0.6.6]: https://github.com/cheat2001/angkorgit/compare/v0.6.5...v0.6.6
-[0.6.5]: https://github.com/cheat2001/angkorgit/compare/v0.6.4...v0.6.5
-[0.6.4]: https://github.com/cheat2001/angkorgit/compare/v0.6.3...v0.6.4
-[0.6.3]: https://github.com/cheat2001/angkorgit/compare/v0.6.2...v0.6.3
-[0.6.2]: https://github.com/cheat2001/angkorgit/compare/v0.6.1...v0.6.2
-[0.6.1]: https://github.com/cheat2001/angkorgit/compare/v0.6.0...v0.6.1
-[0.6.0]: https://github.com/cheat2001/angkorgit/compare/v0.5.0...v0.6.0
-[0.5.0]: https://github.com/cheat2001/angkorgit/compare/v0.4.0...v0.5.0
-[0.4.0]: https://github.com/cheat2001/angkorgit/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/cheat2001/angkorgit/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/cheat2001/angkorgit/compare/v0.1.3...v0.2.0
-[0.1.3]: https://github.com/cheat2001/angkorgit/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/cheat2001/angkorgit/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/cheat2001/angkorgit/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/cheat2001/angkorgit/releases/tag/v0.1.0
+[Unreleased]: https://github.com/cheat2001/gitmd/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/cheat2001/gitmd/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/cheat2001/gitmd/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/cheat2001/gitmd/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/cheat2001/gitmd/compare/v0.11.0...v0.12.0
+[0.11.0]: https://github.com/cheat2001/gitmd/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/cheat2001/gitmd/compare/v0.9.0...v0.10.0
+[0.9.0]: https://github.com/cheat2001/gitmd/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/cheat2001/gitmd/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/cheat2001/gitmd/compare/v0.6.6...v0.7.0
+[0.6.6]: https://github.com/cheat2001/gitmd/compare/v0.6.5...v0.6.6
+[0.6.5]: https://github.com/cheat2001/gitmd/compare/v0.6.4...v0.6.5
+[0.6.4]: https://github.com/cheat2001/gitmd/compare/v0.6.3...v0.6.4
+[0.6.3]: https://github.com/cheat2001/gitmd/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/cheat2001/gitmd/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/cheat2001/gitmd/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/cheat2001/gitmd/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/cheat2001/gitmd/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/cheat2001/gitmd/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/cheat2001/gitmd/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/cheat2001/gitmd/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/cheat2001/gitmd/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/cheat2001/gitmd/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/cheat2001/gitmd/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/cheat2001/gitmd/releases/tag/v0.1.0

@@ -53,31 +53,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "angkorgit"
-version = "0.15.0"
-dependencies = [
- "base64 0.22.1",
- "git2",
- "gtk",
- "keyring",
- "libssh2-sys",
- "notify-debouncer-mini",
- "portable-pty",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "thiserror 2.0.19",
- "which",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1483,6 +1458,31 @@ dependencies = [
  "openssl-probe 0.1.6",
  "openssl-sys",
  "url",
+]
+
+[[package]]
+name = "gitmd"
+version = "0.15.0"
+dependencies = [
+ "base64 0.22.1",
+ "git2",
+ "gtk",
+ "keyring",
+ "libssh2-sys",
+ "notify-debouncer-mini",
+ "portable-pty",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "thiserror 2.0.19",
+ "which",
 ]
 
 [[package]]

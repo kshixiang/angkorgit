@@ -23,10 +23,10 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@angkorgit/core':
+      '@gitmd/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@angkorgit/design-system':
+      '@gitmd/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
       '@fontsource-variable/inter':

@@ -5,7 +5,7 @@ import {
   parseConflicts,
   serializeResolution,
   type ConflictBlock,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 const SAMPLE = `line 1
 <<<<<<< HEAD

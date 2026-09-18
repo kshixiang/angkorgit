@@ -1,5 +1,7 @@
 #![allow(non_snake_case)] // command args mirror camelCase IPC payloads
 
+use std::path::Path;
+
 mod account_check;
 mod ai_cli;
 mod cli;
@@ -67,12 +69,10 @@ fn compact_wayland_titlebar(app: &tauri::App) -> Result<(), Box<dyn std::error::
     };
     let provider = gtk::CssProvider::new();
     provider.load_from_data(
-        b".angkorgit-compact-titlebar headerbar { min-height: 28px; padding: 0; }\
-          .angkorgit-compact-titlebar headerbar button.titlebutton { min-height: 24px; min-width: 24px; padding: 0; margin: 0; }",
+        b".gitmd-compact-titlebar headerbar { min-height: 28px; padding: 0; }\
+          .gitmd-compact-titlebar headerbar button.titlebutton { min-height: 24px; min-width: 24px; padding: 0; margin: 0; }",
     )?;
-    titlebar
-        .style_context()
-        .add_class("angkorgit-compact-titlebar");
+    titlebar.style_context().add_class("gitmd-compact-titlebar");
     if let Some(screen) = titlebar.screen() {
         gtk::StyleContext::add_provider_for_screen(
             &screen,
@@ -81,6 +81,23 @@ fn compact_wayland_titlebar(app: &tauri::App) -> Result<(), Box<dyn std::error::
         );
     }
     Ok(())
+}
+
+fn migrate_legacy_config_dir(current: &Path) {
+    let Some(parent) = current.parent() else {
+        return;
+    };
+    let legacy = parent.join("dev.angkorgit.app");
+    if !legacy.is_dir() || std::fs::create_dir_all(current).is_err() {
+        return;
+    }
+    for file in ["accounts.json", "recent-repositories.json"] {
+        let source = legacy.join(file);
+        let destination = current.join(file);
+        if source.is_file() && !destination.exists() {
+            let _ = std::fs::copy(source, destination);
+        }
+    }
 }
 
 pub fn run() {
@@ -97,6 +114,7 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             let _ = compact_wayland_titlebar(app);
             if let Ok(dir) = app.path().app_config_dir() {
+                migrate_legacy_config_dir(&dir);
                 let _ = core::accounts::CONFIG_DIR.set(dir);
             }
             let args: Vec<String> = std::env::args().collect();

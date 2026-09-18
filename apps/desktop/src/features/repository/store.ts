@@ -9,7 +9,7 @@ import type {
   SubmoduleInfo,
   TagInfo,
   WorktreeInfo,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 import { ipc } from '@/core/ipc';
 
 interface RepoState {
@@ -99,7 +99,8 @@ export const useRepo = create<RepoState>((set, get) => ({
       set({ repo, profileId: null, lastFetchAt: null, opening: null, refreshing: true });
     }
     void ipc
-      .configGet(repo.path, 'angkorgit.profile')
+      .configGet(repo.path, 'gitmd.profile')
+      .then((profileId) => profileId ?? ipc.configGet(repo.path, 'angkorgit.profile'))
       .then((profileId) => {
         if (seq === openSeq && get().repo?.path === repo.path) set({ profileId });
       })

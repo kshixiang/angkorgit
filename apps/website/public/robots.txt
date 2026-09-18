@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://angkorgit.app/sitemap-index.xml
+Sitemap: https://gitmd.app/sitemap-index.xml

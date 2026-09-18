@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fileFilterTerms, filterFiles, matchesFileFilter } from '@angkorgit/core';
+import { fileFilterTerms, filterFiles, matchesFileFilter } from '@gitmd/core';
 
 const files = [
   'src/features/graph/CommitGraph.tsx',

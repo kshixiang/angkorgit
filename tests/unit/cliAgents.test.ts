@@ -9,7 +9,7 @@ import {
   type AiConfig,
   type CliRunRequest,
   type CliRunResult,
-} from '@angkorgit/core';
+} from '@gitmd/core';
 
 function config(overrides: Partial<AiConfig> = {}): AiConfig {
   return { provider: 'cli', apiKey: '', model: '', cliAgent: 'claude', cliPath: '', ...overrides };

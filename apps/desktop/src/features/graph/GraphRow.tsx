@@ -1,8 +1,8 @@
 import { memo, useState } from 'react';
-import type { GraphRow as GraphRowData, RefInfo } from '@angkorgit/core';
-import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@angkorgit/design-system';
+import type { GraphRow as GraphRowData, RefInfo } from '@gitmd/core';
+import { Badge, HoverCard, HoverCardContent, HoverCardTrigger, cn } from '@gitmd/design-system';
 import { Archive, Check, Cloud, GitMerge, Monitor, Tag as TagIcon, FolderTree } from 'lucide-react';
-import type { CommitInfo } from '@angkorgit/core';
+import type { CommitInfo } from '@gitmd/core';
 import { Avatar } from '@/components/Avatar';
 import { toast } from 'sonner';
 import { formatDate, timeAgo } from '@/shared/utils';

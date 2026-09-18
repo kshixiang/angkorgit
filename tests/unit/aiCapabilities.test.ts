@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiCapabilities, type AiCompletionRequest, type AiProvider } from '@angkorgit/core';
+import { aiCapabilities, type AiCompletionRequest, type AiProvider } from '@gitmd/core';
 
 function capturingProvider(capture: (req: AiCompletionRequest) => void): AiProvider {
   return {

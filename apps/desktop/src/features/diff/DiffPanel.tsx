@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Columns2, Copy, FileText, History, Minus, Plus, Rows3, TextSelect, Trash2, UserRoundSearch, WholeWord, WrapText, X } from 'lucide-react';
-import type { CommitFileInfo, FileDiff } from '@angkorgit/core';
-import { hasCommittedHistory } from '@angkorgit/core';
+import type { CommitFileInfo, FileDiff } from '@gitmd/core';
+import { hasCommittedHistory } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -17,7 +17,7 @@ import {
   Separator,
   Spinner,
   cn,
-} from '@angkorgit/design-system';
+} from '@gitmd/design-system';
 import { confirmDialog } from '@/components/confirm';
 import type { LineMenuInfo } from './VirtualDiff';
 import { ipc } from '@/core/ipc';

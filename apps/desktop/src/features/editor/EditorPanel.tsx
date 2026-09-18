@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Pencil, Save, X } from 'lucide-react';
-import { Badge, Button, Hint, Kbd, Spinner } from '@angkorgit/design-system';
+import { Badge, Button, Hint, Kbd, Spinner } from '@gitmd/design-system';
 import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useUi } from '@/features/ui/store';

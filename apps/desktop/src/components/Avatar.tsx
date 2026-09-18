@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { cn } from '@angkorgit/design-system';
+import { cn } from '@gitmd/design-system';
 import { avatarHue, initials } from '@/shared/utils';
 import { forgeAvatarFor } from '@/features/forge/avatars';
 

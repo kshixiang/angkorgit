@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
-import { parseAiTextSegments } from '@angkorgit/core';
-import { cn } from '@angkorgit/design-system';
+import { parseAiTextSegments } from '@gitmd/core';
+import { cn } from '@gitmd/design-system';
 
 export function AiText({ text, className }: { text: string; className?: string }) {
   return (

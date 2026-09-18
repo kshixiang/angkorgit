@@ -16,10 +16,10 @@
     "useDefineForClassFields": true,
     "jsx": "react-jsx",
     "paths": {
-      "@angkorgit/core": ["./packages/core/src/index.ts"],
-      "@angkorgit/core/*": ["./packages/core/src/*"],
-      "@angkorgit/design-system": ["./packages/design-system/src/index.ts"],
-      "@angkorgit/design-system/*": ["./packages/design-system/src/*"]
+      "@gitmd/core": ["./packages/core/src/index.ts"],
+      "@gitmd/core/*": ["./packages/core/src/*"],
+      "@gitmd/design-system": ["./packages/design-system/src/index.ts"],
+      "@gitmd/design-system/*": ["./packages/design-system/src/*"]
     },
     "baseUrl": "."
   }

@@ -1,7 +1,7 @@
 # Getting Started
 
 Download the latest release for your platform from the
-[releases page](https://github.com/cheat2001/angkorgit/releases).
+[releases page](https://github.com/cheat2001/gitmd/releases).
 
 GitMD is free, open-source software and is **not signed with a paid
 certificate**, so your OS asks for a few extra confirmations on first launch.
@@ -28,7 +28,7 @@ after app updates (each unsigned build has a new identity). If a permission
 dialog ever loops endlessly, reset the stale records and try again:
 
 ```sh
-tccutil reset All dev.angkorgit.app
+tccutil reset All dev.gitmd.app
 ```
 
 ## Windows & Linux
@@ -60,7 +60,7 @@ to check — `git remote -v`.
 Settings → Authentication → SSH → **Generate a key** creates an ed25519 keypair
 and shows the public key to copy into your host. Existing keys are never
 overwritten — generation always picks a free filename, so a second key becomes
-`angkorgit_ed25519_2` rather than replacing the first.
+`gitmd_ed25519_2` rather than replacing the first.
 
 If your key has a name GitMD does not try by default (`~/.ssh/id_ed25519`
 and `~/.ssh/id_rsa`), set it in the **Private key** field or browse for it.
@@ -91,6 +91,6 @@ A key generated in GitMD is used by GitMD; other tools keep using
 
 ```
 Host github.com
-  IdentityFile ~/.ssh/angkorgit_ed25519
+  IdentityFile ~/.ssh/gitmd_ed25519
   IdentitiesOnly yes
 ```

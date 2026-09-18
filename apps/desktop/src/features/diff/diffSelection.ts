@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import type { DiffLine } from '@angkorgit/core';
+import type { DiffLine } from '@gitmd/core';
 import type { FlatRow } from './VirtualDiff';
 
 interface Endpoint {
