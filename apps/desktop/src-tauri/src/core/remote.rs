@@ -397,6 +397,24 @@ pub fn list(path: &str) -> AppResult<Vec<RemoteInfo>> {
     Ok(result)
 }
 
+pub fn add(path: &str, name: &str, url: &str) -> AppResult<()> {
+    let name = name.trim();
+    let url = url.trim();
+    if name.is_empty() || url.is_empty() {
+        return Err(crate::error::AppError::other(
+            "remote name and URL are both required",
+        ));
+    }
+    let repo = super::repo::open(path)?;
+    if repo.find_remote(name).is_ok() {
+        return Err(crate::error::AppError::other(format!(
+            "a remote named '{name}' already exists"
+        )));
+    }
+    repo.remote(name, url)?;
+    Ok(())
+}
+
 pub fn edit(path: &str, name: &str, new_name: &str, url: &str) -> AppResult<()> {
     let new_name = new_name.trim();
     let url = url.trim();
@@ -440,7 +458,7 @@ pub fn fetch(path: &str, remote_name: &str, tags: bool, prune: bool) -> AppResul
     })
 }
 
-pub fn pull(path: &str, remote_name: &str) -> AppResult<OpOutcome> {
+pub fn pull(path: &str, remote_name: &str, mode: Option<&str>) -> AppResult<OpOutcome> {
     fetch(path, remote_name, false, false)?;
 
     let repo = super::repo::open(path)?;
@@ -457,11 +475,40 @@ pub fn pull(path: &str, remote_name: &str) -> AppResult<OpOutcome> {
         .name()?
         .ok_or_else(|| AppError::other("invalid upstream name"))?
         .to_string();
+    let local_oid = branch
+        .get()
+        .target()
+        .ok_or_else(|| AppError::other("branch has no target"))?;
+    let upstream_oid = upstream
+        .get()
+        .target()
+        .ok_or_else(|| AppError::other("upstream has no target"))?;
+    let (ahead, behind) = repo.graph_ahead_behind(local_oid, upstream_oid)?;
+    let rebase = match mode {
+        Some("rebase") => true,
+        Some(_) => false,
+        None => pull_rebase_configured(&repo),
+    };
     drop(upstream);
     drop(branch);
     drop(head);
+    drop(repo);
 
+    if rebase && ahead > 0 && behind > 0 {
+        return super::branch::rebase(path, &upstream_name);
+    }
     super::branch::merge(path, &upstream_name, false)
+}
+
+fn pull_rebase_configured(repo: &Repository) -> bool {
+    repo.config()
+        .ok()
+        .and_then(|config| config.get_string("pull.rebase").ok())
+        .map(|value| {
+            let value = value.trim().to_ascii_lowercase();
+            !(value.is_empty() || matches!(value.as_str(), "false" | "no" | "off" | "0"))
+        })
+        .unwrap_or(false)
 }
 
 pub(crate) fn push_refspecs(branch: &str, force: bool, with_tags: bool) -> Vec<String> {
@@ -493,17 +540,28 @@ pub fn push(
 
     let refspecs = push_refspecs(&branch_name, force, with_tags);
 
+    let track_upstream = |repo: &Repository| -> AppResult<()> {
+        if set_upstream {
+            let mut branch = repo.find_branch(&branch_name, git2::BranchType::Local)?;
+            branch.set_upstream(Some(&format!("{remote_name}/{branch_name}")))?;
+        }
+        Ok(())
+    };
+    if !with_tags && tracking_ref_matches(&repo, remote_name, &branch_name) {
+        track_upstream(&repo)?;
+        return Ok(OpOutcome {
+            status: "up_to_date".into(),
+            message: format!("{branch_name} is already up to date on {remote_name}"),
+        });
+    }
+
     prime_account_bindings(Some(&repo));
     let mut remote = repo.find_remote(remote_name)?;
     let mut opts = PushOptions::new();
     opts.remote_callbacks(make_callbacks());
     let specs: Vec<&str> = refspecs.iter().map(String::as_str).collect();
     remote.push(&specs, Some(&mut opts))?;
-
-    if set_upstream {
-        let mut branch = repo.find_branch(&branch_name, git2::BranchType::Local)?;
-        branch.set_upstream(Some(&format!("{remote_name}/{branch_name}")))?;
-    }
+    track_upstream(&repo)?;
 
     Ok(OpOutcome {
         status: "ok".into(),
@@ -512,6 +570,12 @@ pub fn push(
             if force { " (forced)" } else { "" }
         ),
     })
+}
+
+fn tracking_ref_matches(repo: &Repository, remote_name: &str, branch_name: &str) -> bool {
+    let tip = |name: String| repo.find_reference(&name).ok().and_then(|r| r.target());
+    let local = tip(format!("refs/heads/{branch_name}"));
+    local.is_some() && local == tip(format!("refs/remotes/{remote_name}/{branch_name}"))
 }
 
 pub fn pull_branch(path: &str, branch_name: &str) -> AppResult<OpOutcome> {
@@ -685,7 +749,12 @@ pub fn push_tag(path: &str, remote_name: &str, tag: &str) -> AppResult<OpOutcome
     })
 }
 
-pub fn clone(url: &str, into: &str, on_progress: impl Fn(u32) + Send) -> AppResult<String> {
+pub fn clone(
+    url: &str,
+    into: &str,
+    branch: Option<&str>,
+    on_progress: impl Fn(u32) + Send,
+) -> AppResult<String> {
     prime_account_bindings(None);
     let mut callbacks = make_callbacks();
     let mut last_pct: Option<u32> = None;
@@ -702,6 +771,9 @@ pub fn clone(url: &str, into: &str, on_progress: impl Fn(u32) + Send) -> AppResu
     opts.remote_callbacks(callbacks);
     let mut builder = git2::build::RepoBuilder::new();
     builder.fetch_options(opts);
+    if let Some(branch) = branch {
+        builder.branch(branch);
+    }
 
     let repo = builder.clone(url, std::path::Path::new(into))?;
     let root = repo

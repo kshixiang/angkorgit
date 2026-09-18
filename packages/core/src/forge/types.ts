@@ -23,6 +23,11 @@ export interface ForgeUser {
   avatarUrl: string | null;
 }
 
+export interface ForgeRepoRef {
+  owner: string;
+  repo: string;
+}
+
 export interface CreatePullRequestInput {
   title: string;
   body: string;
@@ -30,6 +35,7 @@ export interface CreatePullRequestInput {
   targetBranch: string;
   draft: boolean;
   reviewerIds?: string[];
+  sourceRepo?: ForgeRepoRef;
 }
 
 export interface PullRequestCheckoutSpec {

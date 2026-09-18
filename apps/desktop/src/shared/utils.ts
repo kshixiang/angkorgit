@@ -43,6 +43,10 @@ export function modKey(): string {
   return isMac ? '⌘' : 'Ctrl';
 }
 
+export function shortenHome(path: string): string {
+  return path.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Z]:\\Users\\[^\\]+)(?=[/\\]|$)/, '~');
+}
+
 export function basename(path: string): string {
   return path.split('/').pop() ?? path;
 }

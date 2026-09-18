@@ -196,10 +196,40 @@ export interface HistoryPosition {
   oid: string;
 }
 
+export interface HistorySearchQuery {
+  search: string;
+  author?: string;
+  branch?: string;
+}
+
+export interface HistorySearch {
+  matches: HistoryPosition[];
+  truncated: boolean;
+}
+
 export type RebaseTodoAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop';
 
 export interface RebaseTodoEntry {
   oid: string;
   action: RebaseTodoAction;
   message?: string;
+}
+
+export interface BlameHunk {
+  oid: string;
+  shortOid: string;
+  summary: string;
+  authorName: string;
+  authorEmail: string;
+  time: number;
+  startLine: number;
+  lineCount: number;
+  committed: boolean;
+}
+
+export interface FileBlame {
+  path: string;
+  rev: string | null;
+  lines: string[];
+  hunks: BlameHunk[];
 }

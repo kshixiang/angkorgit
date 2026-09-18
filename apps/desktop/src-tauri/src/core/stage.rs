@@ -484,14 +484,35 @@ pub fn discard_line(path: &str, file: &str, kind: &str, line_no: u32) -> AppResu
     Ok(())
 }
 
+fn isolated_hunk_patch(diff: &git2::Diff, hunk_index: usize) -> AppResult<String> {
+    let (header, hunks) = split_patch(diff)?;
+    let hunk_text = hunks
+        .get(hunk_index)
+        .ok_or_else(|| AppError::other(format!("hunk {hunk_index} not found")))?;
+    let patch = git2::Patch::from_diff(diff, 0)?
+        .ok_or_else(|| AppError::other("no textual diff for this file"))?;
+    let (hunk, _) = patch.hunk(hunk_index)?;
+    let body = hunk_text
+        .split_once('\n')
+        .map(|(_, body)| body)
+        .unwrap_or("");
+    let new_start = if hunk.old_lines() == 0 {
+        hunk.new_start()
+    } else {
+        hunk.old_start()
+    };
+    Ok(format!(
+        "{header}@@ -{},{} +{new_start},{} @@\n{body}",
+        hunk.old_start(),
+        hunk.old_lines(),
+        hunk.new_lines()
+    ))
+}
+
 pub fn stage_hunk(path: &str, file: &str, hunk_index: usize) -> AppResult<()> {
     let repo = super::repo::open(path)?;
     let diff = file_diff_workdir_to_index(&repo, file)?;
-    let (header, hunks) = split_patch(&diff)?;
-    let hunk = hunks
-        .get(hunk_index)
-        .ok_or_else(|| AppError::other(format!("hunk {hunk_index} not found")))?;
-    let patch_text = format!("{header}{hunk}");
+    let patch_text = isolated_hunk_patch(&diff, hunk_index)?;
     let patch = git2::Diff::from_buffer(patch_text.as_bytes())?;
     repo.apply(&patch, ApplyLocation::Index, None)?;
     Ok(())
@@ -503,11 +524,7 @@ pub fn unstage_hunk(path: &str, file: &str, hunk_index: usize) -> AppResult<()> 
     let mut opts = DiffOptions::new();
     opts.pathspec(file).context_lines(3).reverse(true);
     let diff = repo.diff_tree_to_index(head_tree.as_ref(), None, Some(&mut opts))?;
-    let (header, hunks) = split_patch(&diff)?;
-    let hunk = hunks
-        .get(hunk_index)
-        .ok_or_else(|| AppError::other(format!("hunk {hunk_index} not found")))?;
-    let patch_text = format!("{header}{hunk}");
+    let patch_text = isolated_hunk_patch(&diff, hunk_index)?;
     let patch = git2::Diff::from_buffer(patch_text.as_bytes())?;
     repo.apply(&patch, ApplyLocation::Index, None)?;
     Ok(())

@@ -276,6 +276,12 @@ pub fn account_with_token(host: &str, preferred: Option<&str>) -> Option<(Accoun
         })
 }
 
+pub fn has_account(host: &str) -> bool {
+    let host = normalize_host(host);
+    let accounts = list();
+    !ordered_for_host(&accounts, &host, None).is_empty()
+}
+
 pub fn candidates(host: &str, preferred: Option<&str>) -> Vec<(String, String)> {
     let host = normalize_host(host);
     let accounts = list();

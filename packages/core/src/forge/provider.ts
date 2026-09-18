@@ -18,6 +18,7 @@ export interface ForgeProvider {
   listReviewerCandidates(): Promise<ForgeUser[]>;
   createPullRequest(input: CreatePullRequestInput): Promise<PullRequestInfo>;
   checkoutSpec(pr: PullRequestInfo): PullRequestCheckoutSpec | null;
+  authorAvatar(input: { email: string; sha: string }): Promise<string | null>;
 }
 
 export function createForgeProvider(remote: ForgeRemote, http: HttpClient): ForgeProvider | null {

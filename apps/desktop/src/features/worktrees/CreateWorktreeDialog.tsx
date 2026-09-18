@@ -51,7 +51,9 @@ export function CreateWorktreeDialog() {
     !('oids' in rawContext) &&
     !('baseOid' in rawContext) &&
     !('paths' in rawContext) &&
-    !('folder' in rawContext)
+    !('folder' in rawContext) &&
+    !('section' in rawContext) &&
+    !('url' in rawContext)
       ? rawContext
       : null;
 

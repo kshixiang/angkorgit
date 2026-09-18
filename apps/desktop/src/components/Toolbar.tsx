@@ -7,6 +7,7 @@ import {
   ArrowUpFromLine,
   Check,
   ChevronDown,
+  Code,
   Command,
   FolderGit2,
   FolderOpen,
@@ -50,6 +51,7 @@ import { sidebarVisible, useUi } from '@/features/ui/store';
 import { useUndo } from '@/features/history/undoStore';
 import { useSettings, type IdentityProfile } from '@/features/settings/store';
 import { applyProfileToRepo, ensureRepoProfile } from '@/features/settings/profiles';
+import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { capCount, modKey } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
 
@@ -379,11 +381,16 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const remote = remotes[0]?.name ?? 'origin';
   const latestStash = stashes[0];
 
+  const editorId = useSettings((s) => s.editorId);
+  const { editors } = useEditors();
+  const editor = preferredEditor(editors, editorId);
+
   const run = async (label: string, op: () => Promise<{ status: string; message: string } | void>) => {
     if (busy) return;
     setBusy(label);
     try {
       const outcome = await op();
+      if (label === 'Fetch' || label.startsWith('Pull')) useRepo.getState().markFetched();
       if (outcome && 'message' in outcome) {
         toastOutcome(outcome, `${label} complete`);
       } else {
@@ -437,29 +444,51 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
       <Separator orientation="vertical" className="mx-2 h-6" />
 
-      <Hint label={`${t('Fetch')} ${remote}`}>
+      <Hint label={remotes.length > 1 ? `${t('Fetch')} all remotes (${remotes.map((r) => r.name).join(', ')})` : `${t('Fetch')} ${remote}`}>
         <Button
           variant="ghost"
           size="sm"
           disabled={!!busy}
-          onClick={() => void run(t('Fetch'), () => ipc.fetch(repo.path, remote, true, true))}
+          onClick={() =>
+            void run(t('Fetch'), async () => {
+              for (const r of remotes.length > 0 ? remotes : [{ name: remote }]) await ipc.fetch(repo.path, r.name, true, true);
+            })
+          }
         >
           <RefreshCw className={busy === 'Fetch' ? 'animate-spin' : ''} />
           {t('Fetch')}
         </Button>
       </Hint>
-      <Hint label={`${t('Pull')} ${remote}${status?.behind ? ` (${status.behind} behind)` : ''}`}>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!!busy}
-          onClick={() => void run(t('Pull'), () => ipc.pull(repo.path, remote))}
-        >
-          <ArrowDownToLine />
-          {t('Pull')}
-          {status && status.behind > 0 && <Badge tone="info">{capCount(status.behind)}</Badge>}
-        </Button>
-      </Hint>
+      <div className="flex items-center">
+        <Hint label={`Pull from ${remote}${status?.behind ? ` (${status.behind} behind)` : ''} · merge or rebase per pull.rebase`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="rounded-r-none"
+            disabled={!!busy}
+            onClick={() => void run(t('Pull'), () => ipc.pull(repo.path, remote))}
+          >
+            <ArrowDownToLine />
+            {t('Pull')}
+            {status && status.behind > 0 && <Badge tone="info">{capCount(status.behind)}</Badge>}
+          </Button>
+        </Hint>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Pull options" disabled={!!busy}>
+              <ChevronDown className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => void run('Pull (merge)', () => ipc.pull(repo.path, remote, 'merge'))}>
+              Pull with merge
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void run('Pull (rebase)', () => ipc.pull(repo.path, remote, 'rebase'))}>
+              Pull with rebase
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <div className="flex items-center">
         <Hint label={`${t('Push')} ${remote}${status?.ahead ? ` (${status.ahead} ahead)` : ''}`}>
           <Button
@@ -523,6 +552,43 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           <ArchiveRestore />
         </Button>
       </Hint>
+
+      <Separator orientation="vertical" className="mx-2 h-6" />
+
+      <div className="flex items-center">
+        <Hint label={editor ? `Open in ${editor.label}` : 'Open in editor (none detected, see Settings → Git)'}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-r-none"
+            aria-label={editor ? `Open in ${editor.label}` : 'Open in editor'}
+            disabled={!editor}
+            onClick={() => editor && void openInEditor(editor.id, repo.path)}
+          >
+            <Code />
+          </Button>
+        </Hint>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="rounded-l-none"
+              aria-label="Editor options"
+              disabled={editors.length === 0}
+            >
+              <ChevronDown className="size-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {editors.map((candidate) => (
+              <DropdownMenuItem key={candidate.id} onClick={() => void openInEditor(candidate.id, repo.path)}>
+                {candidate.id === editor?.id ? <Check /> : <Code />} Open in {candidate.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <div className="ml-auto flex items-center gap-1">
         {busy && (

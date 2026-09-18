@@ -10,6 +10,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commits:
+    name: Commit messages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reject tool-generated trailers
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          pattern='^(co-authored-by:.*(cursor|claude|copilot|codex|gemini|openai|anthropic|chatgpt|devin|aider|windsurf|cline)|generated (with|by) |🤖)'
+          bad=0
+          for c in $(git rev-list "$BASE..$HEAD"); do
+            if git log -1 --format=%B "$c" | grep -qiE "$pattern"; then
+              echo "::error::$(git log -1 --format='%h %s' "$c") carries a tool-generated trailer"
+              git log -1 --format=%B "$c" | grep -iE "$pattern" | sed 's/^/    /'
+              bad=1
+            fi
+          done
+          if [ "$bad" = 1 ]; then
+            echo
+            echo "Commits in this repository carry no trailers from coding tools. Amend or squash them away, then push again."
+            exit 1
+          fi
+
   frontend:
     name: Typecheck, unit tests & build
     runs-on: ubuntu-latest
@@ -61,7 +89,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test

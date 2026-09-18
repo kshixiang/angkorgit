@@ -92,6 +92,23 @@ pub struct HistoryPosition {
     pub oid: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistorySearch {
+    pub matches: Vec<HistoryPosition>,
+    pub truncated: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistorySearchQuery {
+    pub search: String,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub branch: Option<String>,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RebaseTodoEntry {

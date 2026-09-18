@@ -2,8 +2,10 @@
 
 mod account_check;
 mod ai_cli;
+mod cli;
 mod commands;
 mod core;
+mod editors;
 mod error;
 mod forge;
 mod http;
@@ -13,6 +15,7 @@ mod terminal;
 mod watcher;
 
 pub mod test_api {
+    pub use crate::core::blame::blame_file;
     pub use crate::core::branch::{
         can_fast_forward, checkout_branch, cherry_pick, cherry_pick_many, create as branch_create,
         list as branches, merge, rebase, rebase_commits, rebase_interactive, reset,
@@ -22,14 +25,18 @@ pub mod test_api {
         list as conflict_list, read as conflict_read, resolve as conflict_resolve,
     };
     pub use crate::core::diff::{commit_file_diff, commit_files, file_diff};
-    pub use crate::core::history::{file_history, list as history, position as history_position};
+    pub use crate::core::history::{
+        file_history, list as history, position as history_position, search as history_search,
+    };
     pub use crate::core::misc::{
         stash_create, stash_files, stash_list, stash_pop, stash_restore_files, tag_create,
         tag_delete, tag_list,
     };
-    pub use crate::core::remote::{checkout_remote_ref, fetch};
+    pub use crate::core::remote::{
+        add as remote_add, checkout_remote_ref, fetch, list as remote_list, pull, push,
+    };
     pub use crate::core::repo::{
-        cleanup_state, info as repo_info, init, ref_fingerprint, set_config, status,
+        cleanup_state, discover, info as repo_info, init, ref_fingerprint, set_config, status,
     };
     pub use crate::core::stage::{
         discard_all, discard_line, discard_staged_all, discard_staged_file, stage_all, stage_file,
@@ -37,6 +44,7 @@ pub mod test_api {
         unstage_hunk, unstage_line,
     };
     pub use crate::core::types::HistoryQuery;
+    pub use crate::core::types::HistorySearchQuery;
     pub use crate::core::types::RebaseTodoEntry;
     pub use crate::core::types::WorktreeAddRequest;
     pub use crate::core::worktree::{
@@ -45,16 +53,55 @@ pub mod test_api {
     };
 }
 
+#[cfg(target_os = "linux")]
+fn compact_wayland_titlebar(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use gtk::prelude::{CssProviderExt, GtkWindowExt, StyleContextExt, WidgetExt};
+    use tauri::Manager;
+
+    let Some(window) = app.get_webview_window("main") else {
+        return Ok(());
+    };
+    let gtk_window = window.gtk_window()?;
+    let Some(titlebar) = gtk_window.titlebar() else {
+        return Ok(());
+    };
+    let provider = gtk::CssProvider::new();
+    provider.load_from_data(
+        b".angkorgit-compact-titlebar headerbar { min-height: 28px; padding: 0; }\
+          .angkorgit-compact-titlebar headerbar button.titlebutton { min-height: 24px; min-width: 24px; padding: 0; margin: 0; }",
+    )?;
+    titlebar
+        .style_context()
+        .add_class("angkorgit-compact-titlebar");
+    if let Some(screen) = titlebar.screen() {
+        gtk::StyleContext::add_provider_for_screen(
+            &screen,
+            &provider,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+    }
+    Ok(())
+}
+
 pub fn run() {
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            cli::on_second_instance(app, argv, cwd);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             use tauri::Manager;
+            #[cfg(target_os = "linux")]
+            let _ = compact_wayland_titlebar(app);
             if let Ok(dir) = app.path().app_config_dir() {
                 let _ = core::accounts::CONFIG_DIR.set(dir);
+            }
+            let args: Vec<String> = std::env::args().collect();
+            if let Some(request) = cli::parse_args(&args, None) {
+                cli::queue(request);
             }
             Ok(())
         })
@@ -102,6 +149,7 @@ pub fn run() {
             commands::commit_revert,
             commands::history_list,
             commands::history_position,
+            commands::history_search,
             commands::history_commit,
             commands::history_file,
             commands::repo_files,
@@ -122,6 +170,7 @@ pub fn run() {
             commands::cherry_pick_many,
             commands::reset_to,
             commands::remote_list,
+            commands::remote_add,
             commands::remote_edit,
             commands::remote_remove,
             commands::remote_fetch,
@@ -176,7 +225,27 @@ pub fn run() {
             commands::pr_checkout,
             commands::ai_cli_detect,
             commands::ai_cli_run,
+            commands::cli_pending_open,
+            commands::cli_status,
+            commands::cli_install,
+            commands::cli_uninstall,
+            commands::editors_detect,
+            commands::editor_open,
+            commands::file_blame,
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running GitMD");
+
+    app.run(|app, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = event {
+            for url in urls {
+                if let Ok(path) = url.to_file_path() {
+                    cli::request_open(app, path.to_string_lossy().into_owned());
+                }
+            }
+        }
+        #[cfg(not(target_os = "macos"))]
+        let _ = (app, event);
+    });
 }

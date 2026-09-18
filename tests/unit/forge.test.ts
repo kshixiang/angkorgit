@@ -3,6 +3,8 @@ import {
   ForgeError,
   bitbucketForgeProvider,
   createForgeProvider,
+  defaultForgeTarget,
+  forgeTargets,
   githubApiBase,
   githubForgeProvider,
   gitlabForgeProvider,
@@ -675,5 +677,128 @@ describe('gitlab scheme fallback safety', () => {
     await provider.listOpenPullRequests();
     expect(urls.every((url) => !url.includes('undefined'))).toBe(true);
     expect(urls[urls.length - 1].startsWith('http://gitlab-race.corp.dev/api/v4/')).toBe(true);
+  });
+});
+
+describe('authorAvatar', () => {
+  it('github reads the avatar of the commit author', async () => {
+    const { http, calls } = fakeHttp((request) =>
+      request.url.endsWith('/commits/abc123')
+        ? { status: 200, headers: {}, body: JSON.stringify({ author: { avatar_url: 'https://a/dara' } }) }
+        : { status: 404, headers: {}, body: '{}' },
+    );
+    const provider = createForgeProvider(githubRemote(), http)!;
+    expect(await provider.authorAvatar({ email: 'dara@example.com', sha: 'abc123' })).toBe('https://a/dara');
+    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/angkorgit/commits/abc123');
+    const { http: unknown } = fakeHttp(() => ({ status: 200, headers: {}, body: JSON.stringify({ author: null }) }));
+    expect(await createForgeProvider(githubRemote(), unknown)!.authorAvatar({ email: 'x', sha: 'abc' })).toBeNull();
+  });
+
+  it('gitlab asks the avatar endpoint by email', async () => {
+    const remote = parseForgeRemote('git@gitlab.avatars.test:group/subgroup/project.git')!;
+    const { http, calls } = fakeHttp(() => ({
+      status: 200,
+      headers: {},
+      body: JSON.stringify({ avatar_url: 'https://gitlab.avatars.test/uploads/u.png' }),
+    }));
+    const provider = createForgeProvider(remote, http)!;
+    expect(await provider.authorAvatar({ email: 'Dara@Example.com', sha: 'abc' })).toBe(
+      'https://gitlab.avatars.test/uploads/u.png',
+    );
+    expect(calls[0].url).toBe('https://gitlab.avatars.test/api/v4/avatar?email=Dara%40Example.com&size=64');
+  });
+
+  it('bitbucket reads the commit author user avatar', async () => {
+    const remote = parseForgeRemote('git@bitbucket.org:team/repo.git')!;
+    const { http, calls } = fakeHttp(() => ({
+      status: 200,
+      headers: {},
+      body: JSON.stringify({ author: { user: { links: { avatar: { href: 'https://bb/av.png' } } } } }),
+    }));
+    const provider = createForgeProvider(remote, http)!;
+    expect(await provider.authorAvatar({ email: 'x', sha: 'abc' })).toBe('https://bb/av.png');
+    expect(calls[0].url).toBe('https://api.bitbucket.org/2.0/repositories/team/repo/commit/abc');
+  });
+});
+
+describe('pull requests from a fork into upstream', () => {
+  const fork = { owner: 'dara', repo: 'angkorgit' };
+
+  it('github sends the fork owner in the head', async () => {
+    const { http, calls } = fakeHttp(() => ({ status: 201, body: JSON.stringify(samplePull({ number: 30 })) }));
+    const upstream = parseForgeRemote('git@github.com:cheat2001/angkorgit.git');
+    if (!upstream) throw new Error('expected a parsed remote');
+    const pr = await githubForgeProvider(upstream, http).createPullRequest({
+      title: 'From my fork',
+      body: '',
+      sourceBranch: 'feature/x',
+      targetBranch: 'main',
+      draft: false,
+      sourceRepo: fork,
+    });
+    expect(calls[0].url).toBe('https://api.github.com/repos/cheat2001/angkorgit/pulls');
+    expect(JSON.parse(calls[0].body ?? '{}')).toMatchObject({ head: 'dara:feature/x', base: 'main' });
+    expect(pr.number).toBe(30);
+  });
+
+  it('gitlab posts on the source project with the target project id', async () => {
+    const { http, calls } = fakeHttp((request) =>
+      request.method === 'GET'
+        ? { status: 200, body: JSON.stringify({ id: 4242 }) }
+        : { status: 201, body: JSON.stringify({ iid: 9, title: 'x', state: 'opened' }) },
+    );
+    const upstream = parseForgeRemote('git@gitlab.example.com:group/subgroup/project.git');
+    if (!upstream) throw new Error('expected a parsed remote');
+    await gitlabForgeProvider(upstream, http).createPullRequest({
+      title: 'x',
+      body: '',
+      sourceBranch: 'fix/y',
+      targetBranch: 'main',
+      draft: false,
+      sourceRepo: { owner: 'dara', repo: 'project' },
+    });
+    expect(calls[0].method).toBe('GET');
+    expect(calls[0].url).toMatch(/^https?:\/\/gitlab\.example\.com\/api\/v4\/projects\/group%2Fsubgroup%2Fproject$/);
+    expect(calls[1].method).toBe('POST');
+    expect(calls[1].url).toMatch(/^https?:\/\/gitlab\.example\.com\/api\/v4\/projects\/dara%2Fproject\/merge_requests$/);
+    expect(JSON.parse(calls[1].body ?? '{}')).toMatchObject({ source_branch: 'fix/y', target_branch: 'main', target_project_id: 4242 });
+  });
+
+  it('bitbucket names the source repository', async () => {
+    const { http, calls } = fakeHttp(() => ({ status: 201, body: JSON.stringify({ id: 5, title: 'x', state: 'OPEN' }) }));
+    const upstream = parseForgeRemote('git@bitbucket.org:team/repo.git');
+    if (!upstream) throw new Error('expected a parsed remote');
+    await bitbucketForgeProvider(upstream, http).createPullRequest({
+      title: 'x',
+      body: '',
+      sourceBranch: 'fix/z',
+      targetBranch: 'main',
+      draft: false,
+      sourceRepo: { owner: 'dara', repo: 'repo' },
+    });
+    expect(calls[0].url).toBe('https://api.bitbucket.org/2.0/repositories/team/repo/pullrequests');
+    expect(JSON.parse(calls[0].body ?? '{}')).toMatchObject({
+      source: { branch: { name: 'fix/z' }, repository: { full_name: 'dara/repo' } },
+      destination: { branch: { name: 'main' } },
+    });
+  });
+
+  it('lists same-host targets once and prefers upstream over the source remote', () => {
+    const source = parseForgeRemote('git@github.com:dara/angkorgit.git');
+    if (!source) throw new Error('expected a parsed remote');
+    const targets = forgeTargets(
+      [
+        { name: 'origin', url: 'git@github.com:dara/angkorgit.git' },
+        { name: 'upstream', url: 'https://github.com/cheat2001/angkorgit.git' },
+        { name: 'mirror', url: 'https://github.com/cheat2001/angkorgit' },
+        { name: 'lab', url: 'git@gitlab.com:dara/angkorgit.git' },
+        { name: 'local', url: '/tmp/repo' },
+      ],
+      source,
+    );
+    expect(targets.map((t) => t.name)).toEqual(['origin', 'upstream']);
+    expect(defaultForgeTarget(targets, 'origin')).toBe('upstream');
+    expect(defaultForgeTarget(targets.slice(0, 1), 'origin')).toBe('origin');
+    expect(defaultForgeTarget([], 'origin')).toBe('origin');
   });
 });

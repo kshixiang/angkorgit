@@ -1,10 +1,12 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@angkorgit/design-system';
 import { avatarHue, initials } from '@/shared/utils';
+import { forgeAvatarFor } from '@/features/forge/avatars';
 
 const hashCache = new Map<string, Promise<string>>();
 const urlCache = new Map<string, string>();
 const noGravatar = new Set<string>();
+const forgeUrls = new Map<string, string>();
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -27,19 +29,24 @@ function emailHash(email: string): Promise<string> {
 }
 
 function cachedUrl(email: string, size: number): string | null {
-  if (!email || noGravatar.has(email)) return null;
+  if (!email) return null;
+  const forge = forgeUrls.get(normalizeEmail(email));
+  if (forge) return forge;
+  if (noGravatar.has(email)) return null;
   return urlCache.get(`${normalizeEmail(email)}|${size}`) ?? null;
 }
 
 export const Avatar = memo(function Avatar({
   name,
   email,
+  oid,
   size = 20,
   className,
   title,
 }: {
   name: string;
   email: string;
+  oid?: string;
   size?: number;
   className?: string;
   title?: string;
@@ -58,7 +65,18 @@ export const Avatar = memo(function Avatar({
     const cached = cachedUrl(email, size);
     setUrl(cached);
     setLoaded(false);
-    if (cached || !email || noGravatar.has(email)) return;
+    if (cached || !email) return;
+    if (noGravatar.has(email)) {
+      const forge = oid ? forgeAvatarFor(email, oid) : null;
+      if (forge) {
+        void forge.then((resolved) => {
+          if (cancelled || !resolved) return;
+          forgeUrls.set(normalizeEmail(email), resolved);
+          setUrl(resolved);
+        });
+      }
+      return;
+    }
     void emailHash(email).then((hash) => {
       if (!cancelled) {
         const resolved = `https://www.gravatar.com/avatar/${hash}?s=${Math.ceil(size * 2)}&d=404`;
@@ -69,7 +87,7 @@ export const Avatar = memo(function Avatar({
     return () => {
       cancelled = true;
     };
-  }, [email, size]);
+  }, [email, size, oid]);
 
   return (
     <span
@@ -99,8 +117,21 @@ export const Avatar = memo(function Avatar({
           )}
           onLoad={() => setLoaded(true)}
           onError={() => {
+            if (forgeUrls.get(normalizeEmail(email)) === url) {
+              forgeUrls.delete(normalizeEmail(email));
+              setUrl(null);
+              return;
+            }
             noGravatar.add(email);
             setUrl(null);
+            const forge = oid ? forgeAvatarFor(email, oid) : null;
+            if (forge) {
+              void forge.then((resolved) => {
+                if (!resolved) return;
+                forgeUrls.set(normalizeEmail(email), resolved);
+                setUrl(resolved);
+              });
+            }
           }}
         />
       )}

@@ -77,3 +77,37 @@ export function parseForgeRemote(url: string): ForgeRemote | null {
   }
   return null;
 }
+
+export interface ForgeTarget {
+  name: string;
+  remote: ForgeRemote;
+}
+
+export function forgeTargets(remotes: RemoteInfo[], source: ForgeRemote): ForgeTarget[] {
+  const seen = new Set<string>();
+  const out: ForgeTarget[] = [];
+  for (const entry of remotes) {
+    const remote = parseForgeRemote(entry.url);
+    if (!remote || remote.kind !== source.kind) continue;
+    if (remote.host.toLowerCase() !== source.host.toLowerCase()) continue;
+    const key = `${remote.owner}/${remote.repo}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: entry.name, remote });
+  }
+  return out;
+}
+
+export function defaultForgeTarget(targets: ForgeTarget[], sourceName: string): string {
+  const upstream = targets.find((t) => t.name === 'upstream');
+  if (upstream && upstream.name !== sourceName) return upstream.name;
+  return targets.find((t) => t.name === sourceName)?.name ?? targets[0]?.name ?? sourceName;
+}
+
+export function sameForgeRepo(a: ForgeRemote, b: ForgeRemote): boolean {
+  return (
+    a.host.toLowerCase() === b.host.toLowerCase() &&
+    a.owner.toLowerCase() === b.owner.toLowerCase() &&
+    a.repo.toLowerCase() === b.repo.toLowerCase()
+  );
+}

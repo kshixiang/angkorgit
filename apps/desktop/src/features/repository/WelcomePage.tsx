@@ -38,12 +38,8 @@ import { useUi } from '@/features/ui/store';
 import { CloneDialog } from './CloneDialog';
 import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { SettingEmpty } from '@/features/settings/SettingCard';
-import { isMac, timeAgo } from '@/shared/utils';
+import { isMac, shortenHome, timeAgo } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
-
-function shortenHome(path: string): string {
-  return path.replace(/^(\/Users\/[^/]+|\/home\/[^/]+|[A-Z]:\\Users\\[^\\]+)(?=[/\\]|$)/, '~');
-}
 
 export function WelcomePage() {
   const navigate = useNavigate();

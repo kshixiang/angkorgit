@@ -28,6 +28,7 @@ interface RepoState {
   opening: string | null;
   refreshing: boolean;
   profileId: string | null;
+  lastFetchAt: number | null;
 
   loadRecents: () => Promise<void>;
   open: (path: string) => Promise<RepositoryInfo>;
@@ -36,6 +37,7 @@ interface RepoState {
   refreshStatus: () => Promise<void>;
   setBusy: (label: string | null) => void;
   setProfileId: (profileId: string | null) => void;
+  markFetched: () => void;
 }
 
 let openSeq = 0;
@@ -58,6 +60,7 @@ export const useRepo = create<RepoState>((set, get) => ({
   opening: null,
   refreshing: false,
   profileId: null,
+  lastFetchAt: null,
 
   loadRecents: async () => {
     const recents = await ipc.recentRepositories();
@@ -80,6 +83,7 @@ export const useRepo = create<RepoState>((set, get) => ({
       set({
         repo,
         profileId: null,
+        lastFetchAt: null,
         opening: null,
         refreshing: true,
         status: null,
@@ -92,7 +96,7 @@ export const useRepo = create<RepoState>((set, get) => ({
         conflicts: [],
       });
     } else {
-      set({ repo, profileId: null, opening: null, refreshing: true });
+      set({ repo, profileId: null, lastFetchAt: null, opening: null, refreshing: true });
     }
     void ipc
       .configGet(repo.path, 'angkorgit.profile')
@@ -127,6 +131,7 @@ export const useRepo = create<RepoState>((set, get) => ({
       opening: null,
       refreshing: false,
       profileId: null,
+      lastFetchAt: null,
     }),
 
   refresh: async () => {
@@ -177,5 +182,6 @@ export const useRepo = create<RepoState>((set, get) => ({
   },
 
   setBusy: (busy) => set({ busy }),
+  markFetched: () => set({ lastFetchAt: Date.now() }),
   setProfileId: (profileId) => set({ profileId }),
 }));

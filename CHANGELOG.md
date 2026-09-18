@@ -6,6 +6,274 @@ All notable changes to AngKorGit are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-09-16
+
+The upstream release. Add a remote from the sidebar, file a pull request from a
+fork into its upstream, and clone into the folder you always use. SSH remotes on
+Windows now accept the ed25519 and ECDSA host keys servers actually present, a
+minified diff no longer freezes on macOS, and a text selection stays on its lines
+while you scroll. Three contributors shaped this
+version, two of them with their first pull requests to the project.
+
+### Added
+- **Add a remote from the sidebar.** The Remotes section header has a "+" and the
+  empty state an "Add remote" button. Name it, paste the URL, and it is fetched right
+  away so its branches appear. Remove was already there; add never made it in. (#26)
+- **Pull requests from a fork into upstream.** When a repository has two remotes on
+  the same host that point at different repositories, the create dialog gains an
+  "Into repository" choice, pre-set to `upstream` when there is one. The target
+  branch list, default branch and reviewers follow the chosen repository, and the
+  request is filed there with the fork as its source on GitHub, GitLab and Bitbucket
+  Cloud. (#26)
+- **Default clone folder.** The clone dialog starts from the last folder you cloned
+  into, and Settings → Git → Clone destination lets you pick or clear it. (#26)
+- **Right-click menu in the terminal.** Copy, Paste, Select all and Clear terminal. (#26)
+
+### Fixed
+- **Fetch, pull and push over SSH on Windows.** The bundled libssh2 was built
+  with the WinCNG crypto backend, which cannot negotiate `ssh-ed25519` or ECDSA
+  host keys, so talking to servers like GitLab failed with "failed to set
+  hostkey preference: The requested method(s) are not currently supported"
+  before authentication was even attempted. The Windows build now compiles
+  libssh2 against the vendored OpenSSL instead, which speaks every host-key
+  type the git CLI does. Local Windows builds of the engine now need Perl on
+  `PATH` (e.g. Strawberry Perl) for the OpenSSL compile; release CI already
+  provides it.
+- **A text selection in a diff stays on the lines you selected while you scroll.**
+  Rows that leave the screen are unmounted by the virtualized diff, and the browser
+  used to move the selection boundary to whatever row took that slot, so after a
+  scroll the highlight sat on different lines. The selection is now tracked by line
+  and column and put back on the right text after every scroll, and ⌘C copies the
+  full selection even while the selected rows are off screen. Line numbers, change
+  markers and hunk headers are no longer selectable, so a drag that crosses them
+  keeps to the code.
+- **Diffs with very long lines no longer freeze the scroll on macOS.** A minified
+  bundle with lines of 50,000 to 300,000 characters used to stall the diff for up
+  to a second per frame on WebKit while Chromium stayed smooth. Rows now render at
+  most 5,000 characters, with a "… n more characters" tag on the clipped ones, and
+  clipped rows skip syntax highlighting. On a synthetic copy of the reported file the
+  worst frame went from 1.05 s to 51 ms and the diff opens in a third of the time.
+  Copy still uses the full line text. (#27)
+- **Horizontal scrolling in a diff stays responsive under load.** The pan of the two
+  text layers is composited now instead of repainting every frame, and its scroll
+  limit is measured once per gesture instead of on every wheel event, so a busy
+  session no longer makes sideways scrolling lag while vertical scrolling feels fine.
+- **A shorter titlebar on Linux under Wayland.** The windowing layer that Tauri
+  pins puts its own full-height GTK header bar on the window, so GNOME users had
+  an empty bar above the toolbar. It is now compacted to the size of its buttons.
+  X11 and other desktops are unchanged. Thanks to Christian Lauinger. (#25)
+
+### Changed
+- Diff text renders without font ligatures. WebKit shapes ligature fonts on a slower
+  path, which cost a factor of 3.5 on long minified rows, and a ligature can hide a
+  one-character difference between two lines. Fewer rows are rendered off screen
+  while scrolling (overscan 24 → 8), which shortens each scroll burst.
+
+## [0.14.0] — 2026-09-13
+
+The fork workflow release. Fast-forward from the branch menu, every remote fetched
+on each tab switch, the repository page one click away, and the AI provider in the
+status bar. Two testers filed six issues in two days and every one of them shaped
+this version, including a blame crash on uncommitted edits and hunk staging that
+only worked on the first hunk.
+
+### Added
+- **Fast-forward from the branch menu.** Right-clicking a branch in the sidebar or a
+  branch chip in the graph now offers "Fast-forward current to this" next to "Merge
+  into current". It is enabled only when the current branch is strictly behind, so
+  syncing a fork's `main` with `upstream/main` is one click and leaves no merge
+  commit. "Merge into current" keeps recording a merge commit. (#20)
+- **AI provider in the status bar.** A chip next to the zoom control names the AI
+  provider in use, Gemini, Claude Code, Ollama and so on, with its icon green when
+  the last Test connection passed, red when it failed and plain when it has not been
+  tested since the settings changed. Nothing is polled; only Test connection writes
+  the result. With no provider set up it reads "Set up AI", and clicking it opens
+  the AI settings either way. (#23)
+- **Open the repository in the browser.** Right-click a remote in the sidebar for
+  "Open in browser", or run "Open repository in browser" from the palette, and the
+  repository page on GitHub, GitLab, Bitbucket or a self-hosted forge opens in your
+  browser. Each remote opens its own page, so a fork's `origin` and `upstream` are
+  both one click away. Bitbucket Server paths map to their browse page; a remote
+  with a local path has nothing to open and the entry stays disabled. (#24)
+- **Avatars from your connected account.** When Gravatar has nothing for an author,
+  the graph, commit view, file history and blame ask the repository's forge instead:
+  GitHub and Bitbucket by the commit, GitLab (self-hosted included) by the author
+  email. Needs a connected account for that host and the Pull requests setting on;
+  one request per author, cached for the session.
+
+### Changed
+- **Fetch reaches every remote.** Auto fetch, the toolbar Fetch and the palette's
+  fetch now walk all remotes instead of the first one, so a fork sees `upstream`
+  move without a manual fetch. (#18)
+- **Zed and Flatpak editors are detected on Linux.** Zed's `zeditor` package name
+  and the Flatpak exports of Zed, VS Code, Sublime Text, GNOME Builder and Kate are
+  recognised by the External editor picker. (#18)
+- **Editors are found in their default install folders.** On Windows the External
+  editor picker looks in the usual install locations of VS Code, Cursor, Windsurf,
+  Sublime Text and the JetBrains Toolbox scripts even when their launcher is not
+  on PATH; macOS and Linux add the JetBrains Toolbox scripts folder.
+
+### Fixed
+- **Blame no longer crashes on a file with uncommitted changes.** Blaming the working
+  copy of a tracked file you had edited aborted the whole app: libgit2 splits a
+  committed block around your edit and leaves the split halves without a signature,
+  which the engine then dereferenced. Authors now come from the commit itself. (#21)
+- **Blame knows when there is nothing to blame.** An untracked or newly staged file
+  has no commits, so the Blame entry in the file menu and the diff header's Blame
+  button are disabled with a hint instead of erroring, and the engine says so plainly
+  for a path missing from a commit. (#21)
+- **Stage hunk works on every hunk, not only the first.** Staging or unstaging a
+  later hunk in a file with several changes failed with "hunk did not apply": the
+  isolated hunk kept line numbers from the full diff that libgit2 could not match.
+  The hunk is now anchored on the lines the index actually has. (#22)
+- **Remote branch tooltips say what double-click does.** A remote branch row or
+  chip used to promise "double-click to checkout"; it now says the local branch is
+  checked out from it and fast-forwarded when it is behind, which is what happens.
+  (#20)
+- **Switching tabs fetches again.** The fetch that runs when you open or switch to a
+  repository tab fired before the repository's remotes were loaded, found none and
+  gave up until the next auto fetch interval. It now waits for the remote list, so
+  the status bar's "Fetched just now" is true right after a tab switch. (#20)
+- The commit and working copy file menus said "Show in Finder" on Linux and
+  Windows; they say "Show in file manager" there. (#18)
+- On Windows the command line tool installed into a folder that was never on PATH,
+  so `akg` could not be found. Install now adds that folder to the user PATH and
+  uninstall removes it. On macOS, when the install falls back to `~/.local/bin`,
+  the Settings card says how to put it on PATH.
+
+## [0.13.0] — 2026-09-12
+
+The terminal and editor release. `akg` opens or clones a repository from the shell,
+your editor opens from AngKorGit, blame joins file history with a commit list to
+travel through, and pull finally follows your rebase setting. Two community reports
+and one pull request shaped it.
+
+### Added
+- **Open or clone a repository from the terminal.** Settings → Git (or the command
+  palette) installs an `angkorgit` command with a short `akg` alias. `akg` and
+  `akg open [path]` open a local folder; `akg clone [-b branch] <url>` opens the
+  clone dialog with the URL, folder and branch filled in. `akg --help` lists the
+  commands.
+- **Blame.** File history now has a Diff / Blame toggle. Pick a commit on the left
+  and the blame pane shows the file as it was then, every line with who changed it,
+  when, and in which commit; a "Working copy" row at the top blames the file on
+  disk with uncommitted lines marked. Open it from the diff header, from a file's
+  right-click menu in the working copy or a commit, or from the palette with
+  "Blame…". Hover a line to light up every line from the same commit, click the
+  author to jump to that commit in the graph, and right-click to blame the file at
+  that commit or just before it.
+- **Open in your editor.** Settings → Git lists the editors installed on your
+  machine (VS Code, Cursor, Zed, Sublime Text, the JetBrains IDEs, Xcode, GNOME
+  Builder and more). The toolbar gets an "Open in <editor>" button whose menu
+  offers every detected editor, the palette has "Open repository in <editor>",
+  and file rows in the working copy and the commit view open a single file.
+- **Pull with rebase.** Pull now follows `pull.rebase` from your git config, so a
+  `rebase = true` setup gets a linear history like it does in the terminal. The
+  Pull button has a menu to pick merge or rebase for one pull, and the palette
+  has "Pull with rebase".
+- **The status bar says when the repository was last fetched.** Switching to a
+  tab already fetched its remote, but nothing showed it. "Fetched 2m ago" now sits
+  next to the branch, and hovering it tells you the exact time and how often the
+  auto fetch runs.
+- **Right-click on a commit's files.** Files in the commit view now have the same
+  menu as the working copy: edit, file history, open in an external app, show in
+  Finder, copy the relative or the absolute path. Stash files keep their Apply
+  entries at the top.
+- **Crowded ref columns expand on hover.** When a commit carries more refs than fit
+  next to it, hovering its chips (or clicking the `+n` badge) stacks every branch and
+  tag in place, one per line, as real chips: double-click to check out, right-click
+  for the same menu a visible chip gets. That menu also offers "Reset … to this…" on
+  a remote chip whose local branch has drifted ahead, so a folded origin ref can be
+  reset from there.
+- **Pull requests are checked for tool-generated commit trailers.** A CI job fails
+  when a commit carries `Co-authored-by` lines from coding tools or a "Generated
+  with" footer, and the contributing guide says so.
+
+### Security
+- react-router-dom 6.30.6, fixing an open redirect in `<Link>` and `useNavigate`.
+
+### Fixed
+- **The checked-out branch is always the visible chip.** When several local
+  branches sit on the HEAD commit, the graph used to show whichever came first and
+  gave it the tick, so the branch you were actually on could hide behind `+1` while
+  its neighbour looked checked out. The current branch now sorts first and is the
+  only one marked.
+- **↑/↓ in the working copy list now move the diff.** After clicking a changed
+  file, the arrow keys only moved the highlight and the diff stayed on the file you
+  clicked. They now open the previous or next file, like the commit file list.
+- **Cloning from inside a repository opens the clone.** The Clone entry in the
+  repository switcher used to finish with a toast and leave you in the repository
+  you started from. The new one now opens in its own tab.
+- **Pushing a branch that is already up to date no longer pushes.** The toolbar
+  Push, ⌘P and the branch menu used to send the push anyway and toast "Pushed
+  <branch>", so hosts that react to every receive-pack started CI for nothing.
+  When the tip matches the remote-tracking branch AngKorGit now says the branch
+  is already up to date and never contacts the remote, like `git push` (#17).
+
+## [0.12.0] — 2026-09-10
+
+The find and fix release. Searching the graph now finds instead of filters, so
+the lanes stay put while you step through matches by message, hash or author. The
+conflict resolver was rebuilt around how people actually use it: predictable pick
+order, a keyboard, one file flowing into the next, and nothing lost to a stray
+Escape. A branch tip pushes from its own menu, a file's history opens the whole
+commit, and the first community reports are fixed: Linux tokens survive a restart,
+reconnecting an account works, and the panels stop where they should when dragged.
+
+### Changed
+- **Conflict resolver, reworked around how people actually use it.** Picked lines
+  now land in the result in file order (all of A, then all of B) no matter which
+  you clicked first. A conflict's side checkbox shows a dash while only some of its
+  lines are taken, each conflict header says "resolved" or "edited by hand", and
+  unresolved blocks in the result carry a small "Conflict n · unresolved" tag so a
+  dimmed preview is never mistaken for a choice. The split between the two sides
+  and the result is draggable. The keyboard works: ↑/↓ move between conflicts, A
+  and B take a whole side for the current one, ⌘⏎ marks the file resolved, Escape
+  closes. Marking a file resolved opens the next conflicted file by itself (a file
+  switcher in the header lets you jump around), and the last one tells you how to
+  finish the merge, rebase or cherry-pick. Hovering "current" and "incoming"
+  explains which side is which, including the swapped meaning during a rebase.
+
+- **Search finds, it no longer filters.** Typing in the commit search keeps the
+  graph exactly as it is and jumps to the first match. A "n of m" control next to
+  the box steps through the matches (Enter and ↓ forward, Shift+Enter and ↑ back),
+  every match carries a thin marker on its left edge, the active one glows, and
+  Escape clears the search. Hashes, prefixes and message text all go through the
+  same search, so "Commit not found" is now simply "No matches". Clicking another
+  commit keeps the search so you can carry on stepping. The author box works the
+  same way, alone or together with the text, so the graph never collapses into a
+  flat list any more.
+- **Push from the graph.** Right-clicking the tip commit of a local branch offers
+  "Push <branch>" with the ahead count, using the branch's upstream remote. The
+  branch chip's own Push entry now goes through the same flow, so a repo-bound
+  profile is applied first, as it is from the toolbar.
+
+- **Open the whole commit from a file's history.** Each row in the file history
+  panel has an open-commit button on hover, a right-click menu, and responds to
+  double-click: the panel closes and the graph jumps to that commit with all of its
+  files in the inspector. (#9)
+
+### Fixed
+- **Linux: tokens now live in the desktop Secret Service** (GNOME Keyring, KWallet)
+  instead of the kernel keyring, which forgot them between sessions. Accounts whose
+  token is gone are flagged "Token missing from the keychain" with a Reconnect
+  button as soon as the check runs, and pull request loading says the token is
+  missing rather than claiming no account is connected. Building on Linux now needs
+  `libdbus-1-dev`. (#7)
+- "Reconnect with a new token…" on an account did nothing when the account form was
+  hidden. It now opens the form prefilled with the provider, host and username and
+  puts the cursor in the token field. (#8)
+- Closing the conflict resolver, switching files or pressing Escape with picks or
+  hand edits in progress used to drop them silently. It now asks first, and the
+  hand-written whole-file result can no longer be discarded with one stray click.
+- ⌘⏎ and ⌘Z inside the conflict resolver reached the commit box and repo undo
+  underneath it.
+- The inspector could be dragged past its minimum width until it vanished, with no way
+  to bring it back short of switching repositories. It now stops at its minimum; only
+  file history still folds it away, and it returns at the width it had.
+- Dragging the sidebar shut and then back open in the same gesture left an empty
+  column where the sidebar should be until the toggle button was pressed.
+
 ## [0.11.0] — 2026-09-07
 
 The working-copy release. Stashes become first-class: stash only the files you
@@ -1047,7 +1315,11 @@ The first release. 🏛️
 - AI assistant with pluggable providers (OpenAI, Anthropic, Gemini, Ollama,
   LM Studio): commit messages, diff/conflict explanations, PR descriptions, reviews
 
-[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/cheat2001/angkorgit/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/cheat2001/angkorgit/compare/v0.14.0...v0.15.0
+[0.14.0]: https://github.com/cheat2001/angkorgit/compare/v0.13.0...v0.14.0
+[0.13.0]: https://github.com/cheat2001/angkorgit/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/cheat2001/angkorgit/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/cheat2001/angkorgit/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/cheat2001/angkorgit/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/cheat2001/angkorgit/compare/v0.8.0...v0.9.0

@@ -9,6 +9,8 @@ import type {
   FileDiff,
   HistoryPage,
   HistoryPosition,
+  HistorySearch,
+  HistorySearchQuery,
   HistoryQuery,
   HttpRequest,
   HttpResponse,
@@ -23,6 +25,7 @@ import type {
   WorktreeAddRequest,
   WorktreeInfo,
 } from '@angkorgit/core';
+import type { FileBlame } from '@angkorgit/core';
 let demo = null as unknown as typeof import('./demo');
 
 export interface OpOutcome {
@@ -50,6 +53,22 @@ export interface HostingAccount {
   expiresAt?: string | null;
   isDefault?: boolean;
 }
+
+export interface CliToolStatus {
+  path: string;
+  aliasPath?: string;
+}
+
+export interface EditorInfo {
+  id: string;
+  label: string;
+  path: string;
+  launch: 'binary' | 'app';
+}
+
+export type CliRequest =
+  | { kind: 'open'; path: string }
+  | { kind: 'clone'; url: string; into: string; branch?: string };
 
 export type AccountCheckStatus = 'ok' | 'unauthorized' | 'unreachable' | 'unsupported' | 'no_token';
 
@@ -81,6 +100,7 @@ export async function listen(event: string, handler: (payload: unknown) => void)
 const delay = (ms = 120) => new Promise((r) => setTimeout(r, ms));
 
 const DEMO_AI_KEYS = 'angkorgit-demo-ai-keys';
+let demoCli: CliToolStatus | null = null;
 
 function demoAiKeys(): Record<string, string> {
   try {
@@ -114,12 +134,12 @@ export const ipc = {
     if (!isTauri()) return demo.demoRepo;
     return invoke('repo_init', { path });
   },
-  async cloneRepository(url: string, into: string): Promise<string> {
+  async cloneRepository(url: string, into: string, branch?: string | null): Promise<string> {
     if (!isTauri()) {
       await delay(600);
       return demo.demoRepo.path;
     }
-    return invoke('repo_clone', { url, into });
+    return invoke('repo_clone', { url, into, branch: branch ?? null });
   },
   async status(path: string): Promise<StatusSummary> {
     if (!isTauri()) return demo.demoStatus;
@@ -266,6 +286,13 @@ export const ipc = {
     if (!isTauri()) return demo.demoHistoryPosition(rev);
     return invoke('history_position', { path, rev });
   },
+  async historySearch(path: string, query: HistorySearchQuery): Promise<HistorySearch> {
+    if (!isTauri()) {
+      await delay(40);
+      return demo.demoHistorySearch(query);
+    }
+    return invoke('history_search', { path, query });
+  },
   async commitInfo(path: string, oid: string): Promise<CommitInfo> {
     if (!isTauri()) return demo.demoHistory({ skip: 0, limit: 1 }).commits[0];
     return invoke('history_commit', { path, oid });
@@ -281,6 +308,13 @@ export const ipc = {
       return demo.demoHistory({ skip: skip ?? 0, limit: limit ?? 25 });
     }
     return invoke('history_file', { path, file, limit, skip });
+  },
+  async fileBlame(path: string, file: string, rev?: string | null): Promise<FileBlame> {
+    if (!isTauri()) {
+      await delay(150);
+      return demo.demoBlame(file, rev ?? null);
+    }
+    return invoke('file_blame', { path, file, rev: rev ?? null });
   },
   async repoFiles(path: string): Promise<string[]> {
     if (!isTauri()) {
@@ -326,7 +360,7 @@ export const ipc = {
     return invoke('merge_message', { path });
   },
   async mergeCanFastForward(path: string, target: string, source: string): Promise<boolean> {
-    if (!isTauri()) return false;
+    if (!isTauri()) return demo.demoCanFastForward(target, source);
     return invoke('merge_can_ff', { path, target, source });
   },
   async rebase(path: string, upstream: string): Promise<OpOutcome> {
@@ -378,6 +412,10 @@ export const ipc = {
     if (!isTauri()) return [{ name: 'origin', url: 'git@github.com:demo/angkorgit.git' }];
     return invoke('remote_list', { path });
   },
+  async remoteAdd(path: string, name: string, url: string): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('remote_add', { path, name, url });
+  },
   async remoteEdit(path: string, name: string, newName: string, url: string): Promise<void> {
     if (!isTauri()) return;
     return invoke('remote_edit', { path, name, newName, url });
@@ -393,12 +431,12 @@ export const ipc = {
     }
     return invoke('remote_fetch', { path, remote, tags, prune });
   },
-  async pull(path: string, remote: string): Promise<OpOutcome> {
+  async pull(path: string, remote: string, mode?: 'merge' | 'rebase'): Promise<OpOutcome> {
     if (!isTauri()) {
       await delay(400);
       return { status: 'ok', message: 'Already up to date (demo)' };
     }
-    return invoke('remote_pull', { path, remote });
+    return invoke('remote_pull', { path, remote, mode: mode ?? null });
   },
   async push(
     path: string,
@@ -533,15 +571,18 @@ export const ipc = {
   },
 
   async conflicts(path: string): Promise<string[]> {
-    if (!isTauri()) return ['src/features/graph/drawGraph.ts'];
+    if (!isTauri()) return demo.demoConflicts();
     return invoke('conflict_list', { path });
   },
   async conflictRead(path: string, file: string): Promise<ConflictFile> {
-    if (!isTauri()) return { path: file, content: demo.demoConflictContent, hasMarkers: true };
+    if (!isTauri()) return { path: file, content: demo.demoConflictFile(file), hasMarkers: true };
     return invoke('conflict_read', { path, file });
   },
   async conflictResolve(path: string, file: string, content: string): Promise<void> {
-    if (!isTauri()) return;
+    if (!isTauri()) {
+      demo.resolveDemoConflict(file);
+      return;
+    }
     return invoke('conflict_resolve', { path, file, content });
   },
 
@@ -706,6 +747,45 @@ export const ipc = {
       return { status: res.status, body: await res.text() };
     }
     return invoke('http_request', { request });
+  },
+
+  async cliPendingOpen(): Promise<CliRequest | null> {
+    if (!isTauri()) return null;
+    return invoke('cli_pending_open');
+  },
+  async cliStatus(): Promise<CliToolStatus | null> {
+    if (!isTauri()) return demoCli;
+    return invoke('cli_status');
+  },
+  async cliInstall(): Promise<CliToolStatus> {
+    if (!isTauri()) {
+      demoCli = { path: '/usr/local/bin/angkorgit', aliasPath: '/usr/local/bin/akg' };
+      return demoCli;
+    }
+    return invoke('cli_install');
+  },
+  async cliUninstall(): Promise<void> {
+    if (!isTauri()) {
+      demoCli = null;
+      return;
+    }
+    return invoke('cli_uninstall');
+  },
+  async editorsDetect(): Promise<EditorInfo[]> {
+    if (!isTauri()) {
+      await delay(200);
+      return demo.demoEditors;
+    }
+    return invoke('editors_detect');
+  },
+  async editorOpen(editorId: string, target: string): Promise<EditorInfo> {
+    if (!isTauri()) {
+      await delay(120);
+      const editor = demo.demoEditors.find((e) => e.id === editorId);
+      if (!editor) throw new Error(`${editorId} is not installed`);
+      return editor;
+    }
+    return invoke('editor_open', { editorId, path: target });
   },
 };
 

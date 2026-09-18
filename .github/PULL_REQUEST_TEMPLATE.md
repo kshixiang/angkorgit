@@ -14,3 +14,4 @@
 - [ ] Mutating operations go through the undo `tracked()` wrapper where undoable
 - [ ] Colors use design tokens only (no hex in components)
 - [ ] `CLAUDE.md` updated if conventions/architecture changed
+- [ ] Commits carry no trailers from coding tools (`Co-authored-by: <tool>`, `Generated with …`)

@@ -1,9 +1,9 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { AlertTriangle, Archive, Copy, ExternalLink, FolderOpen, History, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
+import { AlertTriangle, Archive, Code, Copy, ExternalLink, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import type { FileStatus } from '@angkorgit/core';
-import { aiCapabilities, buildStagedReviewSignature, filterFiles, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
+import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@angkorgit/core';
 import {
   Badge,
   Button,
@@ -30,13 +30,14 @@ import { AiResultDialog } from '@/features/ai/AiResultDialog';
 import { useAiWork } from '@/features/ai/workStore';
 import { useSettings } from '@/features/settings/store';
 import { ensureRepoProfile } from '@/features/settings/profiles';
+import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { useUndo } from '@/features/history/undoStore';
 import { abortMergeFlow } from '@/features/repository/merge';
 import { useCommitDraft } from './draftStore';
 import { confirmDialog } from '@/components/confirm';
 import { FileFilterInput } from '@/components/FileFilterInput';
 import { FileTree, treeIndent as sharedTreeIndent, FileTreeFoldButton, INITIAL_FOLD, nextFold, type FileTreeFold, type FileTreeFoldState } from '@/components/FileTree';
-import { basename, dirname } from '@/shared/utils';
+import { basename, dirname, isMac } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
 
 function statusBadge(kind: string | null) {
@@ -206,6 +207,9 @@ export function WorkingCopyPanel() {
   const selectFile = useUi((s) => s.selectFile);
   const openCenterDiff = useUi((s) => s.openCenterDiff);
   const openEditor = useUi((s) => s.openEditor);
+  const editorId = useSettings((s) => s.editorId);
+  const { editors } = useEditors();
+  const editor = preferredEditor(editors, editorId);
   const openConflict = useUi((s) => s.openConflict);
   const fileTree = useUi((s) => s.fileTree);
   const t = useUiText();
@@ -776,7 +780,8 @@ export function WorkingCopyPanel() {
       index < 0 ? (direction === 1 ? 0 : visibleOrder.length - 1) : index + direction;
     const next = visibleOrder[nextIndex];
     if (!next) return;
-    selectFile({ path: next.file.path, staged: next.staged });
+    setMulti(null);
+    showDiff(next.file, next.staged);
     requestAnimationFrame(() => {
       listScrollRef.current
         ?.querySelector('[data-selected-file-row]')
@@ -1130,8 +1135,19 @@ export function WorkingCopyPanel() {
             <DropdownMenuItem onClick={() => openEditor(fileMenu.file.path)}>
               <Pencil /> Edit file
             </DropdownMenuItem>
+            {editor && (
+              <DropdownMenuItem onClick={() => void openInEditor(editor.id, `${path}/${fileMenu.file.path}`)}>
+                <Code /> Open in {editor.label}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => useUi.getState().openFileHistory(fileMenu.file.path)}>
               <History /> File history
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!hasCommittedHistory(fileMenu.file)}
+              onClick={() => useUi.getState().openBlame(fileMenu.file.path)}
+            >
+              <UserRoundSearch /> {hasCommittedHistory(fileMenu.file) ? 'Blame' : 'Blame (no commits yet)'}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -1157,7 +1173,7 @@ export function WorkingCopyPanel() {
                   )
               }
             >
-              <FolderOpen /> Show in Finder
+              <FolderOpen /> {isMac ? 'Show in Finder' : 'Show in file manager'}
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
@@ -1166,6 +1182,14 @@ export function WorkingCopyPanel() {
               }}
             >
               <Copy /> Copy path
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                void navigator.clipboard.writeText(`${path}/${fileMenu.file.path}`);
+                toast.success('Absolute path copied');
+              }}
+            >
+              <Copy /> Copy absolute path
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

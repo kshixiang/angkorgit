@@ -6,8 +6,8 @@
 - Rust stable via [rustup](https://rustup.rs)
 - Tauri v2 system dependencies — see the [official list](https://v2.tauri.app/start/prerequisites/):
   - **macOS**: Xcode command line tools
-  - **Linux**: `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev`
-  - **Windows**: WebView2 (preinstalled on Win 11), MSVC build tools
+  - **Linux**: `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libdbus-1-dev`
+  - **Windows**: WebView2 (preinstalled on Win 11), MSVC build tools, and Perl on `PATH` (e.g. [Strawberry Perl](https://strawberryperl.com/)) — libssh2 is built against the vendored OpenSSL on Windows, whose build script needs it
 
 ## Everyday commands
 

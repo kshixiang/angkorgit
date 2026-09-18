@@ -8,11 +8,9 @@ import { useUi } from '@/features/ui/store';
 
 export function WipRow({
   gutterWidth,
-  flat,
   showRefs = true,
 }: {
   gutterWidth: number;
-  flat?: boolean;
   showRefs?: boolean;
 }) {
   const status = useRepo((s) => s.status);
@@ -49,18 +47,16 @@ export function WipRow({
       }}
       className={cn(
         'sticky top-0 z-10 flex h-9 cursor-pointer select-none items-center gap-2 border-b border-dashed border-primary/40 pr-4 text-sm',
-        showRefs || flat ? 'pl-1' : 'pl-4',
+        showRefs ? 'pl-1' : 'pl-4',
         'bg-surface/95 backdrop-blur-sm transition-colors hover:bg-primary/10',
         selectedOid === null && 'bg-primary/10',
       )}
     >
-      {!flat && showRefs && <span className="h-full shrink-0" style={{ width: REF_COL_WIDTH }} />}
+      {showRefs && <span className="h-full shrink-0" style={{ width: REF_COL_WIDTH }} />}
       <svg width={gutterWidth} height={36} className="shrink-0" style={{ marginRight: GUTTER_GAP }} aria-hidden>
-        {!flat && (
-          <line x1={laneX(0)} y1={18} x2={laneX(0)} y2={36} stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="3 3" />
-        )}
+        <line x1={laneX(0)} y1={18} x2={laneX(0)} y2={36} stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="3 3" />
         <circle
-          cx={flat ? gutterWidth / 2 : laneX(0)}
+          cx={laneX(0)}
           cy={18}
           r={4.5}
           fill="hsl(var(--surface))"

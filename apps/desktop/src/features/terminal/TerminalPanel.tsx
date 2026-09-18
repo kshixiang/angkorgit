@@ -1,6 +1,14 @@
-import { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
-import { Button, Hint } from '@angkorgit/design-system';
+import { useEffect, useRef, useState } from 'react';
+import { ClipboardPaste, Copy, Eraser, TextSelect, X } from 'lucide-react';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Hint,
+} from '@angkorgit/design-system';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
@@ -90,6 +98,30 @@ export function TerminalPanel() {
   const theme = useSettings((s) => s.theme);
   const accent = useSettings((s) => s.accent);
   const hostRef = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; hasSelection: boolean } | null>(null);
+
+  const current = () => (repoPath ? sessions.get(repoPath) : undefined);
+  const copySelection = () => {
+    const text = current()?.terminal.getSelection() ?? '';
+    if (text) void navigator.clipboard.writeText(text);
+  };
+  const paste = async () => {
+    const session = current();
+    if (!session) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) session.terminal.paste(text);
+    } finally {
+      session.terminal.focus();
+    }
+  };
+  const selectAll = () => current()?.terminal.selectAll();
+  const clear = () => {
+    const session = current();
+    if (!session) return;
+    session.terminal.clear();
+    session.terminal.focus();
+  };
 
   useEffect(() => {
     const next = terminalThemeFromTokens();
@@ -142,7 +174,36 @@ export function TerminalPanel() {
           </Button>
         </Hint>
       </div>
-      <div ref={hostRef} className="terminal-host min-h-0 flex-1" />
+      <div
+        ref={hostRef}
+        className="terminal-host min-h-0 flex-1"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY, hasSelection: current()?.terminal.hasSelection() ?? false });
+        }}
+      />
+      {menu && (
+        <DropdownMenu open onOpenChange={(o) => !o && setMenu(null)}>
+          <DropdownMenuTrigger asChild>
+            <span style={{ position: 'fixed', left: menu.x, top: menu.y }} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="bottom" onCloseAutoFocus={(e) => e.preventDefault()}>
+            <DropdownMenuItem disabled={!menu.hasSelection} onSelect={copySelection}>
+              <Copy /> Copy
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => void paste()}>
+              <ClipboardPaste /> Paste
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={selectAll}>
+              <TextSelect /> Select all
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={clear}>
+              <Eraser /> Clear terminal
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

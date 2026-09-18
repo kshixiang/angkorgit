@@ -52,10 +52,15 @@ pub async fn state_cleanup(path: String) -> AppResult<()> {
 }
 
 #[tauri::command]
-pub async fn repo_clone(app: AppHandle, url: String, into: String) -> AppResult<String> {
+pub async fn repo_clone(
+    app: AppHandle,
+    url: String,
+    into: String,
+    branch: Option<String>,
+) -> AppResult<String> {
     let emitter = app.clone();
     let root = blocking(move || {
-        remote::clone(&url, &into, move |pct| {
+        remote::clone(&url, &into, branch.as_deref(), move |pct| {
             let _ = emitter.emit("clone-progress", pct);
         })
     })
@@ -350,6 +355,11 @@ pub async fn history_list(path: String, query: HistoryQuery) -> AppResult<Histor
 }
 
 #[tauri::command]
+pub async fn history_search(path: String, query: HistorySearchQuery) -> AppResult<HistorySearch> {
+    blocking(move || history::search(&path, query)).await
+}
+
+#[tauri::command]
 pub async fn history_commit(path: String, oid: String) -> AppResult<CommitInfo> {
     blocking(move || history::single(&path, &oid)).await
 }
@@ -474,6 +484,11 @@ pub async fn remote_list(path: String) -> AppResult<Vec<RemoteInfo>> {
 }
 
 #[tauri::command]
+pub async fn remote_add(path: String, name: String, url: String) -> AppResult<()> {
+    blocking(move || remote::add(&path, &name, &url)).await
+}
+
+#[tauri::command]
 pub async fn remote_edit(
     path: String,
     name: String,
@@ -499,8 +514,12 @@ pub async fn remote_fetch(
 }
 
 #[tauri::command]
-pub async fn remote_pull(path: String, remote: String) -> AppResult<OpOutcome> {
-    blocking(move || remote::pull(&path, &remote)).await
+pub async fn remote_pull(
+    path: String,
+    remote: String,
+    mode: Option<String>,
+) -> AppResult<OpOutcome> {
+    blocking(move || remote::pull(&path, &remote, mode.as_deref())).await
 }
 
 #[tauri::command]
@@ -879,4 +898,43 @@ pub async fn ai_cli_run(
     request: crate::ai_cli::CliRunRequest,
 ) -> AppResult<crate::ai_cli::CliRunResult> {
     blocking(move || crate::ai_cli::run(request)).await
+}
+
+#[tauri::command]
+pub fn cli_pending_open() -> Option<crate::cli::CliRequest> {
+    crate::cli::take_pending()
+}
+
+#[tauri::command]
+pub fn cli_status() -> Option<crate::cli::CliToolStatus> {
+    crate::cli::status()
+}
+
+#[tauri::command]
+pub fn cli_install() -> AppResult<crate::cli::CliToolStatus> {
+    crate::cli::install()
+}
+
+#[tauri::command]
+pub fn cli_uninstall() -> AppResult<()> {
+    crate::cli::uninstall()
+}
+
+#[tauri::command]
+pub async fn editors_detect() -> AppResult<Vec<crate::editors::EditorInfo>> {
+    blocking(|| Ok(crate::editors::detect())).await
+}
+
+#[tauri::command]
+pub async fn editor_open(editorId: String, path: String) -> AppResult<crate::editors::EditorInfo> {
+    blocking(move || crate::editors::open(&editorId, &path)).await
+}
+
+#[tauri::command]
+pub async fn file_blame(
+    path: String,
+    file: String,
+    rev: Option<String>,
+) -> AppResult<crate::core::blame::FileBlame> {
+    blocking(move || crate::core::blame::blame_file(&path, &file, rev.as_deref())).await
 }

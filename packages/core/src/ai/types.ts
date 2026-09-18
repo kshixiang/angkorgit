@@ -70,6 +70,8 @@ export interface CliRunResult {
 
 export type CliRunner = (request: CliRunRequest) => Promise<CliRunResult>;
 
+export type AiConnectionStatus = 'untested' | 'stale' | 'ok' | 'fail';
+
 export interface AiConfig {
   provider: AiProviderKind;
   apiKey: string;

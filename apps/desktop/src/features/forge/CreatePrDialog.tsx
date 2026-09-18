@@ -26,7 +26,7 @@ import {
   Spinner,
   Textarea,
 } from '@angkorgit/design-system';
-import { aiCapabilities, forgeNoun, type ForgeUser } from '@angkorgit/core';
+import { aiCapabilities, defaultForgeTarget, forgeNoun, forgeTargets, sameForgeRepo, type ForgeUser } from '@angkorgit/core';
 import { ipc, openExternal } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
@@ -50,6 +50,7 @@ const dialogMetaCache = new Map<string, DialogMeta>();
 export function CreatePrDialog() {
   const repo = useRepo((s) => s.repo);
   const branches = useRepo((s) => s.branches);
+  const remotes = useRepo((s) => s.remotes);
   const dialog = useUi((s) => s.dialog);
   const closeDialog = useUi((s) => s.closeDialog);
   const remote = useForge((s) => s.remote);
@@ -69,18 +70,24 @@ export function CreatePrDialog() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [targetName, setTargetName] = useState<string | null>(null);
   const aiRun = useRef(0);
   const baseTouched = useRef(false);
 
   const path = repo?.path ?? '';
   const source = repo?.headBranch ?? '';
+  const sourceName = remoteName ?? 'origin';
+  const targets = useMemo(() => (remote ? forgeTargets(remotes, remote) : []), [remotes, remote]);
+  const activeTargetName = targetName ?? (remote ? defaultForgeTarget(targets, sourceName) : sourceName);
+  const targetRemote = targets.find((t) => t.name === activeTargetName)?.remote ?? remote;
+  const crossRepo = !!remote && !!targetRemote && !sameForgeRepo(remote, targetRemote);
   const provider = useMemo(
-    () => (remote && path ? forgeProviderFor(path, remote) : null),
-    [remote, path],
+    () => (targetRemote && path ? forgeProviderFor(path, targetRemote) : null),
+    [targetRemote, path],
   );
   const noun = forgeNoun(provider?.kind);
 
-  const remotePrefix = `${remoteName ?? 'origin'}/`;
+  const remotePrefix = `${activeTargetName}/`;
   const baseOptions = useMemo(() => {
     const names = branches
       .filter((b) => b.isRemote && b.name.startsWith(remotePrefix))
@@ -102,11 +109,17 @@ export function CreatePrDialog() {
     setSubmitting(false);
     setGenerating(false);
     aiRun.current += 1;
+    setTargetName(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     baseTouched.current = false;
     setBase('');
     setReviewers([]);
 
-    const key = remote ? `${path}|${remote.webUrl}` : '';
+    const key = targetRemote ? `${path}|${targetRemote.webUrl}` : '';
     const cached = key ? dialogMetaCache.get(key) : undefined;
     setDefaultBranchName(cached?.defaultBranch ?? null);
     setCandidates(cached?.users ?? []);
@@ -157,7 +170,7 @@ export function CreatePrDialog() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, targetRemote?.webUrl]);
 
   useEffect(() => {
     if (!open || baseTouched.current || baseOptions.length === 0) return;
@@ -236,6 +249,7 @@ export function CreatePrDialog() {
         targetBranch: base,
         draft,
         reviewerIds: reviewers,
+        ...(crossRepo && remote ? { sourceRepo: { owner: remote.owner, repo: remote.repo } } : {}),
       });
       closeDialog();
       toast.success(`${provider.label} ${noun} #${pr.number} created`, {
@@ -259,10 +273,38 @@ export function CreatePrDialog() {
             Create {noun}
           </DialogTitle>
           <DialogDescription>
-            Opens a {noun} on {provider.label} for the current branch.
+            {crossRepo && remote && targetRemote
+              ? `Opens a ${noun} from ${remote.owner}/${remote.repo} into ${targetRemote.owner}/${targetRemote.repo} on ${provider.label}.`
+              : `Opens a ${noun} on ${provider.label} for the current branch.`}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
+          {targets.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="w-28 shrink-0 text-xs text-muted">Into repository</span>
+              <Select
+                value={activeTargetName}
+                onValueChange={(value) => {
+                  setTargetName(value);
+                  baseTouched.current = false;
+                }}
+              >
+                <SelectTrigger className="h-8 flex-1" aria-label="Target repository">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {targets.map((t) => (
+                    <SelectItem key={t.name} value={t.name}>
+                      <span className="font-mono">{t.name}</span>
+                      <span className="ml-2 text-faint">
+                        {t.remote.owner}/{t.remote.repo}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <Badge tone="info" className="min-w-0 max-w-56">
               <span className="truncate">{source}</span>
@@ -390,7 +432,7 @@ export function CreatePrDialog() {
           </label>
           {baseOptions.length === 0 && (
             <p className="text-xs text-info">
-              No remote branches found — fetch first so the target branch list can fill in.
+              No branches found on {activeTargetName} — fetch it first so the target branch list can fill in.
             </p>
           )}
           {notPushed && (

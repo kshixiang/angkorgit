@@ -14,8 +14,9 @@ deliberately minimal: *"if GitKraken has 100 features, ship the best 25 executed
 exceptionally well."* The name honors **Angkor Wat** — strength, simplicity, and
 craftsmanship from Cambodia 🇰🇭.
 
-- **Bundle size: 12 MB universal .dmg / 25 MB installed** — measured, not estimated; a
-  single-arch build is 6.5 MB / 12 MB. (vs ~1 GB for Electron-based clients.) Re-measure
+- **Bundle size: 14 MB universal .dmg / 28 MB installed** (0.13.0, measured from the
+  release artifacts; 0.12.0 was 12 / 25 before the single-instance plugin and blame) — a
+  single-arch build is 13 MB installed. (vs ~1 GB for Electron-based clients.) Re-measure
   before quoting it: `du -sh target/universal-apple-darwin/release/bundle/macos/AngKorGit.app`
 - Angkor Dusk theme by default for new installs (16 themes total, dark + light), Temple Gold `#D97706` brand accent
 - Keyboard-first (⌘K palette), beginner-friendly (visual conflict resolver, confirm
@@ -113,7 +114,16 @@ angkorgit/
 │       │                        NO auth headers here — the Rust forge_request command
 │       │                        injects the account token), and pullRequestUrl.ts
 │       │                        (remote URL → pre-filled create-PR browser page,
-│       │                        unknown forge → null — the no-account fallback)
+│       │                        unknown forge → null — the no-account fallback), and
+│       │                        webUrl.ts (remoteWebUrl: remote URL → the repository's
+│       │                        web page for ANY parseable remote — ssh → https, .git
+│       │                        dropped, Bitbucket Server /scm/P/r → /projects/P/repos/
+│       │                        r/browse; local paths → null. Issue #24: the sidebar
+│       │                        remote menu's "Open in browser" (disabled on null,
+│       │                        never hidden) and the palette's "Open repository in
+│       │                        browser" / "Open <remote> in browser" (picked remote
+│       │                        via pickForgeRemote, shown only when a URL exists) both
+│       │                        go through it — no account, no API call)
 │       └── ai/                ← provider-agnostic AI (types, providers, capabilities, models
 │                                (listAiModels: per-provider model listing for the settings picker),
                                 cliAgents: local AI-CLI adapters — Claude Code/Codex/Gemini/OpenCode/Antigravity(agy),
@@ -130,8 +140,8 @@ angkorgit/
 │       ├── tailwind-preset.ts ← maps tokens → Tailwind utilities; keyframes
 │       ├── lib/cn.ts          ← clsx + tailwind-merge
 │       └── components/        ← Button, Input, Dialog, DropdownMenu(+Sub), Tooltip/Hint,
-│                                Tabs, Select, Switch, Checkbox, Badge, Kbd, Spinner,
-│                                Separator, Logo (Angkor-towers SVG mark)
+│                                HoverCard, Tabs, Select, Switch, Checkbox, Badge (forwardRef,
+│                                see G39), Kbd, Spinner, Separator, Logo (Angkor-towers SVG mark)
 ├── docs/                      ← Architecture, UI-Guidelines, Development, Contributing,
 │                                Roadmap, Coding-Standards
 ├── tests/
@@ -177,8 +187,9 @@ no build step for packages).
 
 ```
 main.rs / lib.rs      ← builder: plugins(dialog, opener), setup sets accounts::CONFIG_DIR,
-                        manage(TerminalState, WatcherState), ~65 command registrations,
-                        pub mod test_api (flat re-exports for integration tests)
+                        manage(TerminalState, WatcherState), ~69 command registrations,
+                        pub mod test_api (flat re-exports for integration tests);
+                        compact_wayland_titlebar (Linux only, best-effort, see G48)
 commands.rs           ← THIN Tauri command layer; every git op via blocking() → spawn_blocking
                         (incl. paths_exist(paths) → Vec<bool> is_dir, used by the welcome page
                         to flag recents whose folder is gone)
@@ -190,7 +201,10 @@ watcher.rs            ← notify-debouncer-mini (400ms) → "repo-changed" event
 http.rs               ← AI/HTTP proxy (reqwest, rustls) — keeps CORS + keys out of webview
 forge.rs              ← forge API proxy: forge_request(repoPath, host, request) looks up the
                         connected account for the remote host (repo-bound account first via
-                        angkorgit.accounts, then host default), injects the auth header per
+                        angkorgit.accounts, then host default; missing_account_message tells
+                        "token missing from the system keychain — reconnect" (metadata
+                        exists, accounts::has_account) apart from "no connected account",
+                        issue #7), injects the auth header per
                         provider (github Bearer + api-version, gitlab PRIVATE-TOKEN,
                         bitbucket Basic email:token) and forwards via http.rs; the URL host
                         must equal the remote host or its api. subdomain (dot-anchored, so
@@ -203,16 +217,72 @@ account_check.rs      ← re-verifies a stored account token against its provide
                         + expiry header, GitLab personal_access_tokens/self w/ /user fallback,
                         Bitbucket 2.0/user via stored email); only 401 flips verified=false,
                         network errors never do; writes verifiedAt/expiresAt via update_check
+cli.rs                ← `angkorgit` CLI (GitHub Desktop-shaped): bare / `open [path]`
+                        opens a folder; `clone [-b branch] <url|owner/repo>` opens the
+                        in-app clone dialog prefilled (url, cwd, branch) so progress and
+                        cancel stay in the UI — IN PLACE when a repo tab is open, on the
+                        welcome page otherwise (App.tsx openClone); RepositoryPage's
+                        CloneDialog onCloned OPENS the clone (it used to only refreshAll,
+                        so a toolbar clone never opened the new repo — fixed with the CLI
+                        follow-up 2026-09-12); `--help` lists commands. Shim in
+                        cli/angkorgit.sh (.cmd on Windows) plus an `akg` ALIAS (owner
+                        2026-09-12: the full name is long to type): a relative symlink
+                        akg → angkorgit next to the shim on unix, a second akg.cmd on
+                        Windows; status reports aliasPath when the alias reads as our
+                        shim, uninstall removes the alias BEFORE the shim (a dangling
+                        symlink no longer reads as ours); the full name stays the
+                        documented one, help ends with "akg is a short alias"; missing path exits 1 (capture
+                        resolve before launch); install dest is /usr/local/bin then
+                        ~/.local/bin (never Homebrew's prefix — when that fallback is
+                        used the Settings card shows the `export PATH` line, a static
+                        hint, NOT a detected claim, see review of #12); on WINDOWS
+                        install/uninstall add/remove %LOCALAPPDATA%\angkorgit\bin from
+                        the USER Path through a hidden PowerShell
+                        [Environment]::SetEnvironmentVariable call (cli::user_path,
+                        untested on a real Windows machine as of 2026-09-12 — CI only
+                        compiles it); app takes `--open` /
+                        `--clone` / RunEvent::Opened + single-instance forward; 7 module tests
+editors.rs            ← OPEN IN EXTERNAL EDITOR (issue #18, 2026-09-12): a static
+                        EDITORS spec list (id/label/bin/mac app — VS Code, Insiders,
+                        Cursor, Windsurf, Zed, Sublime, IntelliJ, WebStorm, PyCharm,
+                        Rider, Fleet, Nova, Xcode via `xed`, GNOME Builder, Kate);
+                        detect() = which_in over ai_cli::search_path (same augmented
+                        PATH as the AI CLIs, G16) for EVERY name in spec.bins (Zed ships
+                        as `zeditor` on Arch/Fedora, issue #18 follow-up), a macOS
+                        fallback to /Applications + ~/Applications bundles (launch
+                        "app" → `open -a`) and a LINUX fallback to the Flatpak export
+                        wrappers /var/lib/flatpak/exports/bin/<app id> and
+                        ~/.local/share/flatpak/exports/bin/<app id> (spec.flatpak);
+                        editor_dirs() appends per-OS default install folders to the
+                        search PATH (Windows: %LOCALAPPDATA%\Programs\<editor>\bin,
+                        JetBrains Toolbox scripts, %ProgramFiles%; macOS/Linux: the
+                        Toolbox scripts dir, /opt/sublime_text, /snap/bin) because a
+                        Windows editor installed without its launcher was invisible; open(editorId, target) RE-DETECTS and refuses an id that
+                        is not installed — the frontend never hands the engine a
+                        program path, same allowlist principle as ai_cli (a custom
+                        command was deliberately NOT built); spawns through
+                        proc::hidden with stdio null + augmented PATH; 4 module tests
 ai_cli.rs             ← installed AI-CLI transport: detect (which_in over augmented PATH +
                         login-shell fallback, per-agent --version) and run (allowlisted
                         binaries only, stdin prompt, {OUTPUT_FILE} placeholder → temp file,
                         neutral cwd, NO_COLOR/TERM=dumb env, kill-on-timeout); 6 module tests
 core/
 ├── types.rs          ← serde structs mirroring @angkorgit/core (camelCase rename_all)
-├── repo.rs           ← open/discover/init/info/status, upstream divergence, get/set config,
+├── repo.rs           ← open/discover/init/info/status (discover refuses a path that does not
+│                       exist — libgit2 would otherwise walk up and open the parent repo),
+│                       upstream divergence, get/set config,
 │                       ref_fingerprint (state + HEAD + every ref name:target, sorted — the
 │                       watcher's cheap did-refs-change probe; no peeling, no ahead/behind)
-├── history.rs        ← revwalk pagination + search/author/branch filters, ref decorations;
+├── history.rs        ← revwalk pagination + search/author/branch filters (list still
+│                       supports them for the engine tests; the UI no longer filters by
+│                       text or author), ref decorations; open_walk(repo, branch) builds
+│                       the ONE walk list/position/search share;
+│                       search(HistorySearchQuery{search, author?, branch?}) →
+│                       HistorySearch{matches: [{index, oid}], truncated} = positions in
+│                       the displayed walk of commits matching the text (summary+body+oid)
+│                       AND the author (name+email) when given — either alone works, both
+│                       blank → no matches —, cap SEARCH_MATCH_CAP 1000; the frontend's
+│                       find-in-graph (2026-09-10) is built on it;
 │                       STASHES ON THE GRAPH (owner request 2026-09-07): the unfiltered
 │                       walk and `position` push every refs/stash reflog entry
 │                       (push_stashes) and SKIP its helper parents — the "index on …" ^2
@@ -225,7 +295,9 @@ core/
 │                       a branch-filtered walk carries no stashes
 ├── stage.rs          ← stage/unstage file+all, HUNK ops (patch-text split + apply), LINE ops
 │                       (single_line_patch fwd/reverse; discard is PAIR-aware — reverting a
-│                       modified line restores the original), discard_file/all → report leftovers
+│                       modified line restores the original); stage_hunk/unstage_hunk go
+│                       through isolated_hunk_patch, which REWRITES the @@ header so the
+│                       new-file start equals the old-file start (see G45), discard_file/all → report leftovers
 │                       (UNSTAGED side: checkout_index, index untouched);
 │                       discard_staged_file/all (owner request 2026-09-07: discard must not
 │                       be an unstaged-only affordance) → discard_to_head: checkout_tree of
@@ -270,7 +342,27 @@ core/
 │                       cherry_pick_many applies oids in the given order (UI passes
 │                       oldest-first), stops at the first conflict leaving it as a normal
 │                       paused cherry-pick and reports applied/remaining counts
-├── remote.rs         ← credential chain (see below), fetch/pull/push(+branch param)/clone,
+├── remote.rs         ← credential chain (see below), add/edit/remove/list remotes (add refuses a
+│                       duplicate name; the sidebar fetches the new remote in the same action, issue #26),
+│                       fetch/pull/push(+branch param)/clone,
+│                       PULL MODE (issue #18): pull(path, remote, mode) — Some("rebase")
+│                       rebases the local commits onto the upstream, Some("merge") merges,
+│                       None follows the repo's effective `pull.rebase` (git semantics:
+│                       anything but false/no/off/0/empty means rebase); the rebase only
+│                       runs when the branch is BOTH ahead and behind — otherwise the
+│                       ff-merge path handles up-to-date and fast-forward exactly like
+│                       git pull --rebase would; toolbar Pull is a split button (main =
+│                       follow config, menu = Pull with merge / Pull with rebase),
+│                       PUSH IS A NO-OP WHEN THE TIP MATCHES THE TRACKING REF (issue #17):
+│                       tracking_ref_matches compares refs/heads/<b> with
+│                       refs/remotes/<remote>/<b> BEFORE connecting and returns
+│                       up_to_date without touching the network — libgit2 sends the
+│                       ref command even when old == new (gen_pktline has no skip;
+│                       only the packfile is trimmed), so servers saw a push and fired
+│                       CI where `git push` prints "Everything up-to-date"; the
+│                       tracking-ref rule is what GitHub Desktop does too, a stale
+│                       tracking ref only delays the real push until the next fetch;
+│                       with_tags always pushes, set_upstream still applies (see G40),
 │                       pull_branch (ff-without-checkout for non-HEAD), push_tag,
 │                       credential_approve (git credential approve → OS keychain),
 │                       checkout_remote_ref (PR checkout; BOTH paths go through
@@ -283,7 +375,13 @@ core/
 │                       track=false stages through refs/angkorgit/pr-head),
 │                       read_account_bindings (shared with forge.rs)
 ├── accounts.rs       ← app-managed hosting accounts, MULTIPLE per host keyed by
-│                       (host, username): tokens in OS keyring (service "AngKorGit",
+│                       (host, username): tokens in OS keyring (service "AngKorGit";
+│                       LINUX uses keyring's `sync-secret-service` + `crypto-rust`
+│                       — Freedesktop Secret Service via libdbus, so GNOME Keyring /
+│                       KWallet — NOT `linux-native`: that is the kernel keyutils
+│                       keyring, which is per-session and lost tokens while
+│                       accounts.json still said verified (issue #7); Linux builds
+│                       and CI apt lists therefore need libdbus-1-dev),
 │                       entry "acct:<host>:<username>"; legacy bare-host entries
 │                       migrate on first read, only when the owner is unambiguous),
 │                       metadata accounts.json (host/username/provider/verified +
@@ -340,6 +438,25 @@ core/
 │                       refuses), fingerprint_parts (worktree name/path/HEAD folded into
 │                       repo::ref_fingerprint so add/remove/checkout in a sibling
 │                       worktree trigger a full refresh; see G34)
+├── blame.rs          ← BLAME (2026-09-12, backlog item 4 shipped): blame_file(path, file,
+│                       rev) → FileBlame {path, rev (resolved oid or None), lines, hunks
+│                       [{oid, short_oid, summary, author_name/email, time, start_line,
+│                       line_count, committed}]}; rev None blames the WORKING COPY:
+│                       git2 blame_file for the committed part then blame_buffer over
+│                       the workdir bytes so uncommitted lines come back with a zero
+│                       oid (committed=false, author "Not committed yet", summary
+│                       "Uncommitted changes"); rev Some accepts any revspec ("<oid>^"
+│                       is how the UI walks back) and reads the blob from that tree;
+│                       refuses binaries (NUL byte) and files over 5 MB; author +
+│                       summary come from repo.find_commit(oid) ONCE per oid
+│                       (CommitAuthor) — NEVER hunk.final_signature(), see G44;
+│                       hunks sorted by start line; a working-copy blame of a path
+│                       HEAD does not have errors "has no committed history yet"
+│                       and a path missing from the requested commit names that
+│                       commit (issue #21 follow-up; the UI disables Blame for
+│                       such files via core hasCommittedHistory — WorkingCopyPanel
+│                       menu label "Blame (no commits yet)", DiffPanel button
+│                       disabled with a Hint)
 ├── diff.rs           ← FileDiff w/ hunks+lines, contextLines param (huge = whole-file view),
 │                       commit_diff (first-parent, rename detection), commit_files (metadata
 │                       only: per-file status + line counts via Patch::line_stats, NO hunk
@@ -364,13 +481,14 @@ core/
 - Operations that can pause on conflicts return `OpOutcome { status: "ok"|"conflicts"|"up_to_date"|"fast_forward", message }` — never an error for conflicts.
 - Command args are **camelCase** matching the TS payloads (`#![allow(non_snake_case)]`).
 - Every new engine function gets an integration test in `tests/git_engine.rs`
-  (69 tests; TempRepo fixture creates real repos in temp dirs; uses `angkorgit_lib::test_api`).
+  (70 tests; TempRepo fixture creates real repos in temp dirs; uses `angkorgit_lib::test_api`).
 - Destructive ops verify outcomes (e.g. discard returns leftover paths → UI explains submodules).
 
 ## 6. Frontend — `apps/desktop/src/`
 
 ```
-main.tsx · app/App.tsx        ← providers, MemoryRouter, splash→welcome, ConfirmHost,
+main.tsx · app/App.tsx        ← providers, MemoryRouter, splash→welcome (or /repo when
+                                launched via `angkorgit open|clone`), ConfirmHost,
                                 Toaster (bottom-left, per-type accents), zoom shortcuts
 app/SplashScreen.tsx          ← animated logo draw, dismissed when recents load (600ms floor,
                                 1.6s fallback, reduce-motion skips both floor and fade); the
@@ -386,6 +504,12 @@ components/                   ← RepoTabs (tab strip is overflow-x-auto with th
                                 wheel deltaY scrolls horizontally, active tab
                                 scrollIntoView on switch),
                                 Toolbar (fetch/pull/push split-button, undo/redo,
+                                OPEN IN EDITOR split-button after the stash pair — main
+                                button opens the repo in preferredEditor, the chevron
+                                lists every detected editor, disabled with a hint when
+                                none is found (never hidden); the palette mirrors it as
+                                "Open repository in <editor>" and both file menus add
+                                "Open in <editor>" under Edit file —,
                                 stash + POP buttons — Archive opens the dialog,
                                 ArchiveRestore pops stash index 0 in one click, its
                                 Hint names the latest stash, disabled when none; a
@@ -400,14 +524,52 @@ components/                   ← RepoTabs (tab strip is overflow-x-auto with th
                                 name shows the assignment; push goes through runPush →
                                 ensureRepoProfile, sidebar toggle), CommandPalette (cmdk),
                                 Avatar (Gravatar SHA-256 + initials fallback + failure
-                                cache; a layout effect checks img.complete because a
+                                cache; FORGE FALLBACK (backlog item 2 shipped 2026-09-12,
+                                local only until the next release): an optional `oid` prop
+                                — GraphRow, CommitDetails, FileHistoryPanel and BlameView
+                                pass the commit oid — lets a Gravatar 404 fall through to
+                                features/forge/avatars.ts forgeAvatarFor(email, sha), which
+                                asks the picked remote's ForgeProvider.authorAvatar (github:
+                                /repos/{o}/{r}/commits/{sha} author.avatar_url, bitbucket:
+                                /repositories/{o}/{r}/commit/{sha} author.user avatar,
+                                gitlab: /api/v4/avatar?email= — GitLab is the only forge
+                                with an email lookup) ONLY when the forge store has an
+                                account and settings.showPullRequests is on; one in-flight
+                                promise per remote+email (module Map), resolved URLs kept in
+                                Avatar's forgeUrls map so remounts skip Gravatar entirely;
+                                a forge image that fails clears its entry and shows initials; a layout effect checks img.complete because a
                                 cache-restored image can finish before onLoad attaches —
                                 remounted graph rows after a diff round-trip stayed
                                 transparent without it), confirm.tsx (promise-based confirmDialog +
                                 ConfirmHost — ConfirmOptions.path renders the file path in a
                                 monospace panel breaking at `/` via <wbr>, dirs dimmed, NOT inside
                                 the title or the prose), profilePrompt.tsx (promise-based
-                                pickProfile + ProfilePromptHost — same pattern)
+                                pickProfile + ProfilePromptHost — same pattern),
+                                StatusBar ("Fetched 2m ago" hint, issue #18: users could
+                                not tell that switching tabs already fetches — useRepo
+                                .lastFetchAt is set by markFetched() from the auto-fetch
+                                tick (RepositoryPage), toolbar and palette Fetch/Pull,
+                                reset to null on open/close so a tab switch shows the
+                                fresh fetch; a 30s interval re-renders timeAgo; the Hint
+                                names the exact time and the auto-fetch cadence, or says
+                                auto fetch is off; AI CHIP (issue #23, trimmed from the
+                                proposal: no last-used time): ALWAYS visible (owner
+                                2026-09-13, after a hide-until-tested version: "keep display
+                                there, when not configured clicking opens the config"),
+                                a Sparkles icon TINTED by state (success/danger/faint — no
+                                separate dot: the owner found icon + dot "off" next to the
+                                bar's other icon + text items) + the PROVIDER NAME as the
+                                label (AI_PROVIDER_PRESETS label, or the CLI_AGENTS label for
+                                the cli provider) — the owner rejected judgement labels ("AI
+                                not tested" read as unprofessional): the bar's other items
+                                name facts, so the chip names the provider and the icon tint
+                                plus the Hint carry ok/fail/untested/stale; "Set up AI" when
+                                not configured (same rule as ai/client aiConfigured, computed
+                                reactively from settings.ai; data-ai-status="unconfigured");
+                                data-ai-status carries the PERSISTED settings.aiStatus for the
+                                e2e, click →
+                                openDialog('settings', { section: 'ai' }) — the SettingsPreset
+                                dialog context the SettingsDialog consumes on open)
 shared/                       ← useShortcuts (mod-combos, skipInInput; an Escape whose
                                 keydown arrives defaultPrevented was consumed by a Radix
                                 layer — menu/dialog — and is ignored, so Esc closes only
@@ -429,7 +591,11 @@ features/
 │   │                           the DiffPanel's live-reload signal —,
 │   │                           conflicts/recents/profileId — the repo's assigned profile,
 │   │                           loaded from angkorgit.profile on open, cleared on close,
-│   │                           refresh/refreshStatus), WelcomePage (recent rows = icon
+│   │                           refresh/refreshStatus), CloneDialog prefills the
+│   │                           destination from settings.cloneRoot (issue #26: the last
+│   │                           folder cloned into is remembered on success; Settings →
+│   │                           Git → "Clone destination" card picks/clears it; a CLI
+│   │                           preset's `into` still wins), WelcomePage (recent rows = icon
 │   │                           tile — FolderTree when the path is in ui.worktreeTabs —,
 │   │                           name, shortenHome(path) `~/…`, time, hover "…" + right-click
 │   │                           menu Open/Reveal/Copy path/Remove; ipc.pathsExist marks
@@ -471,23 +637,58 @@ features/
 │   │                           the commit stays selected). List handlers stopPropagation so
 │   │                           the window-level shortcuts never double-fire. WorkingCopyPanel
 │   │                           mirrors it: → from the graph with no commit selected focuses
-│   │                           the changed-files list and opens the first file, ← goes
-│   │                           back. Listed in Settings → Shortcuts.
-│   │                           store (pagination, filters, lastPath guard vs cross-repo
-│   │                           leaks, jumpTo: engine history_position locates a rev in the
-│   │                           unfiltered walk, pages auto-load up to it, pendingScrollIndex
-│   │                           scrolls it centered — hash-like searches JUMP (4+ hex chars,
-│   │                           git's minimum abbreviation; a 4–6 char miss falls back to the
-│   │                           text filter so hex-only words like "added" still search, 7+
-│   │                           shows "Commit not found"), text searches filter; the jumped row gets
+│   │                           the changed-files list and opens the first file, ↑/↓ OPEN the
+│   │                           previous/next changed file's diff (moveFileSelection calls
+│   │                           showDiff, not selectFile — an earlier version only moved the
+│   │                           highlight and the diff stayed on the clicked file, user
+│   │                           report 2026-09-11; the multi-select is cleared like a plain
+│   │                           click), ← goes back. Listed in Settings → Shortcuts.
+│   │                           store (revealCommit(path, oid): ipc.historyPosition → ensureLoaded →
+│                           select + pendingScrollIndex + locatedOid — the way OTHER panels
+│                           land on a commit (FileHistoryPanel "Open commit", issue #9);
+│                           locatedOid lives in the store, set by goToMatch/revealCommit and
+│                           cleared by every select/toggleSelect, so the glow follows the
+│                           selection without component state;
+│                           pagination, filters {branch} — the only filter left,
+│   │                           it narrows the walk; SEARCH AND AUTHOR ARE FIND, NOT FILTER
+│   │                           (owner 2026-09-10: the flattened, laneless graph "felt off",
+│   │                           then asked for the author box to match): `find` {text, author,
+│   │                           matches: HistoryPosition[], truncated, active, loading} filled
+│   │                           by ipc.historySearch → engine history::search, which walks the
+│   │                           SAME walk the graph shows (branch-filtered, stash helpers
+│   │                           skipped), treats text and author as match criteria (either or
+│   │                           both) and returns every match position, capped at
+│   │                           SEARCH_MATCH_CAP 1000 → truncated ("m+"); setFind runs the
+│   │                           search then goToMatch(0); goToMatch ensureLoaded()s pages up
+│   │                           to the match index (fetchMore/appendPage shared with
+│   │                           loadMore), selects the commit and sets pendingScrollIndex;
+│   │                           stepFind wraps ±1; setFilters re-runs the find after its
+│   │                           reload so indices stay valid; findSeq guards stale results
+│   │                           (G26); hashes and prefixes match because the engine haystack
+│   │                           includes the oid, so the old jumpTo/history_position path is
+│   │                           gone from the UI (the command + its test remain).
+│   │                           CommitGraph: ONE 300ms debounce over both drafts → setFind;
+│   │                           in either box Enter/↓ next, Shift+Enter/↑ previous, Escape
+│   │                           clears that box (onFindKeyDown); a `n of m` pill with
+│   │                           ChevronUp/Down sits after the box, "No matches" in danger when
+│   │                           empty, spinner while the first search runs; every match row
+│   │                           carries data-search-match ("active" for the located one) and a
+│   │                           2px inset primary/45 bar, the located row the animate-locate
+│   │                           glow (locatedOid, cleared when another commit is selected —
+│   │                           the QUERY STAYS so the user can keep stepping); lastPath guard vs
+│   │                           cross-repo leaks; pendingScrollIndex
+│   │                           scrolls it centered; the located row gets
 │   │                           `animate-locate` (preset keyframe: primary/42 glow + outer halo easing
 │   │                           to primary/10 over 1.1s) plus a lasting inset 3px primary bar —
 │   │                           `.reduce-motion .animate-locate` in globals.css skips the animation
-│   │                           and paints the settled state; the owner found the old ring boring —
-│   │                           selecting any other commit clears highlight + search box,
-│   │                           a missing hash keeps the graph and shows "Commit not
-│   │                           found" instead of filtering to empty),
+│   │                           and paints the settled state; the owner found the old ring boring),
 │   │                           CommitGraph (virtualized, context menu incl. revert; the
+│                           commit menu lists "Push <branch> ↑n" for every LOCAL branch
+│                           whose tip is that commit (owner request 2026-09-10), via
+│                           pushBranch — ensureRepoProfile → ipc.push to
+│                           pushRemoteFor(branch): the branch's upstream remote when it
+│                           exists, else remotes[0] like the toolbar — and then a forge
+│                           PR reload; the ref-chip menu's Push shares it; the
 │                           ref column is a FIXED REF_COL_WIDTH — an adaptive width was
 │                           built and REJECTED by the owner (the layout shifting read as
 │                           broken), chips fit or fold instead; header "Graph display"
@@ -562,7 +763,45 @@ features/
 │                           chips by ESTIMATED width (6.4px/char + padding + 14px per
 │                           icon) reserving room for the "+n" badge — a lone chip may
 │                           still ellipsize if longer than the column, never two
-│                           crushed chips; the CHECKED-OUT branch chip is a SOLID
+│                           crushed chips; the "+n" badge is NOT decoration (user report
+│                           2026-09-11: "+1 — I don't know what that is"): it is a
+│                           role=button (aria "n more refs", title lists them); when a
+│                           row has folded refs the WHOLE RefCell span becomes the
+│                           trigger of a design-system HoverCard (Radix hover-card,
+│                           openDelay 200 / closeDelay 150, clicking the badge also opens
+│                           it via the controlled `more` state) whose content
+│                           (data-more-refs) is a flex-col panel that OVERLAYS THE ROW —
+│                           sideOffset −ROW_HEIGHT and alignOffset −5 put its first chip
+│                           exactly on top of the row's first chip (e2e measures ≤2px) —
+│                           and stacks EVERY group one per line, GitKraken-style
+│                           (owner screenshot 2026-09-11), rendered with the SAME
+│                           RefChip component the row uses — double-click checks out /
+│                           resets, right-click opens the ref menu, identical titles; a
+│                           click-to-menu list and then a floating card under the badge
+│                           were built first and REPLACED ("should display like
+│                           GitKraken when hover"); the content stopPropagation()s
+│                           click/dblclick/contextmenu because React portals bubble
+│                           synthetic events to the row and would select it; the ref
+│                           menu (refMenu carries
+│                           the commit). THE CHECKED-OUT BRANCH COMES FIRST: groupRefs
+│                           takes `headBranch` (CommitGraph derives it from
+│                           useRepo.branches isHead, passed through CommitRow) and
+│                           groupRank puts that local group before every other local,
+│                           and headOf gives the tick ONLY to that label — before this,
+│                           the first local ref in commit.refs order got the tick and the
+│                           real HEAD branch could sit folded behind "+1" while its
+│                           sibling wore the check (owner screenshot 2026-09-11, core.api:
+│                           `demo ✓ +1` with `staging` checked out); with no headBranch
+│                           (demo/other callers) it falls back to first-local; the demo
+│                           puts `hotfix/lane-colors` BEFORE `main` in commit 0's refs so
+│                           the e2e proves main still wins; refMenu carries
+│                           the commit now) also gained "Reset <local> to this…"
+│                           (refMenuResetTarget: remote ref whose base name is in
+│                           resettableBranches and whose local is NOT on this commit →
+│                           resetToRemote) so a folded separated origin chip can be reset
+│                           from the card; the demo puts `release/0.4` next to
+│                           `feature/diff-viewer` on commit 7 so the fold is real; the
+│                           CHECKED-OUT branch chip is a SOLID
 │                           success fill (bg-success text-background shadow-soft, hover
 │                           kept solid) instead of the /15 tint every other local chip
 │                           gets — the tick alone was not enough to spot where you
@@ -700,7 +939,11 @@ features/
 │                               repository/merge.ts abortMergeFlow (confirm →
 │                               mergeAbort → clear merge draft → refresh; refresh
 │                               failures toast separately, never as "Abort failed")
-├── diff/                     ← DiffPanel (center view, header toggles, minimap, prev/next
+├── diff/                     ← LONG-LINE RULES live in G46 (5,000-char render cap, no ligatures,
+│                               overscan 8, composited pan); SELECTION RULES in G47 (diffSelection.ts:
+│                               the selection is tracked per row index + column and re-projected
+│                               onto the mounted rows after every render; copy builds from diff
+│                               data, so off-screen selected lines still copy). DiffPanel (center view, header toggles, minimap, prev/next
 │                               change; LIVE RELOAD: working-copy targets fold
 │                               useRepo.statusVersion — bumped by every refresh/
 │                               refreshStatus set — into statusSignature, so a watcher
@@ -722,7 +965,41 @@ features/
 │                               working-copy row menu and the palette),
 │                               DiffViewer (wrap vs VIRTUALIZED no-wrap), VirtualDiff
 │                               (inline + synced split columns), DiffMinimap, diffShared
-├── conflicts/ConflictResolver← a SOLID full-window surface (bg-background, no blur or
+├── conflicts/ConflictResolver← 2026-09-10 REWORK (users found it hard to use): ONE row
+│                               renderer per pane (renderPaneRow / renderOutputRow) shared
+│                               by the virtualized and plain paths — the plain path maps the
+│                               same PaneRow/OutputRow models, so A/B stay aligned when a line
+│                               wraps; picks are NORMALIZED (normalizePicks: current before
+│                               incoming, by line) so the result follows FILE order, never
+│                               click order; the middle-line side checkbox is TRI-STATE
+│                               ('indeterminate' while only some lines of that side are
+│                               picked); block headers carry a "resolved"/"edited by hand"
+│                               tag and the first unresolved preview row a "Conflict n ·
+│                               unresolved" tag; the panes/result split is a vertical
+│                               react-resizable-panels group (autoSaveId angkorgit-conflict);
+│                               KEYBOARD on the overlay div (onKeyDown, skipped inside
+│                               inputs): ↑/↓ jump, A/B toggle a whole side of the active
+│                               conflict, ⌘⏎ save, Escape dismisses the AI overlay first,
+│                               then requestClose; ⌘⏎/⌘Z are stopPropagation'd so the commit
+│                               box and repo undo under the overlay never fire (⌘Z keeps
+│                               native text undo inside textareas — no preventDefault);
+│                               RepositoryPage's global Escape RETURNS while conflictFile is
+│                               set so the overlay's confirm is the only close path; LEAVE
+│                               GUARD confirmLeave (any pick/edit/manual text) before close
+│                               and file switch, discardManual confirms before dropping the
+│                               whole-file textarea; FILE FLOW: header "File n of m" ‹ ›
+│                               switcher over useRepo.conflicts when >1, save() opens the
+│                               next conflicted file (after the current one, wrapping) with a
+│                               "n more files to resolve" toast, or closes with finishHint
+│                               (commit / continue rebase / cherry-pick) on the last one;
+│                               sideHint tooltips on the current/incoming captions explain
+│                               the sides per RepoState (rebase swaps them); LineNo width is a
+│                               --gutter CSS var sized from the last line number (data-line-no
+│                               is the e2e hook). The DEMO has TWO conflicted files
+│                               (drawGraph.ts 1 conflict, laneColors.ts 3 incl. an empty
+│                               incoming side) in a mutable DEMO_CONFLICT_FILES map that
+│                               resolveDemoConflict drains, so the next-file flow is testable.
+│                               ORIGINAL DESIGN NOTES (still true): a SOLID full-window surface (bg-background, no blur or
 │                               alpha — the owner found the translucent overlay wrong for
 │                               editor-like work); header = danger GitMerge tile + "RESOLVE CONFLICTS" overline +
 │                               basename bold / dirname dimmed (name-wins rule) + a
@@ -860,8 +1137,20 @@ features/
 │                               StatusBar/palette browser-link fallback uses the same
 │                               picked remoteUrl),
 │                               CreatePrDialog.tsx (ui dialog kind
-│                               'createPullRequest': source = HEAD, base Select from the
-│                               remote's branches pre-picked via provider.defaultBranch,
+│                               'createPullRequest': source = HEAD; FORK → UPSTREAM (issue
+│                               #26, 2026-09-15): core forgeTargets(remotes, sourceRemote)
+│                               lists every same-kind same-host remote once and
+│                               defaultForgeTarget prefers `upstream`; with >1 target an
+│                               "Into repository" Select appears, the PROVIDER is bound to
+│                               the TARGET remote (base branches, default branch and
+│                               reviewers come from it) and createPullRequest gets
+│                               sourceRepo = the fork's owner/repo — github head
+│                               `owner:branch`, gitlab POSTs on the SOURCE project with
+│                               target_project_id fetched from the target, bitbucket
+│                               source.repository.full_name; the sidebar PR LIST still
+│                               shows the picked remote's PRs, not upstream's —, base
+│                               Select from the target remote's branches pre-picked via
+│                               provider.defaultBranch,
 │                               title prefilled from the branch name, description textarea
 │                               with a stoppable AI generate button — commits from
 │                               rebaseCommits(base) with history fallback —, reviewer
@@ -970,10 +1259,15 @@ features/
 │                               remotes/submodules sections. Remotes: the top-level
 │                               FOLDER row of each remote (origin, upstream…) IS the
 │                               remote — Cloud icon, hover "…" and right-click open the
-│                               remote menu (fetch/edit/remove); remotes with no fetched
+│                               remote menu (fetch/OPEN IN BROWSER via core remoteWebUrl, issue #24/edit/remove); remotes with no fetched
 │                               branches render as a chevron-less row with the same
 │                               menu; there is no separate remote list under the tree
-│                               (owner request 2026-09-05). ROW-MENU INVARIANT (owner
+│                               (owner request 2026-09-05). ADD REMOTE (issue #26,
+│                               2026-09-15): the section header "+" and the empty-state
+│                               button open the SAME dialog as Edit remote with
+│                               original === null (title/button/copy switch on that),
+│                               name prefilled "origin" for a remote-less repo, and the
+│                               act() runs remoteAdd THEN fetch so branches appear at once. ROW-MENU INVARIANT (owner
 │                               request 2026-09-05): every row type — branch, remote
 │                               branch, remote folder, worktree, stash, tag, pull
 │                               request, submodule — answers BOTH the hover "…" button
@@ -982,6 +1276,50 @@ features/
 │                               branchMenu started); never use an inline DropdownMenu
 │                               trigger on a row, it only answers the button. Stash and
 │                               tag rows also select their commit in the graph on click
+├── blame/BlameView.tsx       ← the BLAME PANE of FileHistoryPanel (owner 2026-09-12, after a
+│                               GitKraken screenshot: "should have the commit list as well"
+│                               — a standalone BlamePanel was built first and FOLDED INTO file
+│                               history the same day): props {file, rev, onOpenCommit,
+│                               onBlameAt, onResolvedRev}; a useVirtualizer list of 22px rows
+│                               with a w-72 gutter shown ONLY on the first line of each hunk
+│                               (Avatar 16 + author + timeAgo + short hash as one role=button
+│                               "Open commit <short>"; hunk boundaries carry a border-t), line
+│                               number, highlightLine code; hovering tints every row of the
+│                               same commit; right-click: Open commit / Blame at this commit /
+│                               Blame before this commit (rev `<oid>^`) / Copy hash, disabled
+│                               on the uncommitted hunk; the fetch is skipped when the rev
+│                               equals the last RESOLVED rev (FileBlame.rev), and a rev that
+│                               resolves elsewhere (`<oid>^`) reports back via onResolvedRev
+│                               so the commit list highlights the real parent. Root carries
+│                               data-blame-pane (e2e). ENTRY POINTS all call ui.openBlame(file,
+│                               rev?) which opens FILE HISTORY with fileHistoryPreset
+│                               {pane:'blame', rev} (consumed once by the panel's preset
+│                               effect, pendingRev keeps the history load from re-selecting
+│                               the newest commit): DiffPanel header UserRoundSearch button
+│                               (blames the commit the diff shows, else the working copy),
+│                               working copy file menu "Blame", commit file menu "Blame at this
+│                               commit" (sourceOid ?? commit oid), palette "Blame…" through the
+│                               shared file picker (mode commands | fileHistory | blame).
+│                               Demo: demoBlame synthesises hunks over demoConflictContent
+│                               with the last hunk uncommitted when rev is null
+├── history/FileHistoryPanel  ← DIFF / BLAME pane toggle in the header (segmented pair,
+│                               aria-pressed, aria-labels "Diff view"/"Blame view"; the
+│                               inline/split/word/wrap/whole-file buttons show only in the
+│                               diff pane) and a "WORKING COPY" row (data-working-copy-row,
+│                               Pencil tile) pinned above the virtualized commit list —
+│                               selected = WORKING_COPY sentinel: the diff pane shows
+│                               ipc.diffFile(staged=false) or "No uncommitted changes to this
+│                               file", the blame pane blames the file on disk with uncommitted
+│                               lines marked; the diff effect is skipped while the blame pane
+│                               is showing; openCommitOid(oid) mirrors openCommit(commit) for
+│                               blame hunks;
+│                               commit rows are role=button divs: click selects (diff on the
+│                               right), DOUBLE-CLICK / hover GitCommitHorizontal button
+│                               ("Open commit <short>") / right-click menu "Open commit with
+│                               all its files" close the panel and call
+│                               useGraph.revealCommit (issue #9: users wanted the whole
+│                               commit, not just this file's hunk); the menu also copies
+│                               the hash
 ├── history/undoStore.ts      ← undo/redo: tracked() records before/after HEAD snapshots;
 │                               kinds commit/checkout/merge/cherryPick/rebase/reset/revert/
 │                               branchCreate/Delete/Rename; validation guards (repo moved,
@@ -1038,6 +1376,17 @@ features/
 │                               (or "Select all" while nothing is picked) and calls
 │                               stashRestoreFiles with every picked path in one go; picked
 │                               resets per commit oid and prunes paths that vanish.
+│                               EVERY commit file row answers right-click (owner request
+│                               2026-09-12, issue #18 asked for Reveal too): ONE fileMenu
+│                               {x,y,file} for plain commits and stashes — the stash Apply
+│                               entries sit first behind a separator when the commit is a
+│                               stash — then the working copy's non-mutating entries: Edit
+│                               file, File history, Open in external app, Show in Finder,
+│                               Copy path (repo-relative) + Copy absolute path (owner request
+│                               2026-09-12, the working copy menu has both too); Edit/Open/Show
+│                               are disabled for a file the commit
+│                               deleted. Stage/discard/stash have no meaning here and stay
+│                               out; "checkout this file at this commit" is not built.
 │                               Inspector (working copy ⟷ commit details; the h-9 header
 │                               carries the label, list/tree toggles and — in commit
 │                               mode — the "Back to working copy" X, so CommitDetails
@@ -1078,7 +1427,14 @@ features/
 │                               the background if the user navigates away; panel has a
 │                               full-view AiResultDialog behind a Maximize2 button and
 │                               renders through AiText)
-├── terminal/TerminalPanel    ← xterm.js ↔ PTY events; terminal/theme.ts builds the
+├── terminal/TerminalPanel    ← xterm.js ↔ PTY events; RIGHT-CLICK MENU (issue #26):
+│                               onContextMenu on the host opens the positioned-span
+│                               DropdownMenu pattern with Copy (disabled without a
+│                               selection, writes terminal.getSelection()), Paste
+│                               (clipboard.readText → terminal.paste so it flows through
+│                               onData to the PTY), Select all, Clear terminal;
+│                               onCloseAutoFocus is prevented so focus stays in xterm;
+│                               terminal/theme.ts builds the
 │                               xterm ITheme from the design tokens at runtime
 │                               (getComputedStyle → HSL triplets → hex, ANSI palette
 │                               mapped to danger/success/info/graph-5/6/7, cursor +
@@ -1095,6 +1451,13 @@ features/
 ├── settings/                 ← store (theme, accent, zoom, reduceMotion — applied via a
 │                               `reduce-motion` class + MotionConfig, ai config +
 │                               aiProfiles (PER-PROVIDER model/baseUrl/apiKey, see G22),
+│                               aiStatus (untested/stale/ok/fail, persisted; written ONLY by
+│                               the Settings Test connection button via setAiStatus; setAi
+│                               moves ok/fail/stale to stale when any AI_CONNECTION_KEYS value
+│                               actually changes and setAiProvider always does, while untested
+│                               stays untested (staleStatus) — the keyring hydration
+│                               writes apiKey through setState directly, so a restart never
+│                               resets a good result; never poll or ping on launch),
 │                               aiStyle
 │                               commit style + branch prefix rules, PROFILES —
 │                               IdentityProfile {label,name,email,accounts?: host→username}
@@ -1128,7 +1491,12 @@ features/
 │                               in the HEADER row — single controls (Switch, Select) go
 │                               there, never alone under a paragraph (Reduce motion, Auto
 │                               fetch, Pull requests use it); Git tab order: Auto fetch,
-│                               Pull requests, Identity (title says the scope — repo or
+│                               Pull requests, Command line tool, External editor (EditorCard: detected
+│                               rows like CliAgentPicker, aria-pressed on the active one, Scan again in
+│                               the header, SettingEmpty when none; settings.editorId, resolved by
+│                               settings/editors.ts preferredEditor → the chosen one or the first
+│                               detected; useEditors shares ONE module-level detect promise across the
+│                               toolbar, palette and both file menus), Identity (title says the scope — repo or
 │                               global — a footnote names the file written, a primary
 │                               Badge shows the matching profile), Profiles (owner asked
 │                               for a clean redesign 2026-09-05: each profile is a card
@@ -1157,8 +1525,15 @@ features/
 │                               with the "Create one on <provider>" link as the field
 │                               hint, footer Cancel/Connect, Escape cancels; the form
 │                               shows by itself when there are no accounts; rows read
-│                               `username @ host` + default Badge + AccountStatus, with a
-│                               visible Reconnect button when unverified and a "…" menu
+│                               `username @ host` + default Badge + AccountStatus (the
+│                               per-row check result wins over stored `verified`:
+│                               'no_token' → "Token missing from the keychain",
+│                               'unauthorized' → expired/revoked), with a
+│                               visible Reconnect button when unverified OR the check
+│                               came back no_token/unauthorized; reconnect() sets
+│                               adding=true and focuses the token field from an effect
+│                               once the form is mounted (issue #8: it used to focus a
+│                               hidden input and nothing happened), and a "…" menu
 │                               (make default when the host has several, reconnect,
 │                               Remove… via confirmDialog — never a hover-only trash
 │                               icon); per-provider token connect, verified-on-connect,
@@ -1367,7 +1742,19 @@ update CLAUDE.md or docs/ — never the code.
   `remote.connect_auth(Direction::Fetch, Some(make_callbacks()), None)` against a
   real host (fast — authenticates without fetching objects) and vary key/URL via env
   vars. Remember the final `Err` in `make_callbacks` MASKS libgit2's own message, so
-  never diagnose from the toast alone.
+  never diagnose from the toast alone. WINDOWS IS THE EXCEPTION (PR #29, 2026-09-16):
+  `libssh2-sys` compiles libssh2 with the WinCNG backend there unless its
+  `openssl-on-win32` feature is set, and WinCNG has `LIBSSH2_ED25519 0` and no ECDSA,
+  so a known_hosts entry holding only an ed25519/ECDSA host key (GitLab's default)
+  failed with "failed to set hostkey preference" before authentication (libgit2
+  #6612, still open upstream). Cargo.toml therefore carries a
+  `[target.'cfg(windows)'.dependencies] libssh2-sys` with `openssl-on-win32` +
+  `vendored-openssl`; feature unification flips the transitive libssh2 to OpenSSL.
+  Costs to remember: libgit2-sys only depends on openssl-sys on unix (Windows uses
+  WinHTTP for HTTPS), so this ADDS a from-source OpenSSL build to every Windows
+  compile — the Windows CI job went from under 3 min to 23 min on a cold cache, local
+  Windows builds need Perl on PATH (NASM optional, openssl-src falls back to no-asm),
+  and the Windows binary grows by a static libcrypto/libssl (unmeasured).
 - **G23 — libssh2 does NOT read `~/.ssh/config`**: `Host` aliases, `IdentityFile`,
   `Port`, `ProxyCommand` — none of it applies inside AngKorGit, only in the user's
   terminal. Verified: with `~/.ssh/config` mapping github.com to a working key and
@@ -1397,6 +1784,16 @@ update CLAUDE.md or docs/ — never the code.
   by their manual reset + a GitKraken no-ff redo). `branch::merge` takes
   `no_ff`; drag-merge and both "Merge into current" menus pass `true`, the drop
   dialog's "Fast-forward if possible" and `remote.rs` pull paths pass `false`.
+  Issue #20 (2026-09-12, a fork owner wanting GitHub's "Sync fork" result) asked
+  for GitKraken's second option, so both menus ALSO carry "Fast-forward current
+  to this" (sidebar) / "Fast-forward current branch to this" (graph chip): it
+  passes `no_ff = false` and is DISABLED unless `merge_can_ff(HEAD, source)` is
+  true — the menu effect asks the engine on open (branchMenuFf / refMenuFf,
+  null while loading, `cancelled` flag against a stale answer) and the item is
+  never hidden. Demo mode answers from commit indices (demoCanFastForward:
+  source newer than target), so with `main` at the tip every demo entry is
+  disabled and the e2e asserts that state; the engine tests cover the true
+  case. The no-ff default itself is unchanged.
   Regression test: `merge_no_ff_creates_merge_commit_when_fast_forward_possible`.
 - **G20 — accounts are HTTPS-only; SSH remotes never consult them**:
   `accounts::host_of_url` parses only `://` URLs (scp-style `git@host:path` returns
@@ -1507,6 +1904,14 @@ update CLAUDE.md or docs/ — never the code.
   isn't possible locally (no Windows target/SDK); CI's windows clippy job is
   the gate.
 
+- **G39 — a Radix `asChild` trigger needs a child that FORWARDS ITS REF**: the graph's
+  `+n` HoverCard opened but its content sat at `transform: translate(0, -200%)` — the
+  popper's "not positioned yet" parking spot — because `Badge` was a plain function
+  component, so Slot could not attach the anchor ref and floating-ui never measured
+  the trigger. Playwright reported the chips as "outside of the viewport" while
+  `toBeVisible` passed. `Badge` is `forwardRef` now; any design-system primitive used
+  as an `asChild` trigger (Tooltip, DropdownMenu, HoverCard) must be too. Debugging tip:
+  read the popper wrapper's inline style — `translate(0, -200%)` means "no anchor".
 - **G38 — confirmDialog labels are user-controlled strings too**: confirm.tsx's
   footer is `flex-wrap` and the confirm Button is `min-w-0 max-w-full` with a
   truncating span, so a long confirmLabel can never spill past the dialog edge —
@@ -1609,7 +2014,22 @@ update CLAUDE.md or docs/ — never the code.
   and otherwise re-expands on the next frame when the store wants the sidebar
   visible. Regression e2e: `the sidebar comes back after a relaunch that
   happened with a diff open` (opens a diff, reloads, asserts the sidebar is
-  visible AND `angkorgit-ui.state.sidebarOpen` is still true).
+  visible AND `angkorgit-ui.state.sidebarOpen` is still true). The mirror
+  image (owner report 2026-09-10): dragging the sidebar shut and back open in
+  ONE gesture re-expanded the panel while `sidebarOpen` stayed false, so an
+  empty column sat where the sidebar belonged until ⌘B — `onExpand` now flips
+  `sidebarOpen` back on when the drag caused it. INSPECTOR: `collapsible` is
+  `{focusMode}`, not always on — a collapsible panel snaps to 0 once a drag
+  crosses half its minSize (library `resizePanel`), and nothing re-expanded
+  it inside the same repo. With collapsible off the library clamps the drag
+  at `INSPECTOR_MIN_SIZE`; when file history opens the prop flips true and
+  the effect collapses it; when it closes, the Panel's own layout effect
+  (`reevaluatePanelConstraints`, child-first) resizes it to minSize and
+  RepositoryPage's useLayoutEffect then `resize()`s it to the width captured
+  before the collapse (`expand()` is a no-op on a non-collapsible panel).
+  Regression e2e: `the inspector stops at its minimum width when dragged and
+  comes back after file history`, `dragging the sidebar shut and back open
+  shows its content again`.
 - **G37 — neither libgit2 nor `git stash push -- <paths>` gives a truthful partial
   stash**: libgit2's `git_stash_save_with_opts` + paths resets the WHOLE working
   tree (verified: stashing only `a.txt` reverted the dirty `b.txt`, silent data
@@ -1656,14 +2076,194 @@ update CLAUDE.md or docs/ — never the code.
   highlight.test.ts` (vitest aliases `@/shared/highlight` and `highlight.js` to
   the desktop package for this).
 
+- **G40 — do not ls-remote before a push to detect "nothing to send"**: two
+  traps killed that approach for issue #17. (1) git2 0.20's `Remote::list()`
+  builds a slice from the raw pointer libgit2 returns, which is NULL for a
+  remote with zero refs (the first push to an empty bare repo) — debug builds
+  abort with a `from_raw_parts` precondition panic inside the test, release
+  builds run undefined behaviour; git2 0.21 adds the null check but also drops
+  the default `ssh`/`https`/`cred` features, so the bump is its own change.
+  (2) `RemoteConnection::default_branch()` is no guard: neither libgit2's local
+  transport nor git's receive-pack advertises HEAD in the PUSH direction, so it
+  returns not-found for every non-empty remote too. `remote::push` therefore
+  compares against the remote-tracking ref offline (`tracking_ref_matches`);
+  if a real advertisement check is ever wanted, connect with
+  `Direction::Fetch` for the listing and only after the git2 bump.
+
+- **G42 — the tab-switch auto fetch must wait for the remotes to load**: the
+  RepositoryPage auto-fetch effect keys on `repoPath` and runs `tick()` at once,
+  but `useRepo.open()` sets `repo` with `remotes: []` and only then awaits
+  `refresh()`, so on a real repo the immediate tick saw zero remotes, returned,
+  and nothing fetched until the interval — a 15-minute setting meant a tab switch
+  never fetched (issue #20 follow-up, 2026-09-13, reproduced by `akg open`-ing
+  another tab and back while a remote had moved). Demo mode hides it because the
+  demo refresh resolves before React commits. The effect now also depends on
+  `autoFetchRemotes` (the remote names joined, a STRING so re-setting the same
+  list does not re-run it) and bails while it is empty; when the names arrive the
+  effect re-runs and fetches. Playwright cannot see this one — verify against the
+  installed app with a remote that moved: `akg open <other>` then `akg open <repo>`
+  and check `.git/FETCH_HEAD`'s mtime. TRAP while doing that: `tick()` also returns
+  on `document.hidden`, and WebKit reports the page hidden while the window is
+  fully covered (VS Code in front), so a switch driven from a terminal often
+  fetches nothing and the 1-minute interval later does — that looked like the fix
+  failing twice on 2026-09-13; a temporary localStorage guard log proved every
+  skipped tick was `hidden: true` and every visible switch fetched. Bring the
+  window to the front (`open -a AngKorGit`) before switching.
+- **G44 — `BlameHunk::final_signature()` can be NULL after `blame_buffer`**: libgit2
+  splits a committed hunk around an uncommitted edit and the split halves keep a
+  non-zero `final_commit_id` but NO signature; git2 0.20's `final_signature()`
+  dereferences it and raises a NON-UNWINDING panic, so the whole app aborted the
+  first time anyone blamed a tracked file with WIP edits (issue #21, one day after
+  blame shipped in 0.13.0; the existing test appended a line, which never splits).
+  blame.rs reads author/email/time from `repo.find_commit(oid).author()` instead,
+  cached per oid next to the summary. Regression test:
+  `blame_of_an_uncommitted_edit_inside_a_committed_block_keeps_the_author`.
+- **G45 — an isolated hunk must be re-anchored before `git_apply`**: split_patch
+  keeps each `@@ -a,b +c,d @@` header from the FULL diff, so a later hunk's `+c`
+  includes the line shift of the earlier hunks — libgit2's apply starts its search
+  at `c` and, unlike `git apply`, does not hunt for the preimage elsewhere, so
+  "hunk at line N did not apply" for every hunk after the first (issue #22: Stage
+  hunk and Unstage hunk both hit it). isolated_hunk_patch rebuilds the header with
+  `+a` (the index side is the old side for both the forward stage diff and the
+  reversed unstage diff), keeping `+c` only when the old side is empty. This is what
+  single_line_patch already did for line ops. Regression test:
+  `stage_and_unstage_a_later_hunk_in_a_multi_hunk_file`.
+- **G43 — sidebar drag-and-drop does not work on Linux under Wayland**: a user on
+  Debian sid / GNOME 50 / Mutter (Wayland) reported that dragging `upstream/main`
+  onto `main` shows GTK's no-drop X cursor and never opens the drop dialog (issue
+  #20, 2026-09-13). Our drop target is gated on React state, not on dataTransfer
+  types, and with `dragDropEnabled: false` wry attaches no GTK drag handlers, so
+  WebKitGTK's own HTML5 DnD is in charge — and that has been unreliable under
+  Wayland for years. Nothing to fix in the app; every drag gesture must have a menu
+  equivalent (merge, rebase and fast-forward all live in the branch right-click
+  menu, which is what the user settled on). Untested on X11.
+- **G41 — the local gate is macOS; two things only CI catches**: (1) an import used
+  solely inside a `#[cfg(target_os = "macos")]` item is an unused import on Linux
+  and Windows, and clippy runs with `-D warnings` there — qualify the type inline
+  (`std::path::PathBuf`) or gate the `use` with the same cfg. (2) A test fixture
+  that shells out to `git clone` gets Windows git's `core.autocrlf=true` checkout,
+  so setting autocrlf off AFTER the clone is too late: the next `commit_all` in
+  the clone silently commits the CRLF file and a rebase onto LF content reports
+  conflicts on Windows only. Clone with `git -c core.autocrlf=false clone …`
+  (see `clone_of` in tests/git_engine.rs). Both broke the 0.13.0 release commit's
+  CI on 2026-09-12 and were fixed in follow-up commits; the Release workflow only
+  runs `tauri build`, so the tagged artifacts were unaffected.
+
+- **G46 — diff rows are a WebKit main-thread budget, measured 2026-09-15**: two
+  reports looked alike ("scrolling the diff is slow") and had different causes, both
+  verified in Playwright's WebKit build (same WebCore as WKWebView) against
+  SYNTHETIC files of the same shape — never the reporters' real files. (1) Issue #27,
+  a minified bundle with 86 lines over 5k chars and one of 337k: vertical scroll
+  froze up to 1.05 s per frame on WebKit, 67 ms worst on Chromium. Not the giant
+  line alone (a lone 337k-char text node paints in ~80 ms); it is the virtualizer
+  BURST — one wheel event mounts ~20 long rows and WebKit shapes each row's whole
+  text through its complex-text path because JetBrains Mono has ligatures. A 60-row
+  burst: as shipped 349 ms, ligatures off 100 ms, 5,000-char cap 50 ms, cap + no
+  ligatures = frame floor. Hence core `clipRenderedLine` (MAX_RENDERED_LINE 5000,
+  CodeLine appends a "… n more characters" tag, `rowContents` measures the clipped
+  text so the layer is ~36k px instead of 2.4M px), `[font-variant-ligatures:none]`
+  on CodeLine, and overscan 8. TRAP: a clipped row is exactly 5,000 chars, which is
+  UNDER highlight.ts's `code.length > MAX_HIGHLIGHT_LENGTH` skip, so the first cut
+  highlighted every minified row into ~1,000 spans and frames were still 130–250 ms
+  — clipped rows render with language null (plain escaped text) on purpose. Copy
+  (⌘A/⌘C, diffCopy) builds from diff data, not the DOM, so it is unaffected; a
+  search match past the cap counts in "n of m" but draws no mark (rangeRect finds
+  no text node and returns null). (2) The owner's case, ordinary 200–400-char table
+  rows in split view, "slow horizontal scroll that a restart cures": the horizontal
+  pan is a wheel listener + rAF translateX on the main thread, and without a
+  compositing hint WebKit REPAINTED the text layer every frame (Chromium trace: 78
+  paints per 80 events → 15 with will-change), so any accumulated main-thread load
+  hits sideways scrolling first while vertical scrolling stays on the scrolling
+  thread. useHorizontalPan therefore sets `willChange: 'transform'` on the layers
+  and caches the pan limit per gesture (a ResizeObserver on the panes invalidates
+  it) instead of forcing layout twice per wheel event; with a 12 ms/frame busy loop
+  the 80-event delivery went 2.1 s → 1.4 s. No frontend leak was found (30 cycles of
+  open/close/reload/select/palette: listeners and DOM flat, heap +89 KB/cycle from
+  the highlight LRU filling). What remains: a fast flick in SPLIT view over a
+  2,000-line SQL seed file (avg 164 chars, 22 lines over 300) still shows ~40 ms
+  frames on WebKit — that is layout of two panes' worth of new rows, and passive
+  wheel listeners, ligatures and overscan did not move it; inline view and Chromium
+  are at the floor. Measurement harness: drive `pnpm dev` demo mode with
+  Playwright's `webkit`, add the synthetic file to demo.ts TEMPORARILY, sample rAF
+  gaps while dispatching `page.mouse.wheel`, and put the mouse over the VISIBLE
+  scroller rect — the diff auto-jump scrolls the pane, so a pane-relative y lands
+  off screen and every event silently misses.
+
+- **G47 — a DOM selection does not survive virtualized rows; keep it in data space**:
+  the diff rows are absolutely positioned and unmount as they leave the overscan
+  window, and per the DOM live-range rules a selection boundary inside a removed
+  node collapses to (parent, childIndex) — after the rows remount, that index points
+  at a DIFFERENT row, so "select a few lines, scroll, the highlight moved" (owner
+  report 2026-09-16). `features/diff/diffSelection.ts` (`useStableSelection`, called
+  by VirtualInlineDiff and VirtualSplitDiff) records the selection as {layer, row
+  index from `data-diff-row`, character offset} per endpoint on every user
+  `selectionchange`, and a no-deps `useLayoutEffect` re-projects it onto the mounted
+  rows after EVERY commit: an unmounted endpoint is parked on a SENTINEL — each layer
+  renders an invisible 1px ` ` span (`SelectionSentinel`, class `.diff-sentinel`,
+  `data-diff-sentinel="start"|"end"`) as its first and last child, and an endpoint
+  above the mounted window goes to the start sentinel, one below to the end sentinel
+  (both off screen → a range across that one character, direction preserved), so
+  nothing visible changes while the lines are off screen and they light up again once
+  they scroll back. The sentinels exist because the first version clamped to
+  `(layer, childIndex)`, which PASSED in Playwright's WebKit and FAILED in the shipped
+  WKWebView (owner test 2026-09-16, same day): (a) a selection whose rows were all off
+  screen collapsed to a caret, and macOS greys out Edit → Copy for a caret in
+  non-editable content, so ⌘C never reached the page; (b) WKWebView canonicalises a
+  `(layer, k)` boundary onto the first mounted row's TEXT, that read as a user change
+  and overwrote the stored anchor — the shifted highlight. A parked endpoint must
+  therefore be a real text position, and the DOM range must NEVER collapse while
+  lines are selected. Traps: (1)
+  `selectionchange` is an async, coalesced task, so a sync "applying" flag cannot
+  tell our own writes apart — the effect stores BOTH the signature it wanted and the
+  one it READ BACK right after `setBaseAndExtent` (the browser's canonical form) and
+  the handler ignores a selection matching the read-back; a collapsed selection
+  inside the layer is ignored too (a click already cleared the state on mousedown),
+  and mouseup with a collapsed DOM selection clears it; (2) the browser's
+  collapse happens synchronously in the same React commit that removed the node,
+  BEFORE the layout effect, so the logical state must come from earlier
+  selectionchange events, never from the DOM in the effect; (3) during a mouse drag
+  only the anchor is re-projected and the DOM focus is kept (the focus lags one
+  coalesced event behind); (4) a left mousedown inside the scroller clears the
+  logical state (new gesture) unless shift is held, and a change to `rows` resets it;
+  (5) a native ⌘C copies only MOUNTED rows, so the hook also owns the `copy` event and
+  builds the text from `rows` between the endpoints — `diffSelectionText(scrollEl)`
+  gives the two context menus the same text (WeakMap registry keyed by the scroll
+  element, like panControllers); a cross-pane selection in split view falls back to
+  the browser. Gutters, markers and hunk headers in the virtual path are
+  `select-none` so a drag that crosses them stays inside the code layer. Regression
+  e2e: `a diff selection keeps its lines after scrolling away and back` (verified to
+  fail with the hook removed: the copy came back empty; scrolls the rows out BOTH
+  ways and asserts `getSelection().type === 'Range'` while they are gone), passes on
+  Chromium and WebKit — but Playwright's WebKit is NOT the system WKWebView, so a
+  selection change here must also be checked in the installed app.
+
+- **G48 — tao 0.35 injects its own GTK header bar on Wayland; we shrink it, we do
+  not replace it**: the tao that stable tauri 2 pins (0.35.x via tauri-runtime-wry
+  2.11) installs a GtkHeaderBar inside an EventBox as the window titlebar on Wayland
+  (tao #979), so GNOME users saw a 46px empty bar above the toolbar. Contributor PR
+  #25 (2026-09-13, the Debian/GNOME Wayland user from #20) adds a Linux-only `gtk`
+  0.18 dependency (tauri does NOT re-export gtk; the version matches tauri's own, so
+  the lock only gains an edge) and `compact_wayland_titlebar` in lib.rs: it tags the
+  titlebar with `.angkorgit-compact-titlebar` and installs a screen-wide CSS provider
+  scoped to that class (headerbar min-height 28px, titlebuttons 24px). The EventBox
+  is the drag surface, so removing the titlebar is not an option, and `setup` runs
+  after the window is realized, so replacing it is too late. It is BEST-EFFORT
+  (`let _ = …` around a helper returning Result) because a cosmetic tweak must never
+  stop the app from starting; on X11 `titlebar()` is None and it is a no-op. Upstream
+  reverted the injected header bar in tao #1218 (tao 0.36.0, 2026-07-29), but
+  `cargo update` cannot reach it while tauri 2 requires 0.35 — once tauri pins tao ≥
+  0.36 the helper becomes a no-op and should be DELETED together with the gtk
+  dependency. Only compiled by the ubuntu CI job; macOS cannot check the
+  `cfg(target_os = "linux")` body (see G41).
+
 ## 9. Testing map
 
 | Suite | Location | Coverage |
 | --- | --- | --- |
-| Rust integration (69) | `apps/desktop/src-tauri/tests/git_engine.rs` | stage/commit/history, amend, branch/merge(ff+normal+conflict+message), branch-over-tag ref resolution (merge/rebase/history filter), ff-merge preserving uncommitted changes, drag-merge sequence (checkout target → merge source), no-ff merge commit when ff possible, can-fast-forward only when strictly behind, merge message available only during conflicted merge, interactive rebase (reorder/drop + range listing, squash/reword, conflict aborts untouched, invalid-plan rejection), file history lists only touching commits + paginates with skip, conflict resolve, stash (whole tree + selected paths incl. an untracked-only pick, a staged pick that leaves other staged files alone and pops with a dirty index, a staged-new pick removed and restored, git CLI agreeing on stash list/show; stash_files lists tracked + untracked entries with source_oid; stash_restore_files restores chosen files incl. an untracked one and a deletion, keeps the stash, rejects unknown paths), remote-branch checkout (stale local fast-forwarded with an untracked file preserved + upstream set, diverged local kept), tags, cherry-pick (plain keeps the message verbatim; record-origin output byte-equal to `git cherry-pick -x` for plain and trailer-block messages; many: in-order with per-commit origin lines, first conflict stops the run with progress counts), revert, reset (+ unknown-mode error), history pagination with and without filters, history position lookup by full + short hash, stashes listed in the default walk as single-parent commits with a stash decoration while their index/untracked helper commits stay hidden and a branch-filtered walk omits them, broken-symlink staging (unix), diff hunks + whole-file context, unstage_all/discard_all, discard_staged_file/all (HEAD restored for index + worktree, staged-new file deleted, other staged files untouched), line+hunk ops on files without trailing newline, git-CLI interop, commit signing (SSH sign verified via `git verify-commit`, unsigned without config, amend re-signs, merge commit signed, failure blocks the commit and leaves HEAD/index untouched), PR checkout (fork-style refs/pull fetch creates + updates the local branch and re-runs cleanly, diverged local branch refused with HEAD untouched, same-repo tracking checkout sets the upstream), ref fingerprint (tracks refs/HEAD, ignores plain file edits), commit file lists (per-file counts without hunks), single-file commit diff scoped by pathspec, worktrees (add lists + checks out the branch and reports is_worktree/main_path from inside the linked folder, new branch from a base commit + duplicate refused, branch held elsewhere refused, checkout of a held branch refused with HEAD untouched, dirty remove refused unless forced, prune of a deleted folder, ref fingerprint changes on add, `git worktree list --porcelain` reports the engine-created worktree and `git status` runs clean inside it) |
-| Rust module (52) | `apps/desktop/src-tauri/src/ai_cli.rs` (6), `src/error.rs` (6), `src/core/remote.rs` (15), `src/core/accounts.rs` (7), `src/core/sign.rs` (7), `src/forge.rs` (6), `src/proc.rs` (1), `src/watcher.rs` (4) | AI-CLI runner: program allowlist, stdout capture via fake agent script, {OUTPUT_FILE} substitution, kill-on-timeout · error mapping: HTTP status extraction from libgit2 messages, 401/402/403 explanations, unmapped codes kept verbatim, io NotFound → not_found while other io errors stay io · forge proxy: api-subdomain host allowlist (dot-anchored), per-provider auth headers, bitbucket email requirement, unknown provider rejected · SSH key resolution: `~` expansion, configured key ordered ahead of defaults, dedupe when the configured key IS a default, blank config ignored, generation never targeting an existing key · push refspec shapes (plain/force/tags never forced) · repo account-binding parse (valid/malformed) · accounts: upsert keeps both same-host accounts + default flags, one default per host, preferred-before-default candidate order, port-loose host match, ssh URLs ignored · signing config: off by default, ssh setup read from git config, empty-string values read as unset, ssh-without-key and x509 are clear errors, openpgp falls back to the committer identity, literal-key detection, ~ expansion · proc: no bare `Command::new` anywhere outside proc.rs (G31) · watcher: metadata filter unchanged for main repos, `worktrees/*/HEAD|gitdir|locked` relevant while `worktrees/*/index` is noise, a linked worktree watches its own gitdir + the shared commondir, main repos need no extra roots |
-| Unit (154) | `tests/unit/*.test.ts` | GraphLayout (incl. pagination stability, lane reuse), wordDiff (round-trip), conflict parse/serialize (diff3 labels, CRLF, bare markers, 8+-char content lines, close-without-separator — all lossless), cliAgents (per-agent argv/stdin shape, ANSI/OSC cleaning, output-file preference, error surfacing), aiProviders (empty/whitespace/missing content rejected for openai-compatible + ollama, HTTP status+body surfaced, real content passes), aiCapabilities (review conventions: absent by default, general-only, general+project order with precedence note, whitespace = absent, clipping), aiTextSegments (token parse: adjacent tokens, unclosed/inner-asterisk/multi-line markers stay literal, ** inside backticks is code), reviewSignature (staged-only, order-insensitive, unstaged-edit + set changes alter it, newline filenames don't collide, hashText determinism), commitStyle (prefix rule matching/tokens/ticket-fallthrough, `$`-sequence literalness, preset instructions, post-generation prefix enforcement), pullRequestUrl (https/scp/ssh remotes, non-standard ports kept, http preserved, ssh port dropped, Bitbucket Server /scm/ shape, .git-behind-slash strip, unknown forge → null), aiModels (per-provider list endpoints/headers incl. Groq-style base URLs, generateContent filtering for Gemini, dedupe/sort, invalid-JSON + HTTP-status errors, cli → empty without a request), forge (parseForgeRemote for all three forges + rejects, provider creation gating, github/gitlab/bitbucket adapters: request URLs, field mapping incl. fork + draft detection, create payloads, error-message surfacing incl. github field-level validation entries without a message, checkoutSpec shapes incl. bitbucket fork → null, pickForgeRemote upstream-first ordering, gitlab self-hosted https→http transport fallback — GET-only (a retried POST could file a duplicate MR), never for gitlab.com or api-level errors, working scheme remembered per host and safe under concurrent fallbacks, reviewer candidates per forge + reviewer ids embedded/requested on create incl. github follow-up failure tolerance), worktree (folder-name slug from repo + branch, sibling-path suggestion incl. Windows separators, parentDirectory), highlight (block-comment continuation: JSDoc carried and closed, line comments and glob strings not treated as open, mid-line close resumes code, xml opener, no-block-comment languages ignore the flag), commitMessage (split/join round-trip, CRLF, second line without blank line is body, newline never enters the summary), fileFilter (empty/whitespace query passes all, case-insensitive substring, every term required) |
-| E2E (50) | `tests/e2e/smoke.spec.ts` | splash→welcome, open repo, graph, inspector, palette, search, conflict resolver line picks, single-conflict nav + per-conflict take-all, per-block conflict hand edit, interactive rebase dialog + multi-select squash, cherry-pick dialog with the source-reference checkbox on by default, multi-select cherry-pick listing both commits and confirming, diff auto-jump lands at the first change with no scroll animation (frame-traced scrollTop), long path stays inside the discard confirm dialog, commit action buttons stay inside a narrow working copy panel (the row wraps), sidebar branch names align with and without the HEAD tick (measured left offsets), hovering a working-copy file reveals its full path, opening a diff folds the sidebar away and the toggle brings back the graph, avatars stay visible after a diff open/close round-trip (stubbed Gravatar), diff text selection survives the right-click copy menu and Esc closes only the menu, sidebar lists the demo pull requests and the create dialog opens, searching a commit hash jumps to it in the full graph and clears on selecting another commit, a short hash prefix jumps too while an unknown hex word falls back to filtering, a missing hash keeps the graph with a not-found note, mod+f focuses the commit search, sidebar lists the demo worktrees (incl. a missing-folder row) and the new-worktree dialog re-suggests the folder as the branch name is typed, the inner line of a JSDoc block in the demo CommitGraph.tsx diff renders as one hljs-comment span (guards the DiffViewer → prepareCommentStates wiring, which the unit tests cannot see), collapse-all folds every section and branch folder and a reopened section comes back with its folders closed, the inspector keeps its width (±1px) when a diff folds the sidebar away and both widths return on Escape (measured via data-panel-id after dragging the sidebar handle), the commit box renders the summary larger and bolder than the description with Enter/Backspace moving between them and commit disabled on an empty summary, dragging the commit box's top edge grows the description and double-click resets it, the Changes header's fold button collapses that list's folders (nested file hidden) and flips to expand-all, and no fold button exists in flat mode, the top graph row shows a whole `main` chip with no HEAD chip and no clipped chip text plus a 7-char hash copy button, the graph display menu hides the hash column and brings it back, the sidebar accordion pins collapsed headers at the bottom under an open Branches section and moves the Tags header up when Tags opens, the welcome page flags the demo's missing folder and opens a repository via ↓ + ⏎ from the autofocused search, the conflict resolver renders positive integer line numbers in A, B and Result with each starting at 1, the checked-out branch chip is opaque while another local branch's chip stays translucent, double-clicking the separated `origin/main` chip opens the reset prompt naming the 2 commits that would be lost and Cancel dismisses it (the demo repo puts origin/main 2 commits behind main so the split is real), the diff header's History button opens that same file's history panel and closes the diff, a working-copy row's "Stash this file…" opens the dialog naming that file and the toolbar pop button restores the latest demo stash, shift-click selects three working-copy rows and the bulk menu offers Stage 3 / Stash 3 files, the working-copy filter hides non-matching rows with "1 of 2" counts and the clear button restores them, the commit file filter narrows five demo files to one and Escape resets it, selecting the demo stash shows the stash hint and the hover restore button on a file toasts the restore, staged rows offer discard from the row, the menu and the header trash icon, the sidebar is visible again after a reload that happened with a diff open, the demo stash renders as a graph row with an Archive node and a dashed chip whose menu pops it, ↓ then → opens the second commit's first file with the file list focused and ↓/↑/← walk files and return to the graph on the same commit, the Graph display menu's "Lane color band" removes and restores the tail rects — all on demo mode |
+| Rust integration (78) | `apps/desktop/src-tauri/tests/git_engine.rs` | stage/commit/history, amend, branch/merge(ff+normal+conflict+message), branch-over-tag ref resolution (merge/rebase/history filter), ff-merge preserving uncommitted changes, drag-merge sequence (checkout target → merge source), no-ff merge commit when ff possible, can-fast-forward only when strictly behind, merge message available only during conflicted merge, interactive rebase (reorder/drop + range listing, squash/reword, conflict aborts untouched, invalid-plan rejection), file history lists only touching commits + paginates with skip, conflict resolve, stash (whole tree + selected paths incl. an untracked-only pick, a staged pick that leaves other staged files alone and pops with a dirty index, a staged-new pick removed and restored, git CLI agreeing on stash list/show; stash_files lists tracked + untracked entries with source_oid; stash_restore_files restores chosen files incl. an untracked one and a deletion, keeps the stash, rejects unknown paths), remote-branch checkout (stale local fast-forwarded with an untracked file preserved + upstream set, diverged local kept), tags, cherry-pick (plain keeps the message verbatim; record-origin output byte-equal to `git cherry-pick -x` for plain and trailer-block messages; many: in-order with per-commit origin lines, first conflict stops the run with progress counts), revert, reset (+ unknown-mode error), history pagination with and without filters, history position lookup by full + short hash, history search positions (case-insensitive text, hash prefix, none, blank, author alone, text + author, unknown author), stashes listed in the default walk as single-parent commits with a stash decoration while their index/untracked helper commits stay hidden and a branch-filtered walk omits them, broken-symlink staging (unix), diff hunks + whole-file context, unstage_all/discard_all, discard_staged_file/all (HEAD restored for index + worktree, staged-new file deleted, other staged files untouched), line+hunk ops on files without trailing newline, git-CLI interop, commit signing (SSH sign verified via `git verify-commit`, unsigned without config, amend re-signs, merge commit signed, failure blocks the commit and leaves HEAD/index untouched), PR checkout (fork-style refs/pull fetch creates + updates the local branch and re-runs cleanly, diverged local branch refused with HEAD untouched, same-repo tracking checkout sets the upstream), ref fingerprint (tracks refs/HEAD, ignores plain file edits), commit file lists (per-file counts without hunks), single-file commit diff scoped by pathspec, worktrees (add lists + checks out the branch and reports is_worktree/main_path from inside the linked folder, new branch from a base commit + duplicate refused, branch held elsewhere refused, checkout of a held branch refused with HEAD untouched, dirty remove refused unless forced, prune of a deleted folder, ref fingerprint changes on add, `git worktree list --porcelain` reports the engine-created worktree and `git status` runs clean inside it), discover refuses a missing path instead of walking to the parent repo, push reports up_to_date without contacting the remote when the tip equals the tracking ref while `git push` prints Everything up-to-date, and pushes again after a new commit, pull with mode rebase / configured pull.rebase keeps history linear while mode merge creates a merge commit, blame attributes lines to their commits and marks an uncommitted edit, blames at a revision and at `<oid>^`, an uncommitted edit inside a committed block keeps the author on both split halves (the G44 crash), untracked/staged-new files and paths missing from a commit get explicit errors, staging and unstaging a later hunk of a multi-hunk file leaves the other hunk alone, remote_add registers a remote that list and fetch then use while a duplicate or blank name is refused |
+| Rust module (64) | `apps/desktop/src-tauri/src/cli.rs` (7), `src/editors.rs` (4), `src/ai_cli.rs` (6), `src/error.rs` (6), `src/core/remote.rs` (15), `src/core/accounts.rs` (7), `src/core/sign.rs` (7), `src/forge.rs` (7), `src/proc.rs` (1), `src/watcher.rs` (4) | AI-CLI runner: program allowlist, stdout capture via fake agent script, {OUTPUT_FILE} substitution, kill-on-timeout · error mapping: HTTP status extraction from libgit2 messages, 401/402/403 explanations, unmapped codes kept verbatim, io NotFound → not_found while other io errors stay io · forge proxy: api-subdomain host allowlist (dot-anchored), per-provider auth headers, bitbucket email requirement, unknown provider rejected, missing-token vs no-account message · SSH key resolution: `~` expansion, configured key ordered ahead of defaults, dedupe when the configured key IS a default, blank config ignored, generation never targeting an existing key · push refspec shapes (plain/force/tags never forced) · repo account-binding parse (valid/malformed) · accounts: upsert keeps both same-host accounts + default flags, one default per host, preferred-before-default candidate order, port-loose host match, ssh URLs ignored · signing config: off by default, ssh setup read from git config, empty-string values read as unset, ssh-without-key and x509 are clear errors, openpgp falls back to the committer identity, literal-key detection, ~ expansion · proc: no bare `Command::new` anywhere outside proc.rs (G31) · watcher: metadata filter unchanged for main repos, `worktrees/*/HEAD|gitdir|locked` relevant while `worktrees/*/index` is noise, a linked worktree watches its own gitdir + the shared commondir, main repos need no extra roots |
+| Unit (175) | `tests/unit/*.test.ts` | GraphLayout (incl. pagination stability, lane reuse), wordDiff (round-trip), conflict parse/serialize (diff3 labels, CRLF, bare markers, 8+-char content lines, close-without-separator — all lossless), cliAgents (per-agent argv/stdin shape, ANSI/OSC cleaning, output-file preference, error surfacing), aiProviders (empty/whitespace/missing content rejected for openai-compatible + ollama, HTTP status+body surfaced, real content passes), aiCapabilities (review conventions: absent by default, general-only, general+project order with precedence note, whitespace = absent, clipping), aiTextSegments (token parse: adjacent tokens, unclosed/inner-asterisk/multi-line markers stay literal, ** inside backticks is code), reviewSignature (staged-only, order-insensitive, unstaged-edit + set changes alter it, newline filenames don't collide, hashText determinism), commitStyle (prefix rule matching/tokens/ticket-fallthrough, `$`-sequence literalness, preset instructions, post-generation prefix enforcement), pullRequestUrl (https/scp/ssh remotes, non-standard ports kept, http preserved, ssh port dropped, Bitbucket Server /scm/ shape, .git-behind-slash strip, unknown forge → null), aiModels (per-provider list endpoints/headers incl. Groq-style base URLs, generateContent filtering for Gemini, dedupe/sort, invalid-JSON + HTTP-status errors, cli → empty without a request), forge (parseForgeRemote for all three forges + rejects, provider creation gating, github/gitlab/bitbucket adapters: request URLs, field mapping incl. fork + draft detection, create payloads, error-message surfacing incl. github field-level validation entries without a message, checkoutSpec shapes incl. bitbucket fork → null, pickForgeRemote upstream-first ordering, gitlab self-hosted https→http transport fallback — GET-only (a retried POST could file a duplicate MR), never for gitlab.com or api-level errors, working scheme remembered per host and safe under concurrent fallbacks, reviewer candidates per forge + reviewer ids embedded/requested on create incl. github follow-up failure tolerance, authorAvatar per forge: github commit author, gitlab avatar-by-email URL encoding, bitbucket commit author user), worktree (folder-name slug from repo + branch, sibling-path suggestion incl. Windows separators, parentDirectory), highlight (block-comment continuation: JSDoc carried and closed, line comments and glob strings not treated as open, mid-line close resumes code, xml opener, no-block-comment languages ignore the flag), commitMessage (split/join round-trip, CRLF, second line without blank line is body, newline never enters the summary), fileFilter (empty/whitespace query passes all, case-insensitive substring, every term required), webUrl (https/scp/ssh:// remotes → repository page, ssh port dropped, http + web port kept, Bitbucket Server browse page, Bitbucket Cloud untouched, trailing slash, local path → null), blameable (hasCommittedHistory true for every tracked change kind, false for untracked and staged-new), renderCap (lines at or under 5,000 chars stay whole, longer ones clip and count the hidden tail, custom cap), fork → upstream pull requests (github head `owner:branch`, gitlab GET target id then POST on the source project with target_project_id, bitbucket source.repository, forgeTargets dedupes same-host remotes and defaultForgeTarget prefers `upstream`) |
+| E2E (78) | `tests/e2e/smoke.spec.ts` | splash→welcome, the AI chip names Ollama on the demo defaults, reads Set up AI when the CLI provider has no agent, Claude Code once picked, turns ok after Test connection, stale when the provider changes back to Ollama, and survives a reload, Blame is disabled in the file menu and the diff header for the untracked demo file while a tracked file keeps it enabled, the remote row menu's Open in browser opens the demo remote's GitHub page in a popup and the palette lists Open repository in browser, the sidebar and graph branch menus carry a fast-forward entry next to merge that is disabled while the current branch is ahead, settings installs the command line tool, settings lists the demo editors and picking Zed relabels the toolbar button and its menu, the Pull options menu offers merge and rebase, the status bar reports Fetched just now after the auto fetch, the diff header's Blame button opens file history in the blame pane with the Working copy row selected, per-hunk author buttons and an uncommitted hunk that disappears when a commit row is picked, a Blame at this commit menu, the Diff view toggle brings the diff controls back and Escape returns to the graph, the palette's Blame… picks a file and opens its blame pane, open repo, graph, inspector, palette, search, conflict resolver line picks, single-conflict nav + per-conflict take-all, per-block conflict hand edit, interactive rebase dialog + multi-select squash, cherry-pick dialog with the source-reference checkbox on by default, multi-select cherry-pick listing both commits and confirming, diff auto-jump lands at the first change with no scroll animation (frame-traced scrollTop), long path stays inside the discard confirm dialog, commit action buttons stay inside a narrow working copy panel (the row wraps), sidebar branch names align with and without the HEAD tick (measured left offsets), hovering a working-copy file reveals its full path, opening a diff folds the sidebar away and the toggle brings back the graph, avatars stay visible after a diff open/close round-trip (stubbed Gravatar), diff text selection survives the right-click copy menu and Esc closes only the menu, sidebar lists the demo pull requests and the create dialog opens, reconnecting an account opens the prefilled token form with focus in the token field, a file history row's Open commit button closes the panel and selects that commit in the graph, the author box finds commits with the graph lanes intact and combines with the text search, commit search finds matches in the full graph (n of m pill, Enter/Previous step, query survives selecting another commit, Escape clears), searching a commit hash jumps to it in the full graph, a short hash prefix jumps too while an unknown hex word says No matches, a missing hash keeps the graph with No matches, mod+f focuses the commit search, sidebar lists the demo worktrees (incl. a missing-folder row) and the new-worktree dialog re-suggests the folder as the branch name is typed, the inner line of a JSDoc block in the demo CommitGraph.tsx diff renders as one hljs-comment span (guards the DiffViewer → prepareCommentStates wiring, which the unit tests cannot see), collapse-all folds every section and branch folder and a reopened section comes back with its folders closed, the inspector keeps its width (±1px) when a diff folds the sidebar away and both widths return on Escape (measured via data-panel-id after dragging the sidebar handle), the commit box renders the summary larger and bolder than the description with Enter/Backspace moving between them and commit disabled on an empty summary, dragging the commit box's top edge grows the description and double-click resets it, the Changes header's fold button collapses that list's folders (nested file hidden) and flips to expand-all, and no fold button exists in flat mode, the top graph row shows a whole `main` chip with no HEAD chip and no clipped chip text plus a 7-char hash copy button, the graph display menu hides the hash column and brings it back, the sidebar accordion pins collapsed headers at the bottom under an open Branches section and moves the Tags header up when Tags opens, the welcome page flags the demo's missing folder and opens a repository via ↓ + ⏎ from the autofocused search, the conflict resolver renders positive integer line numbers in A, B and Result with each starting at 1, the checked-out branch chip is opaque while another local branch's chip stays translucent, double-clicking the separated `origin/main` chip opens the reset prompt naming the 2 commits that would be lost and Cancel dismisses it (the demo repo puts origin/main 2 commits behind main so the split is real), the diff header's History button opens that same file's history panel and closes the diff, a working-copy row's "Stash this file…" opens the dialog naming that file and the toolbar pop button restores the latest demo stash, shift-click selects three working-copy rows and the bulk menu offers Stage 3 / Stash 3 files, the working-copy filter hides non-matching rows with "1 of 2" counts and the clear button restores them, the commit file filter narrows five demo files to one and Escape resets it, selecting the demo stash shows the stash hint and the hover restore button on a file toasts the restore, right-clicking a plain commit's file offers File history / Show in Finder / Copy path and no stash Apply entry, staged rows offer discard from the row, the menu and the header trash icon, the sidebar is visible again after a reload that happened with a diff open, the demo stash renders as a graph row with an Archive node and a dashed chip whose menu pops it, ↓ then → opens the second commit's first file with the file list focused and ↓/↑/← walk files and return to the graph on the same commit, the Graph display menu's "Lane color band" removes and restores the tail rects, the inspector stops at its minimum width when dragged and folds/returns for file history, dragging the sidebar shut and back open in one gesture shows its content again, conflict picks land in file order with a mixed-state side checkbox, the resolver picks with A/B/↑/↓ and ⌘⏎ opens the next conflicted file, leaving with picks asks first while Escape closes a clean resolver, right-clicking the main tip row offers Push main ↑2 while an inner commit's menu has no push, hovering the feature/diff-viewer chip stacks both its refs in a panel whose first chip sits on the row chip (≤2px) with the folded `release/0.4` under it, and right-clicking that one opens its Checkout menu (no reset entry for a plain local), the top row shows `main` as its visible chip although `hotfix/lane-colors` comes first in the refs and only `main` carries the check inside the stacked panel, right-clicking the separated `origin/main` chip offers "Reset main to this…" and opens the same reset dialog, clicking a working-copy file then ↓/↓/↑ moves the diff through ipc.ts → palette-seed.sql → Architecture.md and back — the Remotes header's Add remote button opens the add dialog with the button disabled until name and URL are filled, right-clicking the terminal shows Copy (disabled without a selection)/Paste/Select all/Clear terminal, Settings → Git → Clone destination remembers a chosen folder and the clone dialog's destination starts there, a four-row drag selection in the palette-seed diff stays a Range and still copies all four lines via ⌘C after its rows scroll out of the virtualizer in either direction, and reads the same text once scrolled back — all on demo mode |
 
 ## 9.5 Open-source & community files
 
@@ -1675,6 +2275,30 @@ PR template with the quality checklist. Crash resilience:
 white-screen the app. `docs/Distribution.md` documents signing/notarization,
 the updater plan (pull-based from GitHub releases; needs owner keys before the
 plugin can be added), and the Homebrew cask.
+
+**GitHub repo settings (set 2026-09-11, not visible in the code):** squash merges
+only, subject = PR title, body = BLANK (the default COMMIT_MESSAGES body would have
+carried a contributor's `Co-authored-by: Cursor` trailer into main); merged head
+branches auto-delete; ruleset "Protect main" (id 22892466) on the default branch
+blocks deletion + force-push, requires a PR with 1 approval, resolved threads and
+the six CI job checks (typecheck/unit/build, Playwright, Rust × 3 OS, Commit
+messages — added to the ruleset 2026-09-12 when the `commits` job landed) —
+with RepositoryRole 5 (admin) as an always-bypass actor so the owner's release
+flow (fast-forward main + tag from the terminal) still works; Actions requires
+approval for first-time contributors' fork PRs, so a new contributor's CI run sits
+at "action_required" until the owner clicks "Approve and run" in the Actions tab
+(or `gh api -X POST repos/cheat2001/angkorgit/actions/runs/<id>/approve`) — an
+unapproved run EXPIRES as a red "failure" with zero jobs, which is what PRs #11,
+#12 and the Sep 7 fork PR showed — the policy was then relaxed to "first-time
+contributors NEW TO GITHUB" so established accounts run CI unasked; Dependabot
+ALERTS on (Security tab) but automatic security-update PRs OFF and no
+dependabot.yml — the owner wants a quiet PR list (2026-09-11: security updates
+opened four bot PRs at once, all closed), so dependency bumps land by hand in a
+`chore(deps)` commit when an alert matters (react-router-dom 6.30.6 was taken
+that way); secret scanning + push protection on. The `commits` CI job
+(PR-only) fails on tool-generated trailers — `Co-authored-by` naming a coding
+agent, "Generated with/by", 🤖 — while leaving real people's
+`users.noreply.github.com` co-authors alone.
 
 ## 10. Distribution & CI
 
@@ -1748,7 +2372,7 @@ plugin can be added), and the Homebrew cask.
 2. Provider avatars via connected accounts (GitLab self-hosted `/api/v4/avatar`, GitHub API)
    layered over Gravatar.
 3. File-tree view for the working copy (deep C# paths); prev/next-file arrows in DiffPanel.
-4. Blame (file history shipped; annotate view remains). 5. Worktree follow-ups: start an
+4. ~~Blame~~ shipped 2026-09-12 (BlamePanel). 5. Worktree follow-ups: start an
    installed AI CLI inside a worktree, per-repo post-create setup command, merged badge with
    one-step cleanup (worktrees themselves shipped in 0.10.0).
 7. Forge integrations, remaining scope (PR list/checkout/create + reviewer selection
@@ -1769,6 +2393,6 @@ plugin can be added), and the Homebrew cask.
 ## 12. Voice & positioning (for docs/website work)
 
 - Tagline: *"Everyday Git, made delightful."* Motto: *Strength. Simplicity. Craftsmanship.*
-- Compare on: size (12 MB download vs ~1 GB), speed (native libgit2), focus (25 features done well).
+- Compare on: size (14 MB download vs ~1 GB), speed (native libgit2), focus (25 features done well).
 - Never copy GitKraken assets/layouts; we take workflow inspiration only.
 - License: MIT. Attribution to Angkor Wat heritage is part of the brand story.

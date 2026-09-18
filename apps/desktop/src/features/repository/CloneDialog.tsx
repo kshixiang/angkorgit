@@ -13,19 +13,39 @@ import {
   Spinner,
 } from '@angkorgit/design-system';
 import { ipc, listen, pickDirectory } from '@/core/ipc';
-import { useUi } from '@/features/ui/store';
+import { useUi, type ClonePreset, type DialogContext } from '@/features/ui/store';
+import { useSettings } from '@/features/settings/store';
+
+function clonePreset(ctx: DialogContext): ClonePreset | null {
+  if (!ctx || typeof ctx === 'string' || !('url' in ctx) || !('into' in ctx)) return null;
+  return ctx as ClonePreset;
+}
 
 export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) {
-  const { dialog, closeDialog } = useUi();
+  const { dialog, dialogContext, closeDialog } = useUi();
+  const cloneRoot = useSettings((s) => s.cloneRoot);
+  const setCloneRoot = useSettings((s) => s.setCloneRoot);
   const open = dialog === 'clone';
   const [url, setUrl] = useState('');
   const [into, setInto] = useState('');
+  const [branch, setBranch] = useState('');
   const [progress, setProgress] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) {
+      setUrl('');
+      setInto('');
+      setBranch('');
       setProgress(null);
       return;
+    }
+    const preset = clonePreset(dialogContext);
+    if (preset) {
+      setUrl(preset.url);
+      setInto(preset.into || cloneRoot || '');
+      setBranch(preset.branch ?? '');
+    } else if (cloneRoot) {
+      setInto(cloneRoot);
     }
     let unlisten: (() => void) | undefined;
     let cancelled = false;
@@ -37,7 +57,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
       cancelled = true;
       unlisten?.();
     };
-  }, [open]);
+  }, [open, dialogContext, cloneRoot]);
 
   const clone = async () => {
     if (progress !== null || !url.trim() || !into.trim()) return;
@@ -45,7 +65,8 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
     try {
       const name = url.trim().replace(/\.git$/, '').split('/').pop() ?? 'repository';
       const target = `${into.replace(/\/$/, '')}/${name}`;
-      const path = await ipc.cloneRepository(url.trim(), target);
+      const path = await ipc.cloneRepository(url.trim(), target, branch.trim() || null);
+      setCloneRoot(into.trim().replace(/\/$/, ''));
       toast.success('Repository cloned');
       closeDialog();
       onCloned(path);
@@ -71,6 +92,14 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
             placeholder="git@github.com:user/repo.git"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void clone();
+            }}
+          />
+          <Input
+            placeholder="Branch (optional)"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void clone();
             }}

@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import type { DiffHunk, DiffLine, FileDiff } from '@angkorgit/core';
-import { wordDiff, type WordSegment } from '@angkorgit/core';
+import { MAX_RENDERED_LINE, clipRenderedLine, wordDiff, type WordSegment } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
 import { highlightLineState, supportsBlockComments } from '@/shared/highlight';
 
@@ -115,17 +115,21 @@ export const CodeLine = memo(function CodeLine({
 }) {
   const html = useMemo(() => {
     const inComment = startsInComment(line);
-    if (useWordDiff && pair && line.kind !== 'context' && pair.content !== line.content) {
+    const clipped = clipRenderedLine(line.content);
+    const pairWithinCap = !!pair && pair.content.length <= MAX_RENDERED_LINE;
+    if (useWordDiff && pair && pairWithinCap && clipped.hidden === 0 && line.kind !== 'context' && pair.content !== line.content) {
       const diff = side === 'old' ? wordDiff(line.content, pair.content) : wordDiff(pair.content, line.content);
       return segmentsToHtml(side === 'old' ? diff.old : diff.new, language, side, inComment);
     }
-    return highlightLineState(line.content, language, inComment).html;
+    if (clipped.hidden === 0) return highlightLineState(clipped.text, language, inComment).html;
+    const body = highlightLineState(clipped.text, null, false).html;
+    return `${body}<span class="ml-2 rounded-sm bg-surface-raised px-1.5 text-faint" title="Only the first ${MAX_RENDERED_LINE.toLocaleString()} characters of this line are shown">… ${clipped.hidden.toLocaleString()} more characters</span>`;
   }, [line, pair, language, useWordDiff, side]);
 
   return (
     <span
       className={cn(
-        'font-mono text-xs leading-5',
+        'font-mono text-xs leading-5 [font-variant-ligatures:none]',
         wrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre',
       )}
       dangerouslySetInnerHTML={{ __html: html || ' ' }}

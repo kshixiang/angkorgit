@@ -20,6 +20,7 @@ import {
   GitBranch,
   FastForward,
   GitMerge,
+  Globe,
   GitPullRequest,
   Home,
   MoveRight,
@@ -65,7 +66,7 @@ import { useUi } from '@/features/ui/store';
 import { useUndo, type UndoKind } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
 import { useSettings } from '@/features/settings/store';
-import { forgeNoun, pullRequestCheckoutSpec } from '@angkorgit/core';
+import { forgeNoun, pullRequestCheckoutSpec, remoteWebUrl } from '@angkorgit/core';
 import type { BranchInfo, PullRequestInfo, RemoteInfo, StashInfo, SubmoduleInfo, TagInfo, WorktreeInfo } from '@angkorgit/core';
 import { capCount, isMac } from '@/shared/utils';
 import { killTerminalSession } from '@/features/terminal/sessions';
@@ -255,13 +256,14 @@ export function Sidebar() {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [dropAction, setDropAction] = useState<{ source: string; target: string; canFf?: boolean } | null>(null);
   const [branchMenu, setBranchMenu] = useState<{ x: number; y: number; branch: BranchInfo } | null>(null);
+  const [branchMenuFf, setBranchMenuFf] = useState<boolean | null>(null);
   const [subMenu, setSubMenu] = useState<{ x: number; y: number; sub: SubmoduleInfo } | null>(null);
   const [remoteMenu, setRemoteMenu] = useState<{ x: number; y: number; remote: RemoteInfo } | null>(null);
   const [worktreeMenu, setWorktreeMenu] = useState<{ x: number; y: number; worktree: WorktreeInfo } | null>(null);
   const [stashMenu, setStashMenu] = useState<{ x: number; y: number; stash: StashInfo } | null>(null);
   const [tagMenu, setTagMenu] = useState<{ x: number; y: number; tag: TagInfo } | null>(null);
   const [prMenu, setPrMenu] = useState<{ x: number; y: number; pr: PullRequestInfo } | null>(null);
-  const [editRemote, setEditRemote] = useState<{ original: string; name: string; url: string } | null>(null);
+  const [editRemote, setEditRemote] = useState<{ original: string | null; name: string; url: string } | null>(null);
   const [savingRemote, setSavingRemote] = useState(false);
 
   const openSubmodule = (sub: SubmoduleInfo) => {
@@ -471,10 +473,20 @@ export function Sidebar() {
     const edit = editRemote;
     if (!edit || !edit.name.trim() || !edit.url.trim() || savingRemote) return;
     setSavingRemote(true);
-    await act(`Update remote ${edit.original}`, () => ipc.remoteEdit(path, edit.original, edit.name, edit.url));
+    const original = edit.original;
+    if (original === null) {
+      const name = edit.name.trim();
+      await act(`Add remote ${name}`, async () => {
+        await ipc.remoteAdd(path, name, edit.url);
+        return ipc.fetch(path, name, true, false);
+      });
+    } else {
+      await act(`Update remote ${original}`, () => ipc.remoteEdit(path, original, edit.name, edit.url));
+    }
     setSavingRemote(false);
     setEditRemote(null);
   };
+  const openAddRemote = () => setEditRemote({ original: null, name: remotes.length === 0 ? 'origin' : '', url: '' });
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -515,6 +527,25 @@ export function Sidebar() {
       else next.add(folderPath);
       return next;
     });
+
+  const branchMenuSource = branchMenu?.branch.isHead ? null : (branchMenu?.branch.name ?? null);
+  useEffect(() => {
+    setBranchMenuFf(null);
+    if (!branchMenuSource) return;
+    const head = useRepo.getState().repo?.headBranch;
+    if (!head) {
+      setBranchMenuFf(false);
+      return;
+    }
+    let cancelled = false;
+    void ipc
+      .mergeCanFastForward(path, head, branchMenuSource)
+      .then((ok) => !cancelled && setBranchMenuFf(ok))
+      .catch(() => !cancelled && setBranchMenuFf(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [path, branchMenuSource]);
 
   if (!repo) return null;
 
@@ -715,7 +746,7 @@ export function Sidebar() {
       <button
         className="flex min-w-0 flex-1 items-center gap-2 text-left"
         onDoubleClick={() => void act(`Checkout ${branch.name}`, () => ipc.checkout(path, branch.name), { kind: 'checkout' })}
-        title={`${branch.name} — double-click to checkout`}
+        title={`${branch.name} — double-click to check out ${branch.name.split('/').slice(1).join('/')} from it (fast-forwards the local branch when it is behind)`}
       >
         <HeadMark active={false} />
         <span className="min-w-0 truncate">{label}</span>
@@ -1045,12 +1076,29 @@ export function Sidebar() {
           </>
         )}
 
-        <Section {...section('remotes')} icon={<Cloud className="size-3.5" />} title={t('Remotes')} count={remoteBranches.length}>
+        <Section
+          {...section('remotes')}
+          icon={<Cloud className="size-3.5" />}
+          title={t('Remotes')}
+          count={remoteBranches.length}
+          action={
+            <Hint label="Add remote">
+              <Button variant="ghost" size="icon-sm" aria-label="Add remote" onClick={openAddRemote}>
+                <Plus className="size-3.5" />
+              </Button>
+            </Hint>
+          }
+        >
           {remotes.length === 0 && !hasRemoteBranches && !repoRefreshing && (
             <SidebarEmpty
               icon={<Cloud />}
               title="No remotes"
               description="This repository lives only on this machine. Add a remote to push, pull and open pull requests."
+              action={
+                <Button variant="secondary" size="sm" className="w-full justify-center" onClick={openAddRemote}>
+                  <Plus className="size-3.5" /> Add remote
+                </Button>
+              }
             />
           )}
           {q
@@ -1412,6 +1460,15 @@ export function Sidebar() {
               <ArrowDownToLine /> Fetch {remoteMenu.remote.name}
             </DropdownMenuItem>
             <DropdownMenuItem
+              disabled={remoteWebUrl(remoteMenu.remote.url) === null}
+              onClick={() => {
+                const url = remoteWebUrl(remoteMenu.remote.url);
+                if (url) void openExternal(url);
+              }}
+            >
+              <Globe /> Open in browser
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => {
                 const r = remoteMenu.remote;
                 setEditRemote({ original: r.name, name: r.name, url: r.url });
@@ -1444,8 +1501,12 @@ export function Sidebar() {
       <Dialog open={editRemote !== null} onOpenChange={(o) => !o && setEditRemote(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit remote</DialogTitle>
-            <DialogDescription>Rename the remote or point it at a different URL.</DialogDescription>
+            <DialogTitle>{editRemote?.original === null ? 'Add remote' : 'Edit remote'}</DialogTitle>
+            <DialogDescription>
+              {editRemote?.original === null
+                ? 'Name the remote and paste its URL. It is fetched right away so its branches show up here.'
+                : 'Rename the remote or point it at a different URL.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1.5 text-xs text-muted">
@@ -1456,7 +1517,7 @@ export function Sidebar() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void submitEditRemote();
                 }}
-                placeholder="origin"
+                placeholder={remotes.length === 0 ? 'origin' : 'upstream'}
                 autoFocus
               />
             </label>
@@ -1481,7 +1542,7 @@ export function Sidebar() {
               disabled={savingRemote || !editRemote?.name.trim() || !editRemote?.url.trim()}
               onClick={() => void submitEditRemote()}
             >
-              Save changes
+              {editRemote?.original === null ? 'Add remote' : 'Save changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1524,6 +1585,16 @@ export function Sidebar() {
               }
             >
               <GitMerge /> Merge into current
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={branchMenu.branch.isHead || branchMenuFf !== true}
+              onClick={() =>
+                void act(`Fast-forward to ${branchMenu.branch.name}`, () => ipc.merge(path, branchMenu.branch.name, false), {
+                  kind: 'merge',
+                })
+              }
+            >
+              <FastForward /> Fast-forward current to this
             </DropdownMenuItem>
             {!branchMenu.branch.isRemote && (
               <DropdownMenuItem

@@ -111,7 +111,6 @@ It's free, MIT licensed, and there is no account, no telemetry and no cloud. Eve
 
 - In-app pull request review. The forge does this better, with CI logs and suggestions. There is an Open in browser button.
 - Telemetry, accounts, a cloud. Nothing phones home and there is nothing to sign up for.
-- A blame view. File history is there, line level blame is on the list.
 - A plugin marketplace. Not yet.
 
 ## Install
@@ -123,13 +122,13 @@ Grab the file for your platform from the [releases page](https://github.com/chea
 brew install --cask cheat2001/tap/angkorgit
 
 # macOS, direct download
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_universal.dmg -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_universal.dmg -o ~/Downloads/GitMD.dmg && xattr -cr ~/Downloads/GitMD.dmg && open ~/Downloads/GitMD.dmg
 
 # Windows (PowerShell)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_x64-setup.exe -o "$env:TEMP\GitMD-setup.exe"; Start-Process "$env:TEMP\GitMD-setup.exe"
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_x64-setup.exe -o "$env:TEMP\GitMD-setup.exe"; Start-Process "$env:TEMP\GitMD-setup.exe"
 
 # Linux (AppImage)
-curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.11.0/GitMD_0.11.0_amd64.AppImage -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage
+curl -L https://github.com/cheat2001/angkorgit/releases/download/v0.15.0/GitMD_0.15.0_amd64.AppImage -o ~/Downloads/GitMD.AppImage && chmod +x ~/Downloads/GitMD.AppImage && ~/Downloads/GitMD.AppImage
 ```
 
 The builds aren't signed with a paid certificate, so your OS asks once on first launch. After that the app updates itself, and every update is verified with a signature before it installs. All releases are built in public by GitHub Actions from this source tree. The full first-launch walkthrough is on the [getting started page](https://angkorgit.app/docs/getting-started/).

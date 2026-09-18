@@ -59,6 +59,16 @@ fn bound_username(repo_path: Option<&str>, host: &str) -> Option<String> {
         .cloned()
 }
 
+fn missing_account_message(host: &str, has_metadata: bool) -> String {
+    if has_metadata {
+        format!(
+            "the token for {host} is missing from the system keychain — reconnect the account in Settings → Authentication"
+        )
+    } else {
+        format!("no connected {host} account — connect one in Settings → Authentication")
+    }
+}
+
 pub async fn request(
     repo_path: Option<String>,
     host: String,
@@ -78,9 +88,7 @@ pub async fn request(
             let preferred = bound_username(repo_path.as_deref(), &host);
             let (account, token) = accounts::account_with_token(&host, preferred.as_deref())
                 .ok_or_else(|| {
-                    AppError::other(format!(
-                        "no connected {host} account — connect one in Settings → Authentication"
-                    ))
+                    AppError::other(missing_account_message(&host, accounts::has_account(&host)))
                 })?;
             auth_headers(&account.provider, &token, account.email.as_deref())
         }
@@ -97,6 +105,15 @@ pub async fn request(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_token_is_reported_differently_from_no_account() {
+        let missing = missing_account_message("gitlab.com", true);
+        assert!(missing.contains("missing from the system keychain"));
+        assert!(missing.contains("reconnect"));
+        let none = missing_account_message("gitlab.com", false);
+        assert!(none.starts_with("no connected gitlab.com account"));
+    }
 
     #[test]
     fn github_com_requests_may_target_the_api_subdomain() {

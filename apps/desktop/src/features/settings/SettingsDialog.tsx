@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import {
   Check,
   ChevronDown,
+  Code,
   Copy,
   FolderOpen,
   Github,
@@ -58,17 +59,19 @@ import {
   Textarea,
   cn,
 } from '@angkorgit/design-system';
-import { ipc, pickFile, type HostingAccount } from '@/core/ipc';
+import { ipc, pickDirectory, pickFile, type CliToolStatus, type HostingAccount } from '@/core/ipc';
 import { Avatar } from '@/components/Avatar';
 import { confirmDialog } from '@/components/confirm';
 import { useRepo } from '@/features/repository/store';
 import { useUi } from '@/features/ui/store';
 import { ACCENTS, THEMES, useSettings, ZOOM_MAX, ZOOM_MIN, type IdentityProfile } from './store';
 import { applyProfileToRepo } from './profiles';
+import { installCliTool } from './cliTool';
+import { useEditors } from './editors';
 import { AccountsTab, providerIcon } from './AccountsTab';
 import { Field, SettingCard, SettingEmpty, SettingRow } from './SettingCard';
 import { getAiProvider } from '@/features/ai/client';
-import { modKey } from '@/shared/utils';
+import { modKey, shortenHome } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
 
 type SectionId = 'appearance' | 'git' | 'accounts' | 'ai' | 'shortcuts';
@@ -80,7 +83,7 @@ const SECTIONS: Array<{
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   { id: 'appearance', label: 'Appearance', description: 'Theme, accent color, zoom and motion', icon: Palette },
-  { id: 'git', label: 'Git', description: 'Auto fetch, pull requests, identity and profiles', icon: User },
+  { id: 'git', label: 'Git', description: 'Auto fetch, pull requests, command line, identity and profiles', icon: User },
   { id: 'accounts', label: 'Authentication', description: 'https:// remotes use accounts · git@ remotes use SSH keys', icon: Github },
   { id: 'ai', label: 'AI Assistant', description: 'Provider, connection and message style', icon: Sparkles },
   { id: 'shortcuts', label: 'Shortcuts', description: 'Keyboard reference', icon: Keyboard },
@@ -534,6 +537,180 @@ function CommitStyleCard() {
   );
 }
 
+function CloneFolderCard() {
+  const cloneRoot = useSettings((s) => s.cloneRoot);
+  const setCloneRoot = useSettings((s) => s.setCloneRoot);
+  const browse = async () => {
+    const dir = await pickDirectory('Choose the default clone folder');
+    if (dir) setCloneRoot(dir);
+  };
+  return (
+    <SettingCard
+      title="Clone destination"
+      description="The folder the clone dialog starts from. The last folder you cloned into is remembered here automatically."
+      action={
+        <span className="flex items-center gap-1.5">
+          {cloneRoot && (
+            <Button variant="ghost" size="sm" onClick={() => setCloneRoot(null)}>
+              Clear
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => void browse()}>
+            <FolderOpen className="size-3.5" /> Choose folder
+          </Button>
+        </span>
+      }
+    >
+      <p className={cn('truncate font-mono text-[11px]', cloneRoot ? 'text-muted' : 'text-faint')} title={cloneRoot ?? undefined}>
+        {cloneRoot ? shortenHome(cloneRoot) : 'Not set — the dialog asks for a folder each time'}
+      </p>
+    </SettingCard>
+  );
+}
+
+function CliToolCard() {
+  const [status, setStatus] = useState<CliToolStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void ipc.cliStatus().then(setStatus).catch(() => setStatus(null));
+  }, []);
+
+  const install = async () => {
+    setBusy(true);
+    try {
+      setStatus(await installCliTool());
+    } catch (error) {
+      toast.error(`Could not install: ${(error as { message?: string }).message ?? error}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uninstall = async () => {
+    setBusy(true);
+    try {
+      await ipc.cliUninstall();
+      setStatus(null);
+      toast.success('Command line tool removed');
+    } catch (error) {
+      toast.error(`Could not uninstall: ${(error as { message?: string }).message ?? error}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SettingCard
+      title="Command line tool"
+      description="Open or clone a repository from the terminal as angkorgit or the short akg. Run akg --help for the full usage."
+      action={
+        status ? (
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void uninstall()}>
+            Uninstall
+          </Button>
+        ) : (
+          <Button size="sm" disabled={busy} onClick={() => void install()}>
+            Install
+          </Button>
+        )
+      }
+    >
+      <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-muted">
+        {`angkorgit
+angkorgit open [path]
+angkorgit clone [-b branch] <url>`}
+      </pre>
+      {status && (
+        <p className="mt-1 text-[11px] leading-relaxed text-faint">
+          {status.path}
+          {status.aliasPath && ' · also akg'}
+        </p>
+      )}
+      {status && status.path.includes('/.local/bin/') && (
+        <p className="mt-1 text-[11px] leading-relaxed text-muted">
+          ~/.local/bin is not on PATH in every shell. If akg is not found, add this line to your shell profile:{' '}
+          <code className="rounded bg-surface-raised px-1 font-mono">export PATH="$HOME/.local/bin:$PATH"</code>
+        </p>
+      )}
+    </SettingCard>
+  );
+}
+
+function EditorCard() {
+  const editorId = useSettings((s) => s.editorId);
+  const setEditorId = useSettings((s) => s.setEditorId);
+  const { editors, loading, rescan } = useEditors();
+  const activeId = editors.some((e) => e.id === editorId) ? editorId : (editors[0]?.id ?? null);
+
+  return (
+    <SettingCard
+      title="External editor"
+      description="Open the repository or a file in an editor installed on this machine, from the toolbar, the palette and the file menus."
+      action={
+        <Button variant="ghost" size="sm" onClick={() => void rescan()} disabled={loading}>
+          {loading ? <Spinner /> : <RefreshCw className="size-3.5" />}
+          Scan again
+        </Button>
+      }
+    >
+      {editors.length === 0 && !loading ? (
+        <SettingEmpty
+          icon={<Code className="size-4" />}
+          title="No editor found"
+          description="Install your editor's command line launcher (VS Code calls it the shell command) and scan again."
+        />
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {editors.map((editor) => {
+            const isActive = editor.id === activeId;
+            return (
+              <button
+                key={editor.id}
+                onClick={() => setEditorId(editor.id)}
+                aria-pressed={isActive}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg border p-3 text-left transition-colors',
+                  isActive ? 'border-primary/40 bg-primary/5' : 'border-border-subtle bg-surface-raised/40 hover:border-border',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex size-8 shrink-0 items-center justify-center rounded-md',
+                    isActive ? 'bg-primary/15 text-primary' : 'bg-surface text-muted',
+                  )}
+                >
+                  <Code className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <span className="truncate">{editor.label}</span>
+                    {isActive && (
+                      <Badge tone="primary">
+                        <Check className="size-3" /> In use
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="truncate font-mono text-[11px] text-faint">{editor.path}</p>
+                </div>
+              </button>
+            );
+          })}
+          {loading && editors.length === 0 && (
+            <div className="flex items-center gap-2.5 rounded-md border border-border-subtle p-2.5">
+              <div className="size-8 animate-pulse rounded-md bg-surface-raised" />
+              <div className="flex flex-1 flex-col gap-1.5">
+                <div className="h-3.5 w-32 animate-pulse rounded bg-surface-raised" />
+                <div className="h-3 w-56 animate-pulse rounded bg-surface-raised" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </SettingCard>
+  );
+}
+
 function ReviewStyleCard() {
   const review = useSettings((s) => s.aiStyle.review);
   const setReviewStyle = useSettings((s) => s.setReviewStyle);
@@ -586,16 +763,16 @@ const SHORTCUTS: Array<[string, string[]]> = [
 
 export function SettingsDialog() {
   const repo = useRepo((s) => s.repo);
-  const { dialog, closeDialog } = useUi();
+  const { dialog, dialogContext, closeDialog } = useUi();
   const open = dialog === 'settings';
   const settings = useSettings();
   const t = useUiText();
+  const aiStatus = settings.aiStatus;
 
   const [section, setSection] = useState<SectionId>('appearance');
   const [gitName, setGitName] = useState('');
   const [gitEmail, setGitEmail] = useState('');
   const [testing, setTesting] = useState(false);
-  const [aiStatus, setAiStatus] = useState<'unknown' | 'ok' | 'fail'>('unknown');
   const [profileLabel, setProfileLabel] = useState('');
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
@@ -689,16 +866,19 @@ export function SettingsDialog() {
     setTesting(true);
     try {
       const ok = await getAiProvider().ping();
-      setAiStatus(ok ? 'ok' : 'fail');
+      settings.setAiStatus(ok ? 'ok' : 'fail');
     } catch {
-      setAiStatus('fail');
+      settings.setAiStatus('fail');
     } finally {
       setTesting(false);
     }
   };
   useEffect(() => {
-    setAiStatus('unknown');
-  }, [settings.ai.provider, settings.ai.baseUrl, settings.ai.apiKey, settings.ai.cliAgent]);
+    if (!open) return;
+    if (dialogContext && typeof dialogContext === 'object' && 'section' in dialogContext) {
+      setSection(dialogContext.section);
+    }
+  }, [open, dialogContext]);
 
   const preset = AI_PROVIDER_PRESETS[settings.ai.provider];
   const active = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
@@ -921,6 +1101,12 @@ export function SettingsDialog() {
                       />
                     }
                   />
+
+                  <CloneFolderCard />
+
+                  <CliToolCard />
+
+                  <EditorCard />
 
                   <SettingCard
                     title={repo ? 'Identity for this repository' : 'Global identity'}
@@ -1225,7 +1411,8 @@ export function SettingsDialog() {
                               <span className="text-danger">Not reachable. Check the key, URL or that the local server is running.</span>
                             </>
                           )}
-                          {aiStatus === 'unknown' && <span className="text-faint">Connection not tested yet</span>}
+                          {aiStatus === 'untested' && <span className="text-faint">Connection not tested yet</span>}
+                          {aiStatus === 'stale' && <span className="text-faint">Settings changed since the last test</span>}
                         </span>
                         <Button variant="secondary" size="sm" onClick={() => void testAi()} disabled={testing}>
                           {testing ? <Spinner /> : <Wifi className="size-3.5" />}

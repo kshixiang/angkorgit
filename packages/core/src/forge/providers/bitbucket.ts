@@ -86,6 +86,12 @@ export function bitbucketForgeProvider(remote: ForgeRemote, http: HttpClient): F
       };
       return data.mainbranch?.name ?? 'main';
     },
+    async authorAvatar({ sha }): Promise<string | null> {
+      const data = (await request('GET', `/repositories/${repoPath}/commit/${sha}`)) as {
+        author?: { user?: { links?: { avatar?: { href?: string | null } } } | null } | null;
+      };
+      return data.author?.user?.links?.avatar?.href ?? null;
+    },
     async listReviewerCandidates(): Promise<ForgeUser[]> {
       const workspace = remote.owner;
       const data = (await request(
@@ -110,7 +116,12 @@ export function bitbucketForgeProvider(remote: ForgeRemote, http: HttpClient): F
       const data = (await request('POST', `/repositories/${repoPath}/pullrequests`, {
         title: input.title,
         description: input.body,
-        source: { branch: { name: input.sourceBranch } },
+        source: {
+          branch: { name: input.sourceBranch },
+          ...(input.sourceRepo
+            ? { repository: { full_name: `${input.sourceRepo.owner}/${input.sourceRepo.repo}` } }
+            : {}),
+        },
         destination: { branch: { name: input.targetBranch } },
         ...(input.draft ? { draft: true } : {}),
         ...(input.reviewerIds?.length

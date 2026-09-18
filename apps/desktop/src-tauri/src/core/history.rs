@@ -5,8 +5,11 @@ use git2::{Oid, Repository, Sort};
 use crate::error::AppResult;
 
 use super::types::{
-    CommitInfo, HistoryPage, HistoryPosition, HistoryQuery, RefInfo, SignatureInfo,
+    CommitInfo, HistoryPage, HistoryPosition, HistoryQuery, HistorySearch, HistorySearchQuery,
+    RefInfo, SignatureInfo,
 };
+
+pub const SEARCH_MATCH_CAP: usize = 1000;
 
 fn signature_info(sig: &git2::Signature) -> SignatureInfo {
     SignatureInfo {
@@ -118,41 +121,73 @@ pub fn commit_info(
     }
 }
 
-pub fn list(path: &str, query: HistoryQuery) -> AppResult<HistoryPage> {
-    let repo = super::repo::open(path)?;
+fn open_walk<'r>(
+    repo: &'r Repository,
+    branch: Option<&str>,
+) -> AppResult<(git2::Revwalk<'r>, StashWalk)> {
     let mut walk = repo.revwalk()?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
-
-    match &query.branch {
+    match branch {
         Some(branch) => {
-            let reference = match super::branch::resolve_branch_ref(&repo, branch) {
+            let reference = match super::branch::resolve_branch_ref(repo, branch) {
                 Ok(r) => r,
                 Err(_) => repo.find_reference(branch)?,
             };
             if let Some(oid) = reference.peel_to_commit().ok().map(|c| c.id()) {
                 walk.push(oid)?;
             }
+            Ok((
+                walk,
+                StashWalk {
+                    commits: HashSet::new(),
+                    skipped: HashSet::new(),
+                },
+            ))
         }
         None => {
             let _ = walk.push_glob("refs/heads/*");
             let _ = walk.push_glob("refs/remotes/*");
             let _ = walk.push_glob("refs/tags/*");
             let _ = walk.push_head();
+            let stashes = push_stashes(repo, &mut walk);
+            Ok((walk, stashes))
         }
     }
-    let stashes = match query.branch {
-        Some(_) => StashWalk {
-            commits: HashSet::new(),
-            skipped: HashSet::new(),
-        },
-        None => push_stashes(&repo, &mut walk),
-    };
+}
+
+fn text_matches(commit: &git2::Commit, oid: Oid, needle: &str) -> bool {
+    let hay = format!(
+        "{} {} {}",
+        commit.summary().unwrap_or(""),
+        commit.body().unwrap_or(""),
+        oid
+    )
+    .to_lowercase();
+    hay.contains(needle)
+}
+
+fn author_matches(commit: &git2::Commit, needle: &str) -> bool {
+    let sig = commit.author();
+    let hay = format!("{} {}", sig.name().unwrap_or(""), sig.email().unwrap_or("")).to_lowercase();
+    hay.contains(needle)
+}
+
+fn non_empty_lowercase(value: Option<&str>) -> Option<String> {
+    value
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(str::to_lowercase)
+}
+
+pub fn list(path: &str, query: HistoryQuery) -> AppResult<HistoryPage> {
+    let repo = super::repo::open(path)?;
+    let (walk, stashes) = open_walk(&repo, query.branch.as_deref())?;
 
     let decorations = ref_decorations(&repo);
     let head_oid = repo.head().ok().and_then(|h| h.target());
 
-    let search = query.search.as_deref().map(str::to_lowercase);
-    let author = query.author.as_deref().map(str::to_lowercase);
+    let search = non_empty_lowercase(query.search.as_deref());
+    let author = non_empty_lowercase(query.author.as_deref());
     let filtered = search.is_some() || author.is_some();
 
     let mut commits = Vec::with_capacity(query.limit);
@@ -175,22 +210,12 @@ pub fn list(path: &str, query: HistoryQuery) -> AppResult<HistoryPage> {
 
         if filtered {
             if let Some(q) = &search {
-                let hay = format!(
-                    "{} {} {}",
-                    commit.summary().unwrap_or(""),
-                    commit.body().unwrap_or(""),
-                    oid
-                )
-                .to_lowercase();
-                if !hay.contains(q.as_str()) {
+                if !text_matches(&commit, oid, q) {
                     continue;
                 }
             }
             if let Some(a) = &author {
-                let sig = commit.author();
-                let hay = format!("{} {}", sig.name().unwrap_or(""), sig.email().unwrap_or(""))
-                    .to_lowercase();
-                if !hay.contains(a.as_str()) {
+                if !author_matches(&commit, a) {
                     continue;
                 }
             }
@@ -228,13 +253,7 @@ pub fn position(path: &str, rev: &str) -> AppResult<Option<HistoryPosition>> {
     };
     let target = commit.id();
 
-    let mut walk = repo.revwalk()?;
-    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
-    let _ = walk.push_glob("refs/heads/*");
-    let _ = walk.push_glob("refs/remotes/*");
-    let _ = walk.push_glob("refs/tags/*");
-    let _ = walk.push_head();
-    let stashes = push_stashes(&repo, &mut walk);
+    let (walk, stashes) = open_walk(&repo, None)?;
 
     for (index, oid) in walk
         .flatten()
@@ -249,6 +268,47 @@ pub fn position(path: &str, rev: &str) -> AppResult<Option<HistoryPosition>> {
         }
     }
     Ok(None)
+}
+
+pub fn search(path: &str, query: HistorySearchQuery) -> AppResult<HistorySearch> {
+    let repo = super::repo::open(path)?;
+    let mut matches = Vec::new();
+    let mut truncated = false;
+    let needle = non_empty_lowercase(Some(query.search.as_str()));
+    let author = non_empty_lowercase(query.author.as_deref());
+    if needle.is_none() && author.is_none() {
+        return Ok(HistorySearch { matches, truncated });
+    }
+    let (walk, stashes) = open_walk(&repo, query.branch.as_deref())?;
+
+    for (index, oid) in walk
+        .flatten()
+        .filter(|oid| !stashes.skipped.contains(oid))
+        .enumerate()
+    {
+        let Ok(commit) = repo.find_commit(oid) else {
+            continue;
+        };
+        let text_ok = match &needle {
+            Some(q) => text_matches(&commit, oid, q),
+            None => true,
+        };
+        let author_ok = match &author {
+            Some(a) => author_matches(&commit, a),
+            None => true,
+        };
+        if text_ok && author_ok {
+            if matches.len() >= SEARCH_MATCH_CAP {
+                truncated = true;
+                break;
+            }
+            matches.push(HistoryPosition {
+                index,
+                oid: oid.to_string(),
+            });
+        }
+    }
+    Ok(HistorySearch { matches, truncated })
 }
 
 pub fn file_history(path: &str, file: &str, limit: usize, skip: usize) -> AppResult<HistoryPage> {

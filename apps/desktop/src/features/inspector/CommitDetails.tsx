@@ -1,7 +1,24 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { ArchiveRestore, ChevronDown, ChevronRight, ChevronUp, Cloud, Copy, Maximize2, Monitor, Sparkles, Tag as TagIcon } from 'lucide-react';
+import {
+  ArchiveRestore,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Cloud,
+  Code,
+  Copy,
+  ExternalLink,
+  FolderOpen,
+  History,
+  Maximize2,
+  Monitor,
+  Pencil,
+  Sparkles,
+  Tag as TagIcon,
+  UserRoundSearch,
+} from 'lucide-react';
 import type { CommitFileInfo, CommitInfo, FileDiff } from '@angkorgit/core';
 import { aiCapabilities, filterFiles } from '@angkorgit/core';
 import {
@@ -12,6 +29,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Hint,
   Logo,
@@ -23,6 +41,7 @@ import { useGraph } from '@/features/graph/store';
 import { useRepo } from '@/features/repository/store';
 import { useSettings } from '@/features/settings/store';
 import { focusRequests, useUi } from '@/features/ui/store';
+import { openInEditor, preferredEditor, useEditors } from '@/features/settings/editors';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { AiText } from '@/features/ai/AiText';
 import { AiResultDialog } from '@/features/ai/AiResultDialog';
@@ -37,7 +56,7 @@ import {
   type FileTreeFold,
   type FileTreeFoldState,
 } from '@/components/FileTree';
-import { basename, dirname, formatDate, timeAgo } from '@/shared/utils';
+import { basename, dirname, formatDate, isMac, timeAgo } from '@/shared/utils';
 
 const diffPath = (diff: CommitFileInfo) => diff.path;
 
@@ -150,6 +169,9 @@ export function CommitDetails({
   const centerDiff = useUi((s) => s.centerDiff);
   const fileTree = useUi((s) => s.fileTree);
   const repoPath = useRepo((s) => s.repo?.path ?? '');
+  const editorId = useSettings((s) => s.editorId);
+  const { editors } = useEditors();
+  const editor = preferredEditor(editors, editorId);
   const stash = useRepo((s) => s.stashes.find((entry) => entry.oid === commit.oid) ?? null);
   const refreshStatus = useRepo((s) => s.refreshStatus);
   const explainKey = explainKeyFor(repoPath, commit.oid);
@@ -265,7 +287,7 @@ export function CommitDetails({
     }
   };
 
-  const [stashFileMenu, setStashFileMenu] = useState<{ x: number; y: number; path: string } | null>(null);
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: CommitFileInfo } | null>(null);
   const restoreFromStash = async (files: string[]) => {
     if (!stash || files.length === 0) return;
     try {
@@ -297,14 +319,10 @@ export function CommitDetails({
             stash && picked.has(diff.path) && !active && 'bg-primary/5',
           )}
           style={fileTree && depth !== undefined ? { paddingLeft: treeIndent(depth) } : undefined}
-          onContextMenu={
-            stash
-              ? (e) => {
-                  e.preventDefault();
-                  setStashFileMenu({ x: e.clientX, y: e.clientY, path: diff.path });
-                }
-              : undefined
-          }
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setFileMenu({ x: e.clientX, y: e.clientY, file: diff });
+          }}
         >
         {stash && (
           <Checkbox
@@ -421,7 +439,7 @@ export function CommitDetails({
 
         <div className="mt-3 rounded-md border border-border-subtle bg-surface-raised/50 p-2.5">
           <div className="flex items-center gap-2.5">
-            <Avatar name={commit.author.name} email={commit.author.email} size={28} />
+            <Avatar name={commit.author.name} email={commit.author.email} oid={commit.oid} size={28} />
             <span className="flex min-w-0 flex-1 flex-col leading-tight">
               <span className="truncate text-xs font-medium text-foreground">{commit.author.name}</span>
               <span className="truncate text-[11px] text-faint" title={formatDate(commit.author.time)}>
@@ -627,28 +645,88 @@ export function CommitDetails({
           shownDiffs.map((diff) => renderDiffRow(diff))
         )}
       </div>
-      {stashFileMenu && (
-        <DropdownMenu open onOpenChange={(o) => !o && setStashFileMenu(null)}>
+      {fileMenu && (
+        <DropdownMenu open onOpenChange={(o) => !o && setFileMenu(null)}>
           <DropdownMenuTrigger asChild>
-            <span style={{ position: 'fixed', left: stashFileMenu.x, top: stashFileMenu.y }} />
+            <span style={{ position: 'fixed', left: fileMenu.x, top: fileMenu.y }} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
-            <DropdownMenuLabel className="max-w-64 truncate font-mono">{stashFileMenu.path}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => void restoreFromStash([stashFileMenu.path])}>
-              <ArchiveRestore /> Apply this file to the working copy
-            </DropdownMenuItem>
-            {picked.size > 1 && picked.has(stashFileMenu.path) && (
-              <DropdownMenuItem onClick={() => void restoreFromStash([...picked])}>
-                <ArchiveRestore /> Apply {picked.size} selected files
-              </DropdownMenuItem>
+            <DropdownMenuLabel className="max-w-64 truncate font-mono">{fileMenu.file.path}</DropdownMenuLabel>
+            {stash && (
+              <>
+                <DropdownMenuItem onClick={() => void restoreFromStash([fileMenu.file.path])}>
+                  <ArchiveRestore /> Apply this file to the working copy
+                </DropdownMenuItem>
+                {picked.size > 1 && picked.has(fileMenu.file.path) && (
+                  <DropdownMenuItem onClick={() => void restoreFromStash([...picked])}>
+                    <ArchiveRestore /> Apply {picked.size} selected files
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+              </>
             )}
             <DropdownMenuItem
+              disabled={fileMenu.file.status === 'deleted'}
+              onClick={() => useUi.getState().openEditor(fileMenu.file.path)}
+            >
+              <Pencil /> Edit file
+            </DropdownMenuItem>
+            {editor && (
+              <DropdownMenuItem
+                disabled={fileMenu.file.status === 'deleted'}
+                onClick={() => void openInEditor(editor.id, `${repoPath}/${fileMenu.file.path}`)}
+              >
+                <Code /> Open in {editor.label}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => useUi.getState().openFileHistory(fileMenu.file.path)}>
+              <History /> File history
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={fileMenu.file.status === 'deleted'}
+              onClick={() => useUi.getState().openBlame(fileMenu.file.path, fileMenu.file.sourceOid ?? commit.oid)}
+            >
+              <UserRoundSearch /> Blame at this commit
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={fileMenu.file.status === 'deleted'}
+              onClick={() =>
+                void ipc
+                  .openPath(`${repoPath}/${fileMenu.file.path}`)
+                  .catch((error) =>
+                    toast.error(`Could not open the file: ${(error as { message?: string }).message ?? error}`),
+                  )
+              }
+            >
+              <ExternalLink /> Open in external app
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={fileMenu.file.status === 'deleted'}
+              onClick={() =>
+                void ipc
+                  .revealPath(`${repoPath}/${fileMenu.file.path}`)
+                  .catch((error) =>
+                    toast.error(`Could not reveal the file: ${(error as { message?: string }).message ?? error}`),
+                  )
+              }
+            >
+              <FolderOpen /> {isMac ? 'Show in Finder' : 'Show in file manager'}
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={() => {
-                void navigator.clipboard.writeText(stashFileMenu.path);
+                void navigator.clipboard.writeText(fileMenu.file.path);
                 toast.success('Path copied');
               }}
             >
               <Copy /> Copy path
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                void navigator.clipboard.writeText(`${repoPath}/${fileMenu.file.path}`);
+                toast.success('Absolute path copied');
+              }}
+            >
+              <Copy /> Copy absolute path
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

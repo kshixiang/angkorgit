@@ -57,6 +57,20 @@ fn commit_all(repo: &TempRepo, message: &str) -> String {
 }
 
 #[test]
+fn discover_does_not_walk_up_from_a_missing_path() {
+    let repo = TempRepo::new();
+    let root = PathBuf::from(repo.path());
+    let err = core::discover(root.join("aaa").to_str().unwrap()).unwrap_err();
+    assert!(err.to_string().contains("no such file or directory"));
+    std::fs::create_dir(root.join("src")).unwrap();
+    let found = core::discover(root.join("src").to_str().unwrap()).unwrap();
+    assert_eq!(
+        std::fs::canonicalize(&found).unwrap(),
+        std::fs::canonicalize(&root).unwrap()
+    );
+}
+
+#[test]
 fn stage_commit_and_history() {
     let repo = TempRepo::new();
     repo.write("a.txt", "hello\n");
@@ -1670,6 +1684,35 @@ fn add_origin(local: &TempRepo, origin: &TempRepo) {
     assert!(status.success());
 }
 
+#[test]
+fn remote_add_registers_the_remote_and_fetch_uses_it() {
+    let origin = TempRepo::new();
+    origin.write("a.txt", "one\n");
+    let tip = commit_all(&origin, "first");
+    let local = TempRepo::new();
+    local.write("b.txt", "two\n");
+    commit_all(&local, "local");
+
+    core::remote_add(local.path(), "upstream", origin.path()).unwrap();
+    let remotes = core::remote_list(local.path()).unwrap();
+    assert_eq!(remotes.len(), 1);
+    assert_eq!(remotes[0].name, "upstream");
+    assert_eq!(remotes[0].url, origin.path());
+
+    let dup = core::remote_add(local.path(), "upstream", origin.path()).unwrap_err();
+    assert!(dup.to_string().contains("already exists"));
+    let blank = core::remote_add(local.path(), "  ", origin.path()).unwrap_err();
+    assert!(blank.to_string().contains("required"));
+
+    core::fetch(local.path(), "upstream", false, false).unwrap();
+    let fetched = Command::new("git")
+        .args(["rev-parse", "refs/remotes/upstream/master"])
+        .current_dir(&local.dir)
+        .output()
+        .expect("git CLI available");
+    assert_eq!(String::from_utf8_lossy(&fetched.stdout).trim(), tip);
+}
+
 fn set_pull_head(origin: &TempRepo, oid: &str) {
     let status = Command::new("git")
         .args(["update-ref", "refs/pull/1/head", oid])
@@ -1834,6 +1877,114 @@ fn history_position_locates_a_commit_in_the_default_walk() {
     assert!(core::history_position(repo.path(), "not a rev")
         .unwrap()
         .is_none());
+}
+
+#[test]
+fn history_search_lists_match_positions_in_the_displayed_walk() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "one\n");
+    let first = commit_all(&repo, "feature: lanes");
+    repo.write("a.txt", "two\n");
+    commit_all(&repo, "chore: bump");
+    repo.write("a.txt", "three\n");
+    let third = commit_all(&repo, "fix(lanes): colors");
+
+    let found = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: "LANES".into(),
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap();
+    let positions: Vec<_> = found
+        .matches
+        .iter()
+        .map(|m| (m.index, m.oid.as_str()))
+        .collect();
+    assert_eq!(positions, vec![(0, third.as_str()), (2, first.as_str())]);
+    assert!(!found.truncated);
+
+    let by_hash = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: first[..7].to_string(),
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(by_hash.matches.len(), 1);
+    assert_eq!(by_hash.matches[0].oid, first);
+
+    let none = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: "nothing here".into(),
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap();
+    assert!(none.matches.is_empty());
+
+    let blank = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: "   ".into(),
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap();
+    assert!(blank.matches.is_empty());
+
+    let page = core::history(
+        repo.path(),
+        core::HistoryQuery {
+            skip: 0,
+            limit: 1,
+            search: None,
+            author: None,
+            branch: None,
+        },
+    )
+    .unwrap();
+    let author_name = page.commits[0].author.name.clone();
+    let by_author = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: String::new(),
+            author: Some(author_name.to_uppercase()),
+            branch: None,
+        },
+    )
+    .unwrap();
+    let indices: Vec<_> = by_author.matches.iter().map(|m| m.index).collect();
+    assert_eq!(indices, vec![0, 1, 2]);
+
+    let both = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: "lanes".into(),
+            author: Some(author_name),
+            branch: None,
+        },
+    )
+    .unwrap();
+    assert_eq!(both.matches.len(), 2);
+
+    let stranger = core::history_search(
+        repo.path(),
+        core::HistorySearchQuery {
+            search: String::new(),
+            author: Some("nobody-else".into()),
+            branch: None,
+        },
+    )
+    .unwrap();
+    assert!(stranger.matches.is_empty());
 }
 
 #[test]
@@ -2138,4 +2289,304 @@ fn git_cli_recognizes_worktrees_created_by_the_engine() {
         .unwrap();
     assert!(status.status.success());
     assert!(String::from_utf8_lossy(&status.stdout).trim().is_empty());
+}
+
+fn bare_origin(local: &TempRepo) -> PathBuf {
+    let dir = local.dir.with_file_name(format!(
+        "{}-origin.git",
+        local.dir.file_name().unwrap().to_string_lossy()
+    ));
+    let status = Command::new("git")
+        .args(["init", "--bare", "-q", dir.to_str().unwrap()])
+        .status()
+        .expect("git CLI available");
+    assert!(status.success());
+    let status = Command::new("git")
+        .args(["remote", "add", "origin", dir.to_str().unwrap()])
+        .current_dir(&local.dir)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    dir
+}
+
+#[test]
+fn push_reports_up_to_date_instead_of_pushing_again() {
+    let local = TempRepo::new();
+    local.write("a.txt", "one\n");
+    let first_tip = commit_all(&local, "one");
+    let origin = bare_origin(&local);
+
+    let first = core::push(local.path(), "origin", None, false, false, true).unwrap();
+    assert_eq!(first.status, "ok");
+    let remote_tip = |name: &str| {
+        let out = Command::new("git")
+            .args(["rev-parse", name])
+            .current_dir(&origin)
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    assert_eq!(remote_tip("master"), first_tip);
+
+    let again = core::push(local.path(), "origin", None, false, false, true).unwrap();
+    assert_eq!(again.status, "up_to_date", "{}", again.message);
+    assert!(
+        again.message.contains("already up to date"),
+        "{}",
+        again.message
+    );
+
+    let cli = Command::new("git")
+        .args(["push", "origin", "master"])
+        .current_dir(&local.dir)
+        .output()
+        .unwrap();
+    assert!(
+        String::from_utf8_lossy(&cli.stderr).contains("Everything up-to-date"),
+        "{}",
+        String::from_utf8_lossy(&cli.stderr)
+    );
+
+    local.write("a.txt", "two\n");
+    let second_tip = commit_all(&local, "two");
+    let moved = core::push(local.path(), "origin", None, false, false, true).unwrap();
+    assert_eq!(moved.status, "ok");
+    assert_eq!(remote_tip("master"), second_tip);
+
+    let _ = std::fs::remove_dir_all(&origin);
+}
+
+fn clone_of(origin: &std::path::Path, local: &TempRepo, suffix: &str) -> TempRepo {
+    let dir = local.dir.with_file_name(format!(
+        "{}-{suffix}",
+        local.dir.file_name().unwrap().to_string_lossy()
+    ));
+    let status = Command::new("git")
+        .args([
+            "-c",
+            "core.autocrlf=false",
+            "clone",
+            "-q",
+            "-b",
+            "master",
+            origin.to_str().unwrap(),
+            dir.to_str().unwrap(),
+        ])
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let clone = TempRepo { dir };
+    core::set_config(Some(clone.path()), "user.name", "Other User", false).unwrap();
+    core::set_config(
+        Some(clone.path()),
+        "user.email",
+        "other@angkorgit.dev",
+        false,
+    )
+    .unwrap();
+    core::set_config(Some(clone.path()), "core.autocrlf", "false", false).unwrap();
+    clone
+}
+
+fn head_summary_and_parents(repo: &TempRepo) -> (String, usize) {
+    let out = Command::new("git")
+        .args(["log", "-1", "--format=%s%x00%P"])
+        .current_dir(&repo.dir)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let (summary, parents) = text.split_once('\0').unwrap();
+    (summary.to_string(), parents.split_whitespace().count())
+}
+
+#[test]
+fn pull_rebases_when_asked_or_configured_and_merges_otherwise() {
+    let local = TempRepo::new();
+    local.write("a.txt", "base\n");
+    commit_all(&local, "base");
+    let origin = bare_origin(&local);
+    core::push(local.path(), "origin", None, false, false, true).unwrap();
+    let other = clone_of(&origin, &local, "other");
+
+    local.write("a.txt", "two\n");
+    commit_all(&local, "two");
+    core::push(local.path(), "origin", None, false, false, true).unwrap();
+    other.write("b.txt", "mine\n");
+    commit_all(&other, "mine");
+    let outcome = core::pull(other.path(), "origin", Some("rebase")).unwrap();
+    assert_eq!(outcome.status, "ok", "{}", outcome.message);
+    assert_eq!(head_summary_and_parents(&other), ("mine".to_string(), 1));
+    assert_eq!(other.read("a.txt"), "two\n");
+
+    local.write("a.txt", "three\n");
+    commit_all(&local, "three");
+    core::push(local.path(), "origin", None, false, false, true).unwrap();
+    other.write("c.txt", "again\n");
+    commit_all(&other, "again");
+    core::set_config(Some(other.path()), "pull.rebase", "true", false).unwrap();
+    let outcome = core::pull(other.path(), "origin", None).unwrap();
+    assert_eq!(outcome.status, "ok", "{}", outcome.message);
+    assert_eq!(head_summary_and_parents(&other), ("again".to_string(), 1));
+
+    local.write("a.txt", "four\n");
+    commit_all(&local, "four");
+    core::push(local.path(), "origin", None, false, false, true).unwrap();
+    other.write("d.txt", "merge me\n");
+    commit_all(&other, "merge me");
+    let outcome = core::pull(other.path(), "origin", Some("merge")).unwrap();
+    assert_eq!(outcome.status, "ok", "{}", outcome.message);
+    assert_eq!(head_summary_and_parents(&other).1, 2);
+
+    let _ = std::fs::remove_dir_all(&origin);
+}
+
+#[test]
+fn blame_of_an_uncommitted_edit_inside_a_committed_block_keeps_the_author() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "l1\nl2\nl3\nl4\nl5\nl6\n");
+    let base = commit_all(&repo, "base");
+    repo.write("a.txt", "l1\nl2\nCHANGED\nl4\nl5\nl6\n");
+
+    let blame = core::blame_file(repo.path(), "a.txt", None).unwrap();
+    let shape: Vec<(usize, usize, bool)> = blame
+        .hunks
+        .iter()
+        .map(|h| (h.start_line, h.line_count, h.committed))
+        .collect();
+    assert_eq!(shape, vec![(1, 2, true), (3, 1, false), (4, 3, true)]);
+    for hunk in blame.hunks.iter().filter(|h| h.committed) {
+        assert_eq!(hunk.oid, base);
+        assert_eq!(hunk.author_name, "Test User");
+        assert_eq!(hunk.author_email, "test@angkorgit.dev");
+        assert_eq!(hunk.summary, "base");
+        assert!(hunk.time > 0);
+    }
+    assert_eq!(blame.hunks[1].author_name, "Not committed yet");
+
+    repo.write("a.txt", "l1\nSTAGED\nl3\nl4\nl5\nl6\n");
+    core::stage_file(repo.path(), "a.txt").unwrap();
+    repo.write("a.txt", "l1\nSTAGED\nl3\nl4\nUNSTAGED\nl6\nnew\n");
+    let mixed = core::blame_file(repo.path(), "a.txt", None).unwrap();
+    assert_eq!(mixed.hunks.iter().map(|h| h.line_count).sum::<usize>(), 7);
+    assert_eq!(
+        mixed.hunks.iter().filter(|h| !h.committed).count(),
+        3,
+        "staged, unstaged and appended lines are all uncommitted"
+    );
+    assert!(mixed
+        .hunks
+        .iter()
+        .filter(|h| h.committed)
+        .all(|h| h.author_name == "Test User" && h.oid == base));
+}
+
+#[test]
+fn stage_and_unstage_a_later_hunk_in_a_multi_hunk_file() {
+    let repo = TempRepo::new();
+    let base: String = (1..=40).map(|i| format!("line {i}\n")).collect();
+    repo.write("a.txt", &base);
+    commit_all(&repo, "base");
+    let mut lines: Vec<String> = (1..=40).map(|i| format!("line {i}")).collect();
+    lines.insert(2, "inserted near top".to_string());
+    lines[30] = "line 31 changed".to_string();
+    repo.write("a.txt", &(lines.join("\n") + "\n"));
+    assert_eq!(
+        core::file_diff(repo.path(), "a.txt", false, 3)
+            .unwrap()
+            .hunks
+            .len(),
+        2
+    );
+
+    core::stage_hunk(repo.path(), "a.txt", 1).unwrap();
+    let staged = index_content(&repo, "a.txt");
+    assert!(staged.contains("line 31 changed"));
+    assert!(!staged.contains("inserted near top"));
+    let status = core::status(repo.path()).unwrap();
+    assert_eq!(status.files[0].staged.as_deref(), Some("modified"));
+    assert_eq!(status.files[0].unstaged.as_deref(), Some("modified"));
+
+    core::stage_hunk(repo.path(), "a.txt", 0).unwrap();
+    assert!(index_content(&repo, "a.txt").contains("inserted near top"));
+    assert_eq!(core::status(repo.path()).unwrap().files[0].unstaged, None);
+
+    core::unstage_hunk(repo.path(), "a.txt", 1).unwrap();
+    let after = index_content(&repo, "a.txt");
+    assert!(after.contains("inserted near top"));
+    assert!(!after.contains("line 31 changed"));
+    assert_eq!(repo.read("a.txt"), lines.join("\n") + "\n");
+}
+
+fn index_content(repo: &TempRepo, file: &str) -> String {
+    let out = Command::new("git")
+        .args(["show", &format!(":{file}")])
+        .current_dir(&repo.dir)
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    String::from_utf8(out.stdout).unwrap()
+}
+
+#[test]
+fn blame_explains_files_without_history_instead_of_failing_on_the_tree() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "one\n");
+    repo.write("gone.txt", "bye\n");
+    let first = commit_all(&repo, "first");
+    std::fs::remove_file(repo.dir.join("gone.txt")).unwrap();
+    let second = commit_all(&repo, "delete gone");
+    repo.write("new.txt", "fresh\n");
+
+    let untracked = core::blame_file(repo.path(), "new.txt", None).unwrap_err();
+    assert!(untracked.to_string().contains("no committed history yet"));
+    core::stage_file(repo.path(), "new.txt").unwrap();
+    let staged = core::blame_file(repo.path(), "new.txt", None).unwrap_err();
+    assert!(staged.to_string().contains("no committed history yet"));
+
+    let deleted = core::blame_file(repo.path(), "gone.txt", Some(&second)).unwrap_err();
+    assert!(deleted.to_string().contains("does not exist in commit"));
+    let alive = core::blame_file(repo.path(), "gone.txt", Some(&first)).unwrap();
+    assert_eq!(alive.lines, vec!["bye"]);
+}
+
+#[test]
+fn blame_attributes_lines_to_their_commits_and_uncommitted_edits() {
+    let repo = TempRepo::new();
+    repo.write("a.txt", "one\ntwo\n");
+    let first = commit_all(&repo, "first");
+    core::set_config(Some(repo.path()), "user.name", "Second Dev", false).unwrap();
+    repo.write("a.txt", "one\nTWO\n");
+    let second = commit_all(&repo, "second");
+
+    let blame = core::blame_file(repo.path(), "a.txt", None).unwrap();
+    assert_eq!(blame.lines, vec!["one", "TWO"]);
+    assert_eq!(blame.hunks.len(), 2);
+    assert_eq!(blame.hunks[0].oid, first);
+    assert_eq!(
+        (blame.hunks[0].start_line, blame.hunks[0].line_count),
+        (1, 1)
+    );
+    assert_eq!(blame.hunks[1].oid, second);
+    assert_eq!(blame.hunks[1].author_name, "Second Dev");
+    assert_eq!(blame.hunks[1].summary, "second");
+    assert!(blame.hunks.iter().all(|hunk| hunk.committed));
+    assert_eq!(blame.rev, None);
+
+    repo.write("a.txt", "one\nTWO\nthree\n");
+    let dirty = core::blame_file(repo.path(), "a.txt", None).unwrap();
+    assert_eq!(dirty.lines.len(), 3);
+    let last = dirty.hunks.last().unwrap();
+    assert!(!last.committed);
+    assert_eq!((last.start_line, last.line_count), (3, 1));
+    assert_eq!(last.summary, "Uncommitted changes");
+
+    let old = core::blame_file(repo.path(), "a.txt", Some(&first)).unwrap();
+    assert_eq!(old.lines, vec!["one", "two"]);
+    assert_eq!(old.hunks.len(), 1);
+    assert_eq!(old.hunks[0].oid, first);
+    assert_eq!(old.rev.as_deref(), Some(first.as_str()));
+
+    let before = core::blame_file(repo.path(), "a.txt", Some(&format!("{second}^"))).unwrap();
+    assert_eq!(before.rev.as_deref(), Some(first.as_str()));
 }

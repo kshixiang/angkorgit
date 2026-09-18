@@ -1,8 +1,10 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { DiffLine, FileDiff } from '@angkorgit/core';
+import { clipRenderedLine } from '@angkorgit/core';
 import { cn } from '@angkorgit/design-system';
 import { CodeLine, lineBg, pairHunkLines, type SearchRanges } from './diffShared';
+import { useStableSelection } from './diffSelection';
 
 export const LINE_H = 20;
 export const HEADER_H = 28;
@@ -106,10 +108,10 @@ function contentWidth(lines: Iterable<string>): number {
 function* rowContents(rows: FlatRow[]): Iterable<string> {
   for (const row of rows) {
     if (row.kind === 'line') {
-      yield row.line.content;
+      yield clipRenderedLine(row.line.content).text;
     } else if (row.kind === 'pair') {
-      if (row.left) yield row.left.content;
-      if (row.right) yield row.right.content;
+      if (row.left) yield clipRenderedLine(row.left.content).text;
+      if (row.right) yield clipRenderedLine(row.right.content).text;
     }
   }
 }
@@ -126,7 +128,7 @@ const GutterCell = memo(function GutterCell({
   return (
     <span
       className={cn(
-        'block w-10 pr-1.5 text-right font-mono text-[10px] leading-5 text-faint',
+        'block w-10 select-none pr-1.5 text-right font-mono text-[10px] leading-5 text-faint',
         className,
       )}
     >
@@ -252,7 +254,7 @@ function useDiffVirtualizer(rows: FlatRow[], scrollRef: React.RefObject<HTMLDivE
     count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => (rows[index].kind === 'header' ? HEADER_H : LINE_H),
-    overscan: 24,
+    overscan: 8,
   });
 }
 
@@ -266,7 +268,8 @@ function useHorizontalPan(
   const x = useRef(0);
   useEffect(() => {
     let raf = 0;
-    const maxX = () => {
+    let limit: number | null = null;
+    const measureLimit = () => {
       const pane = panes.find((p) => p.current)?.current;
       if (!pane) return 0;
       let w = width;
@@ -274,6 +277,10 @@ function useHorizontalPan(
         if (layer.current) w = Math.max(w, layer.current.scrollWidth);
       }
       return Math.max(0, w - pane.clientWidth);
+    };
+    const maxX = () => {
+      if (limit === null) limit = measureLimit();
+      return limit;
     };
     const apply = () => {
       raf = 0;
@@ -296,19 +303,37 @@ function useHorizontalPan(
       if (!raf) raf = requestAnimationFrame(apply);
     };
     const els = panes.flatMap((p) => (p.current ? [p.current] : []));
+    const observer = new ResizeObserver(() => {
+      limit = null;
+      if (!raf) raf = requestAnimationFrame(apply);
+    });
     for (const el of els) {
       el.addEventListener('wheel', onWheel, { passive: false });
       panControllers.set(el, panBy);
+      observer.observe(el);
     }
     apply();
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      observer.disconnect();
       for (const el of els) {
         el.removeEventListener('wheel', onWheel);
         panControllers.delete(el);
       }
     };
   }, [panes, layers, width]);
+}
+
+function SelectionSentinel({ edge }: { edge: 'start' | 'end' }) {
+  return (
+    <span
+      aria-hidden
+      data-diff-sentinel={edge}
+      className={cn('diff-sentinel', edge === 'start' ? 'top-0' : 'bottom-0')}
+    >
+      {'\u00A0'}
+    </span>
+  );
 }
 
 function HeaderContent({
@@ -321,7 +346,7 @@ function HeaderContent({
   hunkActions?: (hunkIndex: number) => React.ReactNode;
 }) {
   return (
-    <div className="flex h-7 w-fit max-w-full items-center gap-2 px-3">
+    <div className="flex h-7 w-fit max-w-full select-none items-center gap-2 px-3">
       <span className="truncate font-mono text-[10px] text-info">{header}</span>
       {hunkActions?.(hunkIndex)}
     </div>
@@ -340,6 +365,7 @@ export function VirtualInlineDiff({ rows, language, useWordDiff, scrollRef, hunk
   const panes = useMemo(() => [paneRef], []);
   const layers = useMemo(() => [layerRef], []);
   useHorizontalPan(panes, layers, width);
+  useStableSelection(rows, scrollRef);
 
   return (
     <div className="flex items-start">
@@ -362,7 +388,7 @@ export function VirtualInlineDiff({ rows, language, useWordDiff, scrollRef, hunk
                 <>
                   <GutterCell text={row.line.oldLineNo?.toString() ?? ''} className="border-r border-border-subtle" />
                   <GutterCell text={row.line.newLineNo?.toString() ?? ''} className="border-r border-border-subtle" />
-                  <span className={cn('w-6 text-center font-mono text-xs leading-5', marker(row.line.kind).cls)}>
+                  <span className={cn('w-6 select-none text-center font-mono text-xs leading-5', marker(row.line.kind).cls)}>
                     {marker(row.line.kind).char}
                   </span>
                 </>
@@ -390,13 +416,15 @@ export function VirtualInlineDiff({ rows, language, useWordDiff, scrollRef, hunk
             );
           })}
         </div>
-        <div ref={layerRef} data-diff-layer className="absolute inset-y-0 left-0" style={{ width, minWidth: '100%', tabSize: 4 }}>
+        <div ref={layerRef} data-diff-layer className="absolute inset-y-0 left-0" style={{ width, minWidth: '100%', tabSize: 4, willChange: 'transform' }}>
+          <SelectionSentinel edge="start" />
           {items.map((item) => {
             const row = rows[item.index];
             if (row.kind !== 'line') return null;
             return (
               <div
                 key={item.key}
+                data-diff-row={item.index}
                 className="absolute left-0"
                 style={{ top: 0, height: item.size, transform: `translateY(${item.start}px)`, ...ROW_W }}
                 onContextMenu={
@@ -416,6 +444,7 @@ export function VirtualInlineDiff({ rows, language, useWordDiff, scrollRef, hunk
               </div>
             );
           })}
+          <SelectionSentinel edge="end" />
         </div>
         {items.map((item) => {
           const row = rows[item.index];
@@ -496,7 +525,8 @@ function SplitHalf({
             );
           })}
         </div>
-        <div ref={layerRef} data-diff-layer className="absolute inset-y-0 left-0" style={{ width, minWidth: '100%', tabSize: 4 }}>
+        <div ref={layerRef} data-diff-layer className="absolute inset-y-0 left-0" style={{ width, minWidth: '100%', tabSize: 4, willChange: 'transform' }}>
+          <SelectionSentinel edge="start" />
           {items.map((item) => {
             const row = rows[item.index];
             const line = row.kind === 'pair' ? (side === 'old' ? row.left : row.right) : null;
@@ -504,6 +534,7 @@ function SplitHalf({
             return (
               <div
                 key={item.key}
+                data-diff-row={item.index}
                 className="absolute left-0"
                 style={{ top: 0, height: item.size, transform: `translateY(${item.start}px)`, ...ROW_W }}
                 onContextMenu={
@@ -523,6 +554,7 @@ function SplitHalf({
               </div>
             );
           })}
+          <SelectionSentinel edge="end" />
         </div>
         {items.map((item) => {
           const row = rows[item.index];
@@ -558,6 +590,7 @@ export function VirtualSplitDiff(props: CommonProps) {
   const width = useMemo(() => contentWidth(rowContents(props.rows)), [props.rows]);
 
   useHorizontalPan(panes, layers, width);
+  useStableSelection(props.rows, props.scrollRef);
 
   return (
     <div className="flex items-start">

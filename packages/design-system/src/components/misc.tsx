@@ -5,13 +5,12 @@ import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown, Loader2, Minus } from 'lucide-react';
 import { cn } from '../lib/cn';
 
-export function Badge({
-  className,
-  tone = 'neutral',
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement> & {
-  tone?: 'neutral' | 'primary' | 'success' | 'danger' | 'info';
-}) {
+export const Badge = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement> & {
+    tone?: 'neutral' | 'primary' | 'success' | 'danger' | 'info';
+  }
+>(({ className, tone = 'neutral', ...props }, ref) => {
   const tones = {
     neutral: 'bg-surface-raised text-muted border-border',
     primary: 'bg-primary/15 text-primary border-primary/30',
@@ -21,6 +20,7 @@ export function Badge({
   } as const;
   return (
     <span
+      ref={ref}
       className={cn(
         'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4',
         tones[tone],
@@ -29,7 +29,8 @@ export function Badge({
       {...props}
     />
   );
-}
+});
+Badge.displayName = 'Badge';
 
 export function Separator({
   className,

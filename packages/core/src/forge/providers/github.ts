@@ -114,6 +114,12 @@ export function githubForgeProvider(remote: ForgeRemote, http: HttpClient): Forg
       const data = (await request('GET', `/repos/${repoPath}`)) as { default_branch?: string };
       return data.default_branch ?? 'main';
     },
+    async authorAvatar({ sha }): Promise<string | null> {
+      const data = (await request('GET', `/repos/${repoPath}/commits/${sha}`)) as {
+        author?: { avatar_url?: string | null } | null;
+      };
+      return data.author?.avatar_url ?? null;
+    },
     async listReviewerCandidates(): Promise<ForgeUser[]> {
       const data = (await request(
         'GET',
@@ -130,9 +136,10 @@ export function githubForgeProvider(remote: ForgeRemote, http: HttpClient): Forg
         }));
     },
     async createPullRequest(input: CreatePullRequestInput): Promise<PullRequestInfo> {
+      const head = input.sourceRepo ? `${input.sourceRepo.owner}:${input.sourceBranch}` : input.sourceBranch;
       const data = (await request('POST', `/repos/${repoPath}/pulls`, {
         title: input.title,
-        head: input.sourceBranch,
+        head,
         base: input.targetBranch,
         body: input.body,
         draft: input.draft,

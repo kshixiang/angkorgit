@@ -1,6 +1,6 @@
 [package]
 name = "angkorgit"
-version = "0.11.0"
+version = "0.15.0"
 description = "GitMD — a modern, fast, beautiful Git client"
 authors = ["GitMD Contributors"]
 license = "MIT"
@@ -19,6 +19,7 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -28,10 +29,21 @@ thiserror = "2"
 git2 = { version = "0.20", features = ["vendored-libgit2", "vendored-openssl"] }
 portable-pty = "0.8"
 base64 = "0.22"
-keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 notify-debouncer-mini = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 which = "7"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+
+[target.'cfg(windows)'.dependencies]
+# The default WinCNG libssh2 backend cannot negotiate ssh-ed25519/ecdsa host
+# keys, so libgit2's hostkey-preference setup fails outright ("failed to set
+# hostkey preference") against servers like GitLab. Route the vendored libssh2
+# through OpenSSL on Windows instead; this compiles OpenSSL from source and
+# needs Perl available at build time.
+libssh2-sys = { version = "0.3", features = ["openssl-on-win32", "vendored-openssl"] }
 
 [profile.release]
 codegen-units = 1
