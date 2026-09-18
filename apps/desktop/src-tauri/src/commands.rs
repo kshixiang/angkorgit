@@ -847,6 +847,21 @@ pub async fn account_check(
 }
 
 #[tauri::command]
+pub fn auth_session_get() -> AppResult<Option<String>> {
+    crate::core::auth_session::get()
+}
+
+#[tauri::command]
+pub fn auth_session_set(value: String) -> AppResult<()> {
+    crate::core::auth_session::set(&value)
+}
+
+#[tauri::command]
+pub fn auth_session_remove() -> AppResult<()> {
+    crate::core::auth_session::remove()
+}
+
+#[tauri::command]
 pub async fn ai_key_get(provider: String) -> AppResult<Option<String>> {
     blocking(move || crate::core::ai_keys::get(&provider)).await
 }

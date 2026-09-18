@@ -6,6 +6,7 @@ import { pickDirectory } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { killTerminalSession } from '@/features/terminal/sessions';
 import { useUi } from '@/features/ui/store';
+import { AccountMenu } from '@/features/auth/AccountMenu';
 
 export function RepoTabs() {
   const repo = useRepo((s) => s.repo);
@@ -157,6 +158,9 @@ export function RepoTabs() {
           <Plus className="size-4" />
         </Button>
       </Hint>
+      <div className="mb-0.5 shrink-0">
+        <AccountMenu />
+      </div>
     </div>
   );
 }

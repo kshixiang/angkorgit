@@ -1,5 +1,6 @@
 pub mod accounts;
 pub mod ai_keys;
+pub mod auth_session;
 pub mod blame;
 pub mod branch;
 pub mod commit;

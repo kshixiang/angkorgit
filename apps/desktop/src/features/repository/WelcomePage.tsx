@@ -40,6 +40,7 @@ import { SettingsDialog } from '@/features/settings/SettingsDialog';
 import { SettingEmpty } from '@/features/settings/SettingCard';
 import { isMac, shortenHome, timeAgo } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
+import { AccountMenu } from '@/features/auth/AccountMenu';
 
 export function WelcomePage() {
   const navigate = useNavigate();
@@ -147,7 +148,8 @@ export function WelcomePage() {
             </h1>
             <p className="text-sm text-muted">{t('Everyday Git, made delightful.')}</p>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <AccountMenu />
             <Hint label={t('Settings')}>
               <Button variant="ghost" size="icon" onClick={() => openDialog('settings')} aria-label={t('Settings')}>
                 <Settings />

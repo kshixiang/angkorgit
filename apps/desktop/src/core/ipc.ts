@@ -681,6 +681,25 @@ export const ipc = {
     return invoke('account_check', { host, username });
   },
 
+  async authSessionGet(): Promise<string | null> {
+    if (!isTauri()) return localStorage.getItem('gitmd-demo-auth-session');
+    return invoke('auth_session_get');
+  },
+  async authSessionSet(value: string): Promise<void> {
+    if (!isTauri()) {
+      localStorage.setItem('gitmd-demo-auth-session', value);
+      return;
+    }
+    return invoke('auth_session_set', { value });
+  },
+  async authSessionRemove(): Promise<void> {
+    if (!isTauri()) {
+      localStorage.removeItem('gitmd-demo-auth-session');
+      return;
+    }
+    return invoke('auth_session_remove');
+  },
+
   async aiKeyGet(provider: string): Promise<string | null> {
     if (!isTauri()) return demoAiKeys()[provider] ?? null;
     return invoke('ai_key_get', { provider });

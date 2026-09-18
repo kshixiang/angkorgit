@@ -8,6 +8,8 @@ import { ConfirmHost } from '@/components/confirm';
 import { ProfilePromptHost } from '@/components/profilePrompt';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { WelcomePage } from '@/features/repository/WelcomePage';
+import { AuthPage } from '@/features/auth/AuthPage';
+import { useAuth } from '@/features/auth/store';
 
 const RepositoryPage = lazy(() =>
   import('@/features/repository/RepositoryPage').then((m) => ({ default: m.RepositoryPage })),
@@ -137,6 +139,35 @@ function Shell() {
   );
 }
 
+function AuthGate() {
+  const status = useAuth((state) => state.status);
+  const initialize = useAuth((state) => state.initialize);
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  if (status !== 'signed_in') {
+    if (status === 'loading') {
+      return (
+        <div className="flex h-full items-center justify-center bg-background">
+          <Spinner className="size-5" />
+        </div>
+      );
+    }
+    return (
+      <Routes>
+        <Route path="/auth/*" element={<AuthPage />} />
+        <Route path="*" element={<AuthPage />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <Shell />
+  );
+}
+
 export function App() {
   const theme = useSettings((s) => s.theme);
   const reduceMotion = useSettings((s) => s.reduceMotion);
@@ -168,7 +199,7 @@ export function App() {
       <MemoryRouter initialEntries={['/']}>
         <div className="h-full">
           <ErrorBoundary>
-            <Shell />
+            <AuthGate />
           </ErrorBoundary>
         </div>
       </MemoryRouter>
