@@ -7,6 +7,7 @@ if (typeof localStorage !== 'undefined' && !localStorage.getItem('gitmd-ui')) {
 }
 
 export type DiffViewMode = 'inline' | 'split';
+export type TerminalMode = 'shell' | 'gitmd-code';
 
 export interface GraphColumns {
   refs: boolean;
@@ -43,6 +44,7 @@ export interface CenterDiffTarget {
   staged?: boolean;
   oid?: string;
   oldPath?: string | null;
+  keepOpen?: boolean;
 }
 
 export interface InteractiveRebasePreset {
@@ -98,6 +100,7 @@ interface UiState {
   sidebarOpen: boolean;
   sidebarHiddenForDiff: boolean;
   terminalOpen: boolean;
+  terminalMode: TerminalMode;
   paletteOpen: boolean;
   dialog: DialogKind;
   dialogContext: DialogContext;
@@ -118,6 +121,7 @@ interface UiState {
   fileFilterFocusSeq: number;
   inspectorFocusSeq: number;
   graphFocusSeq: number;
+  graphSearchFocusSeq: number;
   sidebarSections: Record<string, boolean>;
   sidebarCollapseEpoch: number;
   commitBoxHeight: number | null;
@@ -127,6 +131,7 @@ interface UiState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleTerminal: () => void;
+  toggleGitmdCode: () => void;
   setPaletteOpen: (open: boolean) => void;
   openDialog: (dialog: DialogKind, context?: DialogContext) => void;
   closeDialog: () => void;
@@ -157,6 +162,7 @@ interface UiState {
   setFileFilterOpen: (on: boolean) => void;
   focusInspector: () => void;
   focusGraph: () => void;
+  focusGraphSearch: () => void;
 }
 
 export const sidebarVisible = (s: UiState) => s.sidebarOpen && !s.sidebarHiddenForDiff;
@@ -184,6 +190,7 @@ export const useUi = create<UiState>()(
       sidebarOpen: true,
   sidebarHiddenForDiff: false,
   terminalOpen: false,
+  terminalMode: 'shell',
   paletteOpen: false,
   dialog: null,
   dialogContext: null,
@@ -204,6 +211,7 @@ export const useUi = create<UiState>()(
   fileFilterFocusSeq: 0,
   inspectorFocusSeq: 0,
   graphFocusSeq: 0,
+  graphSearchFocusSeq: 0,
   sidebarSections: {},
   sidebarCollapseEpoch: 0,
   commitBoxHeight: null,
@@ -217,7 +225,16 @@ export const useUi = create<UiState>()(
         : { sidebarOpen: !s.sidebarOpen },
     ),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
-  toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
+  toggleTerminal: () =>
+    set((s) => ({
+      terminalOpen: s.terminalMode === 'shell' ? !s.terminalOpen : true,
+      terminalMode: 'shell',
+    })),
+  toggleGitmdCode: () =>
+    set((s) => ({
+      terminalOpen: s.terminalMode === 'gitmd-code' ? !s.terminalOpen : true,
+      terminalMode: 'gitmd-code',
+    })),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   openDialog: (dialog, context = null) => {
     captureDialogFocus();
@@ -232,7 +249,14 @@ export const useUi = create<UiState>()(
   setFullFileDiff: (fullFileDiff) => set({ fullFileDiff }),
   setWrapLines: (wrapLines) => set({ wrapLines }),
   selectFile: (selectedFile) => set({ selectedFile }),
-  openCenterDiff: (centerDiff) => set({ centerDiff, sidebarHiddenForDiff: true }),
+  openCenterDiff: (centerDiff) =>
+    set({
+      centerDiff,
+      centerEditor: null,
+      centerFileHistory: null,
+      fileHistoryPreset: null,
+      sidebarHiddenForDiff: true,
+    }),
   closeCenterDiff: () => set({ centerDiff: null, sidebarHiddenForDiff: false }),
   openEditor: (centerEditor) => set({ centerEditor }),
   closeEditor: () => set({ centerEditor: null }),
@@ -287,6 +311,7 @@ export const useUi = create<UiState>()(
   setFileTree: (fileTree) => set({ fileTree }),
   focusInspector: () => set((s) => ({ inspectorFocusSeq: s.inspectorFocusSeq + 1 })),
   focusGraph: () => set((s) => ({ graphFocusSeq: s.graphFocusSeq + 1 })),
+  focusGraphSearch: () => set((s) => ({ graphSearchFocusSeq: s.graphSearchFocusSeq + 1 })),
   setFileFilterOpen: (fileFilterOpen) =>
     set((s) => ({ fileFilterOpen, fileFilterFocusSeq: fileFilterOpen ? s.fileFilterFocusSeq + 1 : s.fileFilterFocusSeq })),
     }),

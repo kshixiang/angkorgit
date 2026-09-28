@@ -21,3 +21,4 @@ apps/website/.astro/
 !*.env.example
 
 .claude/settings.local.json
+.gstack/

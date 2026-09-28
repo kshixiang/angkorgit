@@ -10,6 +10,7 @@ mod core;
 mod editors;
 mod error;
 mod forge;
+mod gitmd_agent;
 mod http;
 mod proc;
 mod state;
@@ -124,6 +125,7 @@ pub fn run() {
             Ok(())
         })
         .manage(terminal::TerminalState::default())
+        .manage(gitmd_agent::AgentTaskState::default())
         .manage(watcher::WatcherState::default())
         .invoke_handler(tauri::generate_handler![
             commands::repo_open,
@@ -155,6 +157,9 @@ pub fn run() {
             commands::open_path,
             commands::read_file,
             commands::write_file,
+            commands::gitmd_memory_read,
+            commands::gitmd_memory_add,
+            commands::gitmd_memory_clear,
             commands::reveal_path,
             commands::paths_exist,
             commands::delete_file,
@@ -221,6 +226,9 @@ pub fn run() {
             commands::conflict_read,
             commands::conflict_resolve,
             commands::term_create,
+            commands::gitmd_code_create,
+            commands::gitmd_agent_chat,
+            commands::gitmd_agent_cancel,
             commands::term_write,
             commands::term_resize,
             commands::term_kill,

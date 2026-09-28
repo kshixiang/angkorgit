@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { ipc, isTauri } from '@/core/ipc';
+import { readSupabaseConfig } from './config';
 
 const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
-const supabaseUrl = viteEnv.VITE_SUPABASE_URL;
-const supabaseAnonKey = viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY ?? viteEnv.VITE_SUPABASE_ANON_KEY;
-export const authRedirectUrl = viteEnv.VITE_SUPABASE_AUTH_REDIRECT_URL ?? 'http://localhost:3000/auth/callback';
+const supabaseConfig = readSupabaseConfig(viteEnv);
+export const authRedirectUrl = supabaseConfig?.redirectUrl ?? 'http://localhost:1420/auth/callback';
 
 const storage = {
   async getItem(_key: string): Promise<string | null> {
@@ -18,10 +18,10 @@ const storage = {
   },
 };
 
-export const authConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+export const authConfigured = supabaseConfig !== null;
 
-export const supabase: SupabaseClient | null = authConfigured
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
+export const supabase: SupabaseClient | null = supabaseConfig
+  ? createClient(supabaseConfig.url, supabaseConfig.key, {
       auth: {
         storage,
         persistSession: true,

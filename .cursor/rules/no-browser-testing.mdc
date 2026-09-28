@@ -1,0 +1,10 @@
+---
+description: Skip browser-based testing unless the user explicitly requests it
+alwaysApply: true
+---
+
+# Browser Testing
+
+- Do not run browser-based tests by default for this project.
+- Do not use Playwright, browser automation, browser screenshots, or visual browser QA unless the user explicitly requests browser testing.
+- Continue to run relevant non-browser verification such as type checks, unit tests, Rust tests, formatting, and linting.

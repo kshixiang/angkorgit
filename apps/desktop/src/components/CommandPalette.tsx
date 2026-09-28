@@ -26,6 +26,7 @@ import {
   Redo2,
   RefreshCw,
   Settings,
+  Sparkles,
   SquareTerminal,
   Sun,
   Tag as TagIcon,
@@ -48,6 +49,7 @@ import { useUndo } from '@/features/history/undoStore';
 import { useForge } from '@/features/forge/store';
 import { forgeNoun, pickForgeRemote, remoteWebUrl } from '@gitmd/core';
 import { currentPullRequestUrl, modKey } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const repo = useRepo((s) => s.repo);
@@ -63,6 +65,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
   const paletteOpen = useUi((s) => s.paletteOpen);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
   const toggleTerminal = useUi((s) => s.toggleTerminal);
+  const toggleGitmdCode = useUi((s) => s.toggleGitmdCode);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
   const sidebarOpen = useUi(sidebarVisible);
   const openDialog = useUi((s) => s.openDialog);
@@ -73,6 +76,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
   const forgeRepoPath = useForge((s) => s.repoPath);
   const forgeKind = useForge((s) => s.remote?.kind ?? null);
   const forgeAccount = useForge((s) => s.hasAccount);
+  const t = useUiText();
   const undoStack = useUndo((s) => s.undoStack);
   const redoStack = useUndo((s) => s.redoStack);
   const navigate = useNavigate();
@@ -488,6 +492,14 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         </Command.Group>
 
         <Command.Group heading="View">
+          <PaletteItem
+            icon={<Sparkles />}
+            label={t('Open GitMD Code')}
+            onSelect={() => {
+              close();
+              toggleGitmdCode();
+            }}
+          />
           <PaletteItem
             icon={<SquareTerminal />}
             label="Toggle terminal"

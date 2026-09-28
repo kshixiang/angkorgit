@@ -1,0 +1,7 @@
+interface:
+  display_name: "Windows Build Test"
+  short_description: "Build an unsigned Windows test installer"
+  default_prompt: "Use $windows-build-test to build and verify an unsigned Windows test installer for the current GitMD worktree."
+
+policy:
+  allow_implicit_invocation: true

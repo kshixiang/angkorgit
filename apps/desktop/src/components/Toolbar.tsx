@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Undo2,
   Settings,
+  Sparkles,
   SquareTerminal,
   Tag,
   Archive,
@@ -369,6 +370,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const busy = useRepo((s) => s.busy);
   const setBusy = useRepo((s) => s.setBusy);
   const toggleTerminal = useUi((s) => s.toggleTerminal);
+  const toggleGitmdCode = useUi((s) => s.toggleGitmdCode);
   const toggleSidebar = useUi((s) => s.toggleSidebar);
   const sidebarOpen = useUi(sidebarVisible);
   const openDialog = useUi((s) => s.openDialog);
@@ -596,6 +598,11 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             <Spinner /> {busy}…
           </span>
         )}
+        <Hint label={t('GitMD Code')}>
+          <Button variant="ghost" size="icon" aria-label={t('GitMD Code')} onClick={toggleGitmdCode}>
+            <Sparkles />
+          </Button>
+        </Hint>
         <Hint
           label={
             <span className="flex items-center gap-1">

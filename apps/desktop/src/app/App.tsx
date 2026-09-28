@@ -15,10 +15,18 @@ const RepositoryPage = lazy(() =>
   import('@/features/repository/RepositoryPage').then((m) => ({ default: m.RepositoryPage })),
 );
 import { useRepo } from '@/features/repository/store';
+import { useGraph } from '@/features/graph/store';
 import { applyTheme, themeBase, useSettings } from '@/features/settings/store';
 import { useUi, type ClonePreset } from '@/features/ui/store';
 import { useShortcuts } from '@/shared/useShortcuts';
-import { ipc, listen, type CliRequest } from '@/core/ipc';
+import {
+  ipc,
+  listen,
+  type CliRequest,
+  type GitmdUiActionRequest,
+  type GitmdUiOpenDiffRequest,
+  type GitmdUiRefreshRequest,
+} from '@/core/ipc';
 
 function Shell() {
   const [splash, setSplash] = useState(true);
@@ -43,6 +51,9 @@ function Shell() {
     let readyTimer: number | undefined;
     let cancelled = false;
     let unlisten: (() => void) | undefined;
+    let unlistenUi: (() => void) | undefined;
+    let unlistenUiAction: (() => void) | undefined;
+    let unlistenRefresh: (() => void) | undefined;
     let pendingClone: ClonePreset | null = null;
     const openClone = (preset: ClonePreset) => {
       useUi.getState().openDialog('clone', preset);
@@ -108,9 +119,93 @@ function Shell() {
       if (cancelled) fn();
       else unlisten = fn;
     });
+    void listen('gitmd-ui-open-diff', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const request = payload as Partial<GitmdUiOpenDiffRequest>;
+      if (
+        typeof request.repoPath !== 'string' ||
+        typeof request.path !== 'string' ||
+        !request.repoPath ||
+        !request.path
+      ) {
+        return;
+      }
+      const currentRepo = useRepo.getState().repo?.path;
+      if (currentRepo !== request.repoPath) {
+        toast.error('GitMD Code requested a diff from a repository that is not open.');
+        return;
+      }
+      const oid = typeof request.oid === 'string' && request.oid ? request.oid : undefined;
+      const staged = request.staged === true;
+      useGraph.getState().select(oid ?? null);
+      const ui = useUi.getState();
+      ui.closeEditor();
+      ui.closeFileHistory();
+      if (oid) {
+        ui.selectFile(null);
+        ui.openCenterDiff({ path: request.path, oid, oldPath: request.oldPath ?? null });
+      } else {
+        ui.selectFile({ path: request.path, staged });
+        ui.openCenterDiff({ path: request.path, staged });
+      }
+      navigate('/repo');
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlistenUi = fn;
+    });
+    void listen('gitmd-ui-action', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const request = payload as Partial<GitmdUiActionRequest>;
+      if (typeof request.repoPath !== 'string' || !request.repoPath) return;
+      if (useRepo.getState().repo?.path !== request.repoPath) {
+        toast.error('GitMD Code requested a view from a repository that is not open.');
+        return;
+      }
+      const ui = useUi.getState();
+      navigate('/repo');
+      if (request.type === 'showCommit' && typeof request.oid === 'string' && request.oid) {
+        ui.closeEditor();
+        ui.closeFileHistory();
+        ui.closeCenterDiff();
+        void useGraph.getState().revealCommit(request.repoPath, request.oid).then((found) => {
+          if (!found) toast.error(`Could not reveal commit ${request.oid}.`);
+        });
+        return;
+      }
+      if (!('path' in request) || typeof request.path !== 'string' || !request.path) return;
+      if (request.type === 'openFile') {
+        ui.closeFileHistory();
+        ui.closeCenterDiff();
+        ui.openEditor(request.path);
+      } else if (request.type === 'openFileHistory') {
+        ui.closeEditor();
+        ui.openFileHistory(request.path);
+      } else if (request.type === 'openBlame') {
+        ui.closeEditor();
+        ui.openBlame(request.path, request.rev ?? null);
+      } else if (request.type === 'openConflict') {
+        ui.openConflict(request.path);
+      }
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlistenUiAction = fn;
+    });
+    void listen('gitmd-ui-refresh', (payload) => {
+      if (!payload || typeof payload !== 'object') return;
+      const request = payload as Partial<GitmdUiRefreshRequest>;
+      if (request.repoPath === useRepo.getState().repo?.path) {
+        void useRepo.getState().refresh();
+      }
+    }).then((fn) => {
+      if (cancelled) fn();
+      else unlistenRefresh = fn;
+    });
     return () => {
       cancelled = true;
       unlisten?.();
+      unlistenUi?.();
+      unlistenUiAction?.();
+      unlistenRefresh?.();
       clearTimeout(splashFallback);
       if (readyTimer !== undefined) clearTimeout(readyTimer);
     };

@@ -59,6 +59,65 @@ export interface CliToolStatus {
   aliasPath?: string;
 }
 
+export interface GitmdAgentMessage {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: number;
+  tasks?: GitmdAgentTask[];
+  usage?: GitmdAgentUsage;
+}
+
+export interface GitmdAgentUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+export type GitmdAgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface GitmdAgentTask {
+  id: string;
+  label: string;
+  status: GitmdAgentTaskStatus;
+}
+
+export interface GitmdUiOpenDiffRequest {
+  repoPath: string;
+  path: string;
+  staged?: boolean;
+  oid?: string | null;
+  oldPath?: string | null;
+}
+
+export type GitmdUiActionRequest =
+  | { type: 'openFile'; repoPath: string; path: string }
+  | { type: 'openFileHistory'; repoPath: string; path: string }
+  | { type: 'openBlame'; repoPath: string; path: string; rev?: string | null }
+  | { type: 'showCommit'; repoPath: string; oid: string }
+  | { type: 'openConflict'; repoPath: string; path: string };
+
+export interface GitmdUiRefreshRequest {
+  repoPath: string;
+}
+
+export type GitmdAgentStreamEvent =
+  | { type: 'taskStarted'; requestId: string; taskId: string; label: string }
+  | { type: 'taskCompleted'; requestId: string; taskId: string }
+  | { type: 'textDelta'; requestId: string; delta: string };
+
+export interface GitmdAgentResponse {
+  content: string;
+  changes?: Array<{ path: string; status: string }>;
+  diff?: string | null;
+  usage?: GitmdAgentUsage;
+}
+
+export interface GitmdMemoryFiles {
+  user: string;
+  repository: string;
+}
+
 export interface EditorInfo {
   id: string;
   label: string;
@@ -325,6 +384,18 @@ export const ipc = {
       return ['src/main.ts', 'src/app/App.tsx', 'src/graph/layout.ts', 'README.md', 'package.json'];
     }
     return invoke('repo_files', { path });
+  },
+  async gitmdMemoryRead(repoPath: string): Promise<GitmdMemoryFiles> {
+    if (!isTauri()) return { user: '', repository: '' };
+    return invoke('gitmd_memory_read', { repoPath });
+  },
+  async gitmdMemoryAdd(repoPath: string, scope: 'user' | 'repository', content: string): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('gitmd_memory_add', { repoPath, scope, content });
+  },
+  async gitmdMemoryClear(repoPath: string, scope: 'user' | 'repository'): Promise<void> {
+    if (!isTauri()) return;
+    return invoke('gitmd_memory_clear', { repoPath, scope });
   },
 
   async branches(path: string): Promise<BranchInfo[]> {
@@ -593,6 +664,46 @@ export const ipc = {
   async termCreate(cwd: string, cols: number, rows: number): Promise<number> {
     if (!isTauri()) return -1;
     return invoke('term_create', { cwd, cols, rows });
+  },
+  async gitmdCodeCreate(
+    cwd: string,
+    cols: number,
+    rows: number,
+    baseUrl: string,
+    model: string,
+    language: 'english' | 'chinese',
+  ): Promise<number> {
+    if (!isTauri()) return -1;
+    return invoke('gitmd_code_create', { cwd, cols, rows, baseUrl, model, language });
+  },
+  async gitmdAgentChat(request: {
+    requestId: string;
+    repoPath: string;
+    baseUrl: string;
+    model: string;
+    history: GitmdAgentMessage[];
+    prompt: string;
+    shellCommand?: string | null;
+    allowChanges: boolean;
+    language: 'english' | 'chinese';
+    responseStyle: 'concise' | 'balanced' | 'detailed';
+  }): Promise<GitmdAgentResponse> {
+    if (!isTauri()) {
+      await delay(350);
+      return {
+        content:
+          request.language === 'chinese'
+            ? '已检查 `src/app/App.tsx`。提交 `a1b2c3d` 可点击复制，文件可直接在编辑器中打开。\n\n```ts\nexport const ready = true;\n```'
+            : 'Checked `src/app/App.tsx`. Click commit `a1b2c3d` to copy it, or open the file directly in your editor.\n\n```ts\nexport const ready = true;\n```',
+        changes: [],
+        diff: null,
+      };
+    }
+    return invoke('gitmd_agent_chat', { request });
+  },
+  async gitmdAgentCancel(requestId: string): Promise<boolean> {
+    if (!isTauri()) return true;
+    return invoke('gitmd_agent_cancel', { requestId });
   },
   async termWrite(id: number, data: string): Promise<void> {
     if (!isTauri()) return;

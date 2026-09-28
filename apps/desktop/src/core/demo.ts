@@ -534,7 +534,7 @@ export function demoForgeResponse(request: HttpRequest): HttpResponse {
 }
 
 export const demoCliAgents: CliAgentInfo[] = [
-  { id: 'claude', label: 'Claude Code', path: '/usr/local/bin/claude', version: '2.0.0 (demo)' },
+  { id: 'claude', label: 'GitMD Code', path: '/usr/local/bin/claude', version: '2.0.0 (demo)' },
 ];
 
 export function demoCliRun(request?: { stdin?: string; args?: string[] }): CliRunResult {

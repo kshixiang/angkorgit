@@ -93,6 +93,13 @@ export function CommitGraph() {
   useEffect(() => {
     if (graphFocusSeq > 0) scrollRef.current?.focus();
   }, [graphFocusSeq]);
+  const graphSearchFocusSeq = useUi((s) => s.graphSearchFocusSeq);
+  useEffect(() => {
+    if (graphSearchFocusSeq > 0) searchInputRef.current?.focus();
+  }, [graphSearchFocusSeq]);
+  useEffect(() => {
+    setSearchDraft(find?.text ?? '');
+  }, [find?.text]);
 
   const worktreeBranches = useMemo(() => {
     const map = new Map<string, string>();

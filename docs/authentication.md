@@ -6,8 +6,10 @@ Configure the frontend with:
 
 ```text
 VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your-key
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
+
+Replace both placeholders with the values from the Supabase project before building the Tauri app. Do not build with the example values; the app will treat authentication as unconfigured instead of sending a placeholder key to Supabase.
 
 Apply `supabase/migrations/20260918105824_create_profiles_and_auth_trigger.sql` to create the user profile table and its row-level security policies. Enable email/password sign-up in Supabase Auth. The current MVP requires email verification before the main application is unlocked.
 

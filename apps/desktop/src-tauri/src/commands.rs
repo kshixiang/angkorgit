@@ -1,8 +1,13 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::core::types::*;
 use crate::core::{branch, commit, conflict, diff, history, misc, remote, repo, stage, worktree};
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::terminal::TerminalState;
 
 async fn blocking<T: Send + 'static>(
@@ -166,6 +171,67 @@ pub async fn discard_line(path: String, file: String, kind: String, lineNo: u32)
 
 const MAX_EDITABLE_BYTES: u64 = 5 * 1024 * 1024;
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitmdMemoryFiles {
+    pub user: String,
+    pub repository: String,
+}
+
+fn gitmd_memory_path(repo_path: &str, scope: &str) -> AppResult<PathBuf> {
+    match scope {
+        "user" => crate::ai_cli::home_dir()
+            .map(|home| home.join(".gitmd").join("MEMORY.md"))
+            .ok_or_else(|| AppError::other("could not resolve the user home directory")),
+        "repository" => Ok(Path::new(repo_path).join(".gitmd").join("MEMORY.md")),
+        _ => Err(AppError::other("memory scope must be user or repository")),
+    }
+}
+
+fn read_memory(path: &Path) -> AppResult<String> {
+    match fs::read_to_string(path) {
+        Ok(content) => Ok(content),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn add_memory(path: &Path, content: &str) -> AppResult<()> {
+    let content = content.split_whitespace().collect::<Vec<_>>().join(" ");
+    if content.is_empty() {
+        return Err(AppError::other("memory content cannot be empty"));
+    }
+    if content.len() > 4_000 {
+        return Err(AppError::other(
+            "memory content cannot exceed 4,000 characters",
+        ));
+    }
+    let existing = read_memory(path)?;
+    if existing
+        .lines()
+        .any(|line| line.trim_end().ends_with(&content))
+    {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|value| value.as_secs())
+        .unwrap_or_default();
+    let prefix = if existing.trim().is_empty() {
+        "# GitMD Memory\n\n<!-- Explicit memories saved by GitMD Code. Edit or delete entries as needed. -->\n\n"
+    } else if existing.ends_with('\n') {
+        ""
+    } else {
+        "\n"
+    };
+    let entry = format!("{prefix}- [{timestamp}] {content}\n");
+    fs::write(path, format!("{existing}{entry}"))?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn read_file(path: String, file: String) -> AppResult<String> {
     blocking(move || {
@@ -187,8 +253,39 @@ pub async fn read_file(path: String, file: String) -> AppResult<String> {
 pub async fn write_file(path: String, file: String, content: String) -> AppResult<()> {
     blocking(move || {
         let full = std::path::Path::new(&path).join(&file);
+        if let Some(parent) = full.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
         std::fs::write(full, content)?;
         Ok(())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn gitmd_memory_read(repo_path: String) -> AppResult<GitmdMemoryFiles> {
+    blocking(move || {
+        let user = read_memory(&gitmd_memory_path(&repo_path, "user")?)?;
+        let repository = read_memory(&gitmd_memory_path(&repo_path, "repository")?)?;
+        Ok(GitmdMemoryFiles { user, repository })
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn gitmd_memory_add(repo_path: String, scope: String, content: String) -> AppResult<()> {
+    blocking(move || add_memory(&gitmd_memory_path(&repo_path, &scope)?, &content)).await
+}
+
+#[tauri::command]
+pub async fn gitmd_memory_clear(repo_path: String, scope: String) -> AppResult<()> {
+    blocking(move || {
+        let path = gitmd_memory_path(&repo_path, &scope)?;
+        match fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error.into()),
+        }
     })
     .await
 }
@@ -730,6 +827,77 @@ pub async fn term_create(
 ) -> AppResult<u32> {
     let sessions = state.sessions();
     blocking(move || crate::terminal::create(&app, &sessions, &cwd, cols, rows)).await
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn gitmd_code_create(
+    app: AppHandle,
+    state: State<'_, TerminalState>,
+    cwd: String,
+    cols: u16,
+    rows: u16,
+    baseUrl: String,
+    model: String,
+    language: String,
+) -> AppResult<u32> {
+    let sessions = state.sessions();
+    blocking(move || {
+        crate::terminal::create_gitmd_code(
+            &app, &sessions, &cwd, cols, rows, &baseUrl, &model, &language,
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn gitmd_agent_chat(
+    app: AppHandle,
+    state: State<'_, crate::gitmd_agent::AgentTaskState>,
+    request: crate::gitmd_agent::AgentRequest,
+) -> AppResult<crate::gitmd_agent::AgentResponse> {
+    let request_id = request.request_id.clone();
+    if request_id.trim().is_empty() {
+        return crate::gitmd_agent::chat_with_timeout(app, request).await;
+    }
+    let task_app = app.clone();
+    let (sender, receiver) = tokio::sync::oneshot::channel();
+    let handle = tauri::async_runtime::spawn(async move {
+        let result = crate::gitmd_agent::chat_with_timeout(task_app, request).await;
+        let _ = sender.send(result);
+    });
+    state
+        .tasks
+        .lock()
+        .map_err(|_| AppError::other("Agent task state is unavailable"))?
+        .insert(request_id.clone(), handle);
+    let result = receiver
+        .await
+        .map_err(|_| AppError::other("GitMD Code request cancelled"))?;
+    state
+        .tasks
+        .lock()
+        .map_err(|_| AppError::other("Agent task state is unavailable"))?
+        .remove(&request_id);
+    result
+}
+
+#[tauri::command]
+pub fn gitmd_agent_cancel(
+    state: State<'_, crate::gitmd_agent::AgentTaskState>,
+    request_id: String,
+) -> AppResult<bool> {
+    let task = state
+        .tasks
+        .lock()
+        .map_err(|_| AppError::other("Agent task state is unavailable"))?
+        .remove(&request_id);
+    if let Some(task) = task {
+        task.abort();
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]

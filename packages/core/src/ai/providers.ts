@@ -80,7 +80,7 @@ function anthropicProvider(http: HttpClient, config: AiConfig): AiProvider {
   const baseUrl = (config.baseUrl || 'https://api.anthropic.com').replace(/\/$/, '');
   return {
     id: 'anthropic',
-    label: 'Anthropic',
+    label: 'GitMD AI',
     async complete(request): Promise<AiCompletionResult> {
       const system = request.messages
         .filter((m) => m.role === 'system')
@@ -99,13 +99,13 @@ function anthropicProvider(http: HttpClient, config: AiConfig): AiProvider {
             .filter((m) => m.role !== 'system')
             .map((m) => ({ role: m.role, content: m.content })),
         },
-        'Anthropic',
+        'GitMD AI',
       )) as { content?: Array<{ type: string; text?: string }> };
       const text = data.content
         ?.filter((c) => c.type === 'text')
         .map((c) => c.text ?? '')
         .join('');
-      if (!text) throw new AiError('Anthropic returned no content', 'anthropic');
+      if (!text) throw new AiError('GitMD AI returned no content', 'anthropic');
       return { text, model: config.model, provider: 'anthropic' };
     },
     async ping() {
@@ -225,9 +225,9 @@ export const AI_PROVIDER_PRESETS: Record<
   AiProviderKind,
   { label: string; defaultModel: string; needsApiKey: boolean; defaultBaseUrl: string }
 > = {
-  cli: { label: 'Installed AI CLI (Claude Code, Codex…)', defaultModel: '', needsApiKey: false, defaultBaseUrl: '' },
+  cli: { label: 'Installed AI CLI (GitMD Code, Codex…)', defaultModel: '', needsApiKey: false, defaultBaseUrl: '' },
   openai: { label: 'OpenAI', defaultModel: 'gpt-4o-mini', needsApiKey: true, defaultBaseUrl: 'https://api.openai.com/v1' },
-  anthropic: { label: 'Anthropic', defaultModel: 'claude-sonnet-5', needsApiKey: true, defaultBaseUrl: 'https://api.anthropic.com' },
+  anthropic: { label: 'GitMD AI', defaultModel: 'claude-sonnet-5', needsApiKey: true, defaultBaseUrl: 'https://api.anthropic.com' },
   gemini: { label: 'Google Gemini', defaultModel: 'gemini-2.0-flash', needsApiKey: true, defaultBaseUrl: 'https://generativelanguage.googleapis.com' },
   ollama: { label: 'Ollama', defaultModel: 'llama3.1', needsApiKey: false, defaultBaseUrl: 'http://localhost:11434' },
   lmstudio: { label: 'LM Studio', defaultModel: 'local-model', needsApiKey: false, defaultBaseUrl: 'http://localhost:1234/v1' },

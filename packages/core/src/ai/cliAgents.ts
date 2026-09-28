@@ -22,7 +22,7 @@ export interface CliAgentSpec {
 export const CLI_AGENTS: Record<CliAgentId, CliAgentSpec> = {
   claude: {
     id: 'claude',
-    label: 'Claude Code',
+    label: 'GitMD Code',
     binary: 'claude',
     promptVia: 'stdin',
     args: (model) => ['-p', '--output-format', 'text', ...(model ? ['--model', model] : [])],

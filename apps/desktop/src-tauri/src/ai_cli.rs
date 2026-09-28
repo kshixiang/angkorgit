@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AppError, AppResult};
 
 const AGENTS: &[(&str, &str, &str)] = &[
-    ("claude", "Claude Code", "claude"),
+    ("claude", "GitMD Code", "claude"),
     ("codex", "Codex CLI", "codex"),
     ("gemini", "Gemini CLI", "gemini"),
     ("opencode", "OpenCode", "opencode"),
@@ -116,6 +116,22 @@ fn is_supported(program: &str) -> bool {
         .unwrap_or("")
         .to_lowercase();
     AGENTS.iter().any(|(_, _, bin)| *bin == stem)
+}
+
+pub(crate) fn locate(binary: &str) -> Option<PathBuf> {
+    let path_env = search_path(None);
+    let cwd = std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir());
+    if let Ok(path) = which::which_in(binary, Some(&path_env), &cwd) {
+        return Some(path);
+    }
+    #[cfg(unix)]
+    {
+        return shell_lookup(&[binary])
+            .into_iter()
+            .find_map(|(name, path)| (name == binary).then_some(path));
+    }
+    #[cfg(not(unix))]
+    None
 }
 
 pub(crate) fn capture(mut command: Command, stdin: &str, timeout: Duration) -> AppResult<Captured> {

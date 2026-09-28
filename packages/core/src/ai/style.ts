@@ -1,5 +1,35 @@
 export type CommitStylePreset = 'conventional' | 'plain' | 'custom';
 
+export type AiResponseStyle = 'concise' | 'balanced' | 'detailed';
+
+export const DEFAULT_AI_RESPONSE_STYLE: AiResponseStyle = 'balanced';
+
+export const AI_RESPONSE_STYLE_PRESETS: Record<AiResponseStyle, { label: string; description: string }> = {
+  concise: {
+    label: 'Concise',
+    description: 'Lead with the answer. Use only the key facts and next step.',
+  },
+  balanced: {
+    label: 'Balanced',
+    description: 'Give the answer with the necessary context, evidence and next step.',
+  },
+  detailed: {
+    label: 'Detailed',
+    description: 'Include background, reasoning, steps, trade-offs and risks when useful.',
+  },
+};
+
+export function aiResponseStyleInstruction(style: AiResponseStyle = DEFAULT_AI_RESPONSE_STYLE): string {
+  switch (style) {
+    case 'concise':
+      return 'Prefer concise answers: lead with the conclusion, use at most 3 short bullets when useful, and omit background that does not change the next action.';
+    case 'detailed':
+      return 'Prefer detailed answers: include relevant context, reasoning, implementation steps, trade-offs, and risks, while staying focused on the repository task.';
+    default:
+      return 'Prefer balanced answers: give the conclusion first, then the key evidence and next action. Add context only when it helps the user decide or act.';
+  }
+}
+
 export interface CommitPrefixRule {
   pattern: string;
   prefix: string;
@@ -18,6 +48,7 @@ export interface ReviewStyle {
 export interface AiStyleConfig {
   commit: CommitStyle;
   review: ReviewStyle;
+  responseStyle: AiResponseStyle;
 }
 
 export const DEFAULT_COMMIT_STYLE: CommitStyle = {
@@ -33,6 +64,7 @@ export const DEFAULT_REVIEW_STYLE: ReviewStyle = {
 export const DEFAULT_AI_STYLE: AiStyleConfig = {
   commit: DEFAULT_COMMIT_STYLE,
   review: DEFAULT_REVIEW_STYLE,
+  responseStyle: DEFAULT_AI_RESPONSE_STYLE,
 };
 
 export const PROJECT_REVIEW_FILE = '.gitmd/review.md';

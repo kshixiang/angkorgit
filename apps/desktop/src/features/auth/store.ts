@@ -33,12 +33,18 @@ const demoUser = {
 } as User;
 
 const errorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message;
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message?: unknown }).message
+        : typeof error === 'string'
+          ? error
+          : null;
+  if (typeof message === 'string' && /invalid api key/i.test(message)) {
+    return 'Supabase API key is invalid. Set VITE_SUPABASE_PUBLISHABLE_KEY to a valid project key and rebuild.';
   }
-  if (typeof error === 'string') return error;
+  if (typeof message === 'string') return message;
   return 'Authentication failed. Please try again.';
 };
 

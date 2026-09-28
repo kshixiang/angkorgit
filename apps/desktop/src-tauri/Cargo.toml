@@ -5,7 +5,7 @@ description = "GitMD — a modern, fast, beautiful Git client"
 authors = ["GitMD Contributors"]
 license = "MIT"
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.85"
 
 [lib]
 name = "gitmd_lib"
@@ -33,6 +33,10 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 notify-debouncer-mini = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 which = "7"
+rig-core = "0.42"
+rig-agent = "0.42"
+futures-util = "0.3"
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

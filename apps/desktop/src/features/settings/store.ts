@@ -7,6 +7,7 @@ import {
   type AiConnectionStatus,
   type AiProviderKind,
   type AiStyleConfig,
+  type AiResponseStyle,
   type CommitStyle,
   type ReviewStyle,
 } from '@gitmd/core';
@@ -141,6 +142,13 @@ function applyZoom(zoom: number): void {
 
 export type AiProfile = Omit<AiConfig, 'provider'>;
 
+export interface GitmdCodeConfig {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  freshContextEachTurn: boolean;
+}
+
 function splitProvider(config: AiConfig): { provider: AiProviderKind; profile: AiProfile } {
   const { provider, ...profile } = config;
   return { provider, profile };
@@ -166,6 +174,7 @@ interface SettingsState {
   editorId: string | null;
   profiles: IdentityProfile[];
   ai: AiConfig;
+  gitmdCode: GitmdCodeConfig;
   aiProfiles: Partial<Record<AiProviderKind, AiProfile>>;
   aiStatus: AiConnectionStatus;
   aiKeysMigrated: boolean;
@@ -192,10 +201,12 @@ interface SettingsState {
   updateProfile: (id: string, patch: Partial<Omit<IdentityProfile, 'id'>>) => void;
   removeProfile: (id: string) => void;
   setAi: (config: Partial<AiConfig>) => void;
+  setGitmdCode: (config: Partial<GitmdCodeConfig>) => void;
   setAiProvider: (provider: AiProviderKind) => void;
   setAiStatus: (status: AiConnectionStatus) => void;
   setCommitStyle: (style: Partial<CommitStyle>) => void;
   setReviewStyle: (style: Partial<ReviewStyle>) => void;
+  setAiResponseStyle: (style: AiResponseStyle) => void;
   setAiCommitLanguage: (language: 'english' | 'chinese') => void;
   setUiLanguage: (language: UiLanguage) => void;
 }
@@ -232,6 +243,7 @@ function stripApiKeys(
 }
 
 const AI_CONNECTION_KEYS = ['provider', 'apiKey', 'baseUrl', 'model', 'cliAgent', 'cliPath'] as const;
+let gitmdCodeKeyWrite = Promise.resolve();
 
 const staleStatus = (status: AiConnectionStatus): AiConnectionStatus =>
   status === 'untested' ? 'untested' : 'stale';
@@ -256,6 +268,12 @@ export const useSettings = create<SettingsState>()(
         window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       profiles: [],
       ai: { provider: 'ollama', apiKey: '', model: 'llama3.1', baseUrl: '' },
+      gitmdCode: {
+        apiKey: '',
+        baseUrl: '',
+        model: 'claude-sonnet-4-6',
+        freshContextEachTurn: false,
+      },
       aiProfiles: {},
       aiStatus: 'untested',
       aiKeysMigrated: false,
@@ -314,6 +332,16 @@ export const useSettings = create<SettingsState>()(
           aiStatus: connectionChanged ? staleStatus(s.aiStatus) : s.aiStatus,
         });
       },
+      setGitmdCode: (config) => {
+        const current = get().gitmdCode;
+        if (config.apiKey !== undefined && config.apiKey !== current.apiKey) {
+          const apiKey = config.apiKey;
+          gitmdCodeKeyWrite = gitmdCodeKeyWrite
+            .catch(() => undefined)
+            .then(() => ipc.aiKeySet('gitmd-code', apiKey));
+        }
+        set({ gitmdCode: { ...current, ...config } });
+      },
       setAiStatus: (aiStatus) => set({ aiStatus }),
       setAiProvider: (provider) => {
         const s = get();
@@ -335,6 +363,7 @@ export const useSettings = create<SettingsState>()(
         set((s) => ({ aiStyle: { ...s.aiStyle, commit: { ...s.aiStyle.commit, ...style } } })),
       setReviewStyle: (style) =>
         set((s) => ({ aiStyle: { ...s.aiStyle, review: { ...s.aiStyle.review, ...style } } })),
+      setAiResponseStyle: (responseStyle) => set((s) => ({ aiStyle: { ...s.aiStyle, responseStyle } })),
       setAiCommitLanguage: (aiCommitLanguage) => set({ aiCommitLanguage }),
       setUiLanguage: (uiLanguage) => set({ uiLanguage }),
     }),
@@ -343,6 +372,7 @@ export const useSettings = create<SettingsState>()(
       partialize: (state) => ({
         ...state,
         ai: { ...state.ai, apiKey: '' },
+        gitmdCode: { ...state.gitmdCode, apiKey: '' },
         aiProfiles: stripApiKeys(state.aiProfiles),
       }),
       merge: (persisted, current) => {
@@ -351,11 +381,18 @@ export const useSettings = create<SettingsState>()(
           ...current,
           ...stored,
           ai: { ...current.ai, ...(stored.ai ?? {}) },
+          gitmdCode: {
+            ...current.gitmdCode,
+            ...(stored.gitmdCode ?? {}),
+            freshContextEachTurn: stored.gitmdCode?.freshContextEachTurn ?? current.gitmdCode.freshContextEachTurn,
+            apiKey: '',
+          },
           aiStyle: {
             ...current.aiStyle,
             ...(stored.aiStyle ?? {}),
             commit: { ...current.aiStyle.commit, ...(stored.aiStyle?.commit ?? {}) },
             review: { ...current.aiStyle.review, ...(stored.aiStyle?.review ?? {}) },
+            responseStyle: stored.aiStyle?.responseStyle ?? current.aiStyle.responseStyle,
           },
         };
       },
@@ -385,6 +422,14 @@ export const useSettings = create<SettingsState>()(
         queueMicrotask(() => {
           if (migrate) useSettings.setState({ aiKeysMigrated: true });
           if (!useSettings.getState().ai.apiKey) void loadAiKey(active);
+          void ipc.aiKeyGet('gitmd-code').then((apiKey) => {
+            if (!apiKey) return;
+            useSettings.setState((current) => ({
+              gitmdCode: current.gitmdCode.apiKey
+                ? current.gitmdCode
+                : { ...current.gitmdCode, apiKey },
+            }));
+          });
         });
       },
     },

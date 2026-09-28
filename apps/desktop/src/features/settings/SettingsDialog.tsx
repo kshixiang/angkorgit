@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import {
   AI_PROVIDER_PRESETS,
+  AI_RESPONSE_STYLE_PRESETS,
   COMMIT_STYLE_PRESETS,
   PROJECT_REVIEW_FILE,
   listAiModels,
@@ -33,6 +34,7 @@ import {
   type AiProviderKind,
   type CliAgentInfo,
   type CommitStylePreset,
+  type AiResponseStyle,
 } from '@gitmd/core';
 import {
   Badge,
@@ -391,7 +393,7 @@ function CliAgentPicker() {
         <SettingEmpty
           icon={<SquareTerminal className="size-4" />}
           title="No AI CLI found"
-          description="Install Claude Code, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
+          description="Install the GitMD Code engine, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
           action={
             <Button variant="secondary" size="sm" onClick={() => void scan()}>
               <RefreshCw className="size-3.5" /> Scan again
@@ -404,6 +406,57 @@ function CliAgentPicker() {
         sends nothing anywhere itself.
       </p>
     </div>
+  );
+}
+
+function GitmdCodeSettings() {
+  const config = useSettings((s) => s.gitmdCode);
+  const language = useSettings((s) => s.uiLanguage);
+  const setConfig = useSettings((s) => s.setGitmdCode);
+
+  return (
+    <SettingCard title="GitMD Code">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="API Key">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={config.apiKey}
+            onChange={(event) => setConfig({ apiKey: event.target.value })}
+            placeholder="sk-..."
+          />
+        </Field>
+        <Field label={language === 'chinese' ? '模型' : 'Model'}>
+          <Input
+            value={config.model}
+            onChange={(event) => setConfig({ model: event.target.value })}
+            placeholder="claude-sonnet-4-6"
+          />
+        </Field>
+        <Field label="Base URL" hint={language === 'chinese' ? '可选' : 'optional'}>
+          <Input
+            className="sm:col-span-2"
+            value={config.baseUrl}
+            onChange={(event) => setConfig({ baseUrl: event.target.value })}
+            placeholder="https://api.example.com"
+          />
+        </Field>
+        <div className="sm:col-span-2 border-t border-border-subtle pt-3">
+          <SettingRow
+            title={language === 'chinese' ? '每轮使用全新上下文' : 'Start each turn with fresh context'}
+            description={language === 'chinese'
+              ? '不发送之前的问答，可显著减少 token；用户规则和 Git 规则仍会每轮注入。'
+              : 'Do not send earlier messages to the model. This saves tokens while user and Git rules are still included every turn.'}
+            control={
+              <Switch
+                checked={config.freshContextEachTurn}
+                onCheckedChange={(checked) => setConfig({ freshContextEachTurn: checked })}
+              />
+            }
+          />
+        </div>
+      </div>
+    </SettingCard>
   );
 }
 
@@ -1338,11 +1391,12 @@ export function SettingsDialog() {
 
               {section === 'ai' && (
                 <div className="flex flex-col gap-4">
+                  <GitmdCodeSettings />
                   <SettingCard
                     title="Provider"
                     description={
                       settings.ai.provider === 'cli'
-                        ? 'Uses an AI CLI already installed on this machine — Claude Code, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.'
+                        ? 'Uses an AI CLI already installed on this machine — GitMD Code, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.'
                         : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
                     }
                     action={
@@ -1439,6 +1493,25 @@ export function SettingsDialog() {
                       </Select>
                     }
                   />
+                  <SettingCard
+                    title="AI response detail"
+                    description="Controls how much context GitMD AI includes in answers across Git tasks and explanations."
+                    action={
+                      <Select
+                        value={settings.aiStyle.responseStyle}
+                        onValueChange={(value) => settings.setAiResponseStyle(value as AiResponseStyle)}
+                      >
+                        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(AI_RESPONSE_STYLE_PRESETS) as AiResponseStyle[]).map((style) => (
+                            <SelectItem key={style} value={style}>{AI_RESPONSE_STYLE_PRESETS[style].label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    }
+                  >
+                    <p className="text-xs text-faint">{AI_RESPONSE_STYLE_PRESETS[settings.aiStyle.responseStyle].description}</p>
+                  </SettingCard>
                   <CommitStyleCard />
                   <ReviewStyleCard />
                 </div>

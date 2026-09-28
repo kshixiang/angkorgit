@@ -136,14 +136,14 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
   );
 
   useEffect(() => {
-    if (!isWorkingCopy || !status) return;
+    if (!isWorkingCopy || !status || target.keepOpen) return;
     const entry = status.files.find((f) => f.path === target.path);
     const stillHasThisSide = target.staged ? !!entry?.staged : !!entry?.unstaged;
     if (stillHasThisSide) return;
     const hasOtherSide = target.staged ? !!entry?.unstaged : !!entry?.staged;
     if (hasOtherSide) openCenterDiff({ path: target.path, staged: !target.staged });
     else closeCenterDiff();
-  }, [status, isWorkingCopy, target.path, target.staged, openCenterDiff, closeCenterDiff]);
+  }, [status, isWorkingCopy, target.path, target.staged, target.keepOpen, openCenterDiff, closeCenterDiff]);
 
   const blocks = useMemo(
     () => (diff && !diff.isBinary && !diff.isImage ? changeBlocks(diff, diffView) : []),
