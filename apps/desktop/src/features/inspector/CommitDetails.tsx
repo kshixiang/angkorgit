@@ -56,6 +56,7 @@ import {
   type FileTreeFold,
   type FileTreeFoldState,
 } from '@/components/FileTree';
+import { useUiText } from '@/shared/i18n';
 import { basename, dirname, formatDate, isMac, timeAgo } from '@/shared/utils';
 
 const diffPath = (diff: CommitFileInfo) => diff.path;
@@ -74,7 +75,8 @@ const statusMeta: Record<
 };
 
 function ChangeSummary({ diffs }: { diffs: CommitFileInfo[] }) {
-  if (diffs.length === 0) return <>No changes</>;
+  const t = useUiText();
+  if (diffs.length === 0) return <>{t('No changes')}</>;
   const order: CommitFileInfo['status'][] = ['modified', 'new', 'deleted', 'renamed'];
   const parts = order
     .map((status) => ({ status, count: diffs.filter((d) => d.status === status).length }))
@@ -84,8 +86,8 @@ function ChangeSummary({ diffs }: { diffs: CommitFileInfo[] }) {
       {parts.map(({ status, count }) => (
         <span
           key={status}
-          title={`${count} ${statusMeta[status].label}`}
-          aria-label={`${count} ${statusMeta[status].label}`}
+          title={`${count} ${t(statusMeta[status].label)}`}
+          aria-label={`${count} ${t(statusMeta[status].label)}`}
           className={cn('flex items-center gap-1 tabular-nums', statusMeta[status].className)}
         >
           <span className="font-mono">{statusMeta[status].mark}</span>
@@ -164,6 +166,7 @@ export function CommitDetails({
   onRetry: () => void;
 }) {
   const select = useGraph((s) => s.select);
+  const t = useUiText();
   const openCenterDiff = useUi((s) => s.openCenterDiff);
   const closeCenterDiff = useUi((s) => s.closeCenterDiff);
   const centerDiff = useUi((s) => s.centerDiff);
@@ -385,7 +388,7 @@ export function CommitDetails({
       return;
     }
     if (!aiConfigured()) {
-      toast.info('Configure an AI provider in Settings first');
+      toast.info(t('Configure an AI provider in Settings first'));
       return;
     }
     const run = useAiWork.getState().startExplain(key);
@@ -447,13 +450,13 @@ export function CommitDetails({
                 {commit.committer.email !== commit.author.email && ` · committed by ${commit.committer.name}`}
               </span>
             </span>
-            <Hint label="Copy full hash">
+            <Hint label={t('Copy full hash')}>
               <button
                 className="flex h-6 shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 font-mono text-[11px] text-muted hover:text-foreground"
-                aria-label="Copy commit hash"
+                aria-label={t('Copy commit hash')}
                 onClick={() => {
                   void navigator.clipboard.writeText(commit.oid);
-                  toast.success('Commit hash copied');
+                  toast.success(t('Commit hash copied'));
                 }}
               >
                 {commit.shortOid} <Copy className="size-2.5" />
@@ -470,7 +473,7 @@ export function CommitDetails({
                   key={parent}
                   className="flex h-5 items-center rounded border border-border-subtle bg-surface px-1.5 font-mono text-[10px] text-muted hover:text-foreground"
                   onClick={() => select(parent)}
-                  title="Show this commit"
+                  title={t('Show this commit')}
                 >
                   {parent.slice(0, 7)}
                 </button>
@@ -498,14 +501,10 @@ export function CommitDetails({
           <Button variant="ghost" size="sm" className="text-muted" onClick={() => void explain()} disabled={loading}>
             {aiBusy ? (
               <>
-                <Logo size={14} animated="loop" className="logo-draw-loop" />
-                Stop explaining
-              </>
+                <Logo size={14} animated="loop" className="logo-draw-loop" />{t('Stop explaining')}</>
             ) : (
               <>
-                <Sparkles className="text-primary" />
-                Explain with AI
-              </>
+                <Sparkles className="text-primary" />{t('Explain with AI')}</>
             )}
           </Button>
         </div>
@@ -513,13 +512,12 @@ export function CommitDetails({
           <div className="mt-1 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
             <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
               <span className="flex items-center gap-1.5 font-medium text-primary">
-                <Sparkles className="size-3.5" /> AI explanation
-              </span>
-              <Hint label="Open explanation in full view">
+                <Sparkles className="size-3.5" />{t('AI explanation')}</span>
+              <Hint label={t('Open explanation in full view')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Open AI explanation in full view"
+                  aria-label={t('Open AI explanation in full view')}
                   onClick={() => setAiExpanded(true)}
                 >
                   <Maximize2 className="size-3" />
@@ -534,7 +532,7 @@ export function CommitDetails({
         <AiResultDialog
           open={aiExpanded && !!aiText}
           onOpenChange={(open) => !open && setAiExpanded(false)}
-          title="AI explanation"
+          title={t('AI explanation')}
           icon={<Sparkles className="size-4 text-primary" />}
           text={aiText ?? ''}
         />
@@ -543,7 +541,7 @@ export function CommitDetails({
       <div
         ref={filesRef}
         tabIndex={0}
-        aria-label="Commit files"
+        aria-label={t('Commit files')}
         onKeyDown={onFilesKeyDown}
         className="rounded-md p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
       >
@@ -573,17 +571,13 @@ export function CommitDetails({
           <div className="mb-1.5 flex min-h-7 items-center gap-2 rounded-md border border-border-subtle bg-surface-raised/50 px-2 py-1 text-[11px]">
             {picked.size === 0 ? (
               <>
-                <span className="min-w-0 flex-1 text-faint">
-                  This is a stash. Tick files to apply only those to the working copy.
-                </span>
+                <span className="min-w-0 flex-1 text-faint">{t('This is a stash. Tick files to apply only those to the working copy.')}</span>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 shrink-0 px-2 text-[11px]"
                   onClick={() => setPicked(new Set(shownDiffs.map((d) => d.path)))}
-                >
-                  Select all
-                </Button>
+                >{t('Select all')}</Button>
               </>
             ) : (
               <>
@@ -595,9 +589,7 @@ export function CommitDetails({
                   size="sm"
                   className="h-6 shrink-0 px-2 text-[11px]"
                   onClick={() => setPicked(new Set())}
-                >
-                  Clear
-                </Button>
+                >{t('Clear')}</Button>
                 <Button
                   size="sm"
                   className="h-6 shrink-0 px-2 text-[11px]"
@@ -616,7 +608,7 @@ export function CommitDetails({
               onChange={setFileQuery}
               onClose={() => useUi.getState().setFileFilterOpen(false)}
             focusSeq={fileFilterFocusSeq}
-              placeholder="Filter files…"
+              placeholder={t('Filter files…')}
             />
           </div>
         )}
@@ -631,12 +623,10 @@ export function CommitDetails({
             <span className="min-w-0 flex-1 text-xs text-danger [overflow-wrap:anywhere]">
               Could not load changes: {error}
             </span>
-            <Button variant="ghost" size="sm" className="shrink-0" onClick={onRetry}>
-              Retry
-            </Button>
+            <Button variant="ghost" size="sm" className="shrink-0" onClick={onRetry}>{t('Retry')}</Button>
           </div>
         ) : shownDiffs.length === 0 && filtering ? (
-          <p className="px-2 py-1.5 text-xs text-faint">No files match the filter.</p>
+          <p className="px-2 py-1.5 text-xs text-faint">{t('No files match the filter.')}</p>
         ) : fileTree ? (
           <FileTree items={shownDiffs} pathOf={diffPath} renderFile={renderDiffRow} fold={fold} onFoldState={setFoldState} />
         ) : shownDiffs.length > VIRTUAL_FILE_THRESHOLD ? (
@@ -655,8 +645,7 @@ export function CommitDetails({
             {stash && (
               <>
                 <DropdownMenuItem onClick={() => void restoreFromStash([fileMenu.file.path])}>
-                  <ArchiveRestore /> Apply this file to the working copy
-                </DropdownMenuItem>
+                  <ArchiveRestore />{t('Apply this file to the working copy')}</DropdownMenuItem>
                 {picked.size > 1 && picked.has(fileMenu.file.path) && (
                   <DropdownMenuItem onClick={() => void restoreFromStash([...picked])}>
                     <ArchiveRestore /> Apply {picked.size} selected files
@@ -666,28 +655,40 @@ export function CommitDetails({
               </>
             )}
             <DropdownMenuItem
+              onClick={() =>
+                useUi.getState().askGitmdCodeAboutFiles([
+                  {
+                    path: fileMenu.file.path,
+                    staged: false,
+                    oid: fileMenu.file.sourceOid ?? commit.oid,
+                    oldPath: fileMenu.file.oldPath,
+                  },
+                ])
+              }
+            >
+              <Sparkles /> {t('Ask AI')}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
               disabled={fileMenu.file.status === 'deleted'}
               onClick={() => useUi.getState().openEditor(fileMenu.file.path)}
             >
-              <Pencil /> Edit file
-            </DropdownMenuItem>
+              <Pencil />{t('Edit file')}</DropdownMenuItem>
             {editor && (
               <DropdownMenuItem
                 disabled={fileMenu.file.status === 'deleted'}
                 onClick={() => void openInEditor(editor.id, `${repoPath}/${fileMenu.file.path}`)}
               >
-                <Code /> Open in {editor.label}
+                <Code /> {t('Open')} {editor.label}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => useUi.getState().openFileHistory(fileMenu.file.path)}>
-              <History /> File history
-            </DropdownMenuItem>
+              <History />{t('File history')}</DropdownMenuItem>
             <DropdownMenuItem
               disabled={fileMenu.file.status === 'deleted'}
               onClick={() => useUi.getState().openBlame(fileMenu.file.path, fileMenu.file.sourceOid ?? commit.oid)}
             >
-              <UserRoundSearch /> Blame at this commit
-            </DropdownMenuItem>
+              <UserRoundSearch />{t('Blame at this commit')}</DropdownMenuItem>
             <DropdownMenuItem
               disabled={fileMenu.file.status === 'deleted'}
               onClick={() =>
@@ -698,8 +699,7 @@ export function CommitDetails({
                   )
               }
             >
-              <ExternalLink /> Open in external app
-            </DropdownMenuItem>
+              <ExternalLink />{t('Open in external app')}</DropdownMenuItem>
             <DropdownMenuItem
               disabled={fileMenu.file.status === 'deleted'}
               onClick={() =>
@@ -715,19 +715,17 @@ export function CommitDetails({
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(fileMenu.file.path);
-                toast.success('Path copied');
+                toast.success(t('Path copied'));
               }}
             >
-              <Copy /> Copy path
-            </DropdownMenuItem>
+              <Copy />{t('Copy path')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(`${repoPath}/${fileMenu.file.path}`);
-                toast.success('Absolute path copied');
+                toast.success(t('Absolute path copied'));
               }}
             >
-              <Copy /> Copy absolute path
-            </DropdownMenuItem>
+              <Copy />{t('Copy absolute path')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

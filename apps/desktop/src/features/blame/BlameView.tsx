@@ -18,6 +18,7 @@ import { ipc } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { highlightLine, languageOf } from '@/shared/highlight';
 import { formatDate, timeAgo } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 const ROW_HEIGHT = 22;
 
@@ -34,6 +35,7 @@ export function BlameView({
   onBlameAt: (rev: string) => void;
   onResolvedRev: (oid: string) => void;
 }) {
+  const t = useUiText();
   const path = useRepo((s) => s.repo?.path ?? '');
   const [blame, setBlame] = useState<FileBlame | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -162,21 +164,18 @@ export function BlameView({
               <GitCommitHorizontal /> Open commit {menu.hunk.shortOid}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={!menu.hunk.committed} onClick={() => onBlameAt(menu.hunk.oid)}>
-              <UserRoundSearch /> Blame at this commit
-            </DropdownMenuItem>
+              <UserRoundSearch />{t('Blame at this commit')}</DropdownMenuItem>
             <DropdownMenuItem disabled={!menu.hunk.committed} onClick={() => onBlameAt(`${menu.hunk.oid}^`)}>
-              <UserRoundSearch /> Blame before this commit
-            </DropdownMenuItem>
+              <UserRoundSearch />{t('Blame before this commit')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               disabled={!menu.hunk.committed}
               onClick={() => {
                 void navigator.clipboard.writeText(menu.hunk.oid);
-                toast.success('Hash copied');
+                toast.success(t('Hash copied'));
               }}
             >
-              <Copy /> Copy hash
-            </DropdownMenuItem>
+              <Copy />{t('Copy hash')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

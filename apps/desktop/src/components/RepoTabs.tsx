@@ -7,8 +7,10 @@ import { useRepo } from '@/features/repository/store';
 import { killTerminalSession } from '@/features/terminal/sessions';
 import { useUi } from '@/features/ui/store';
 import { AccountMenu } from '@/features/auth/AccountMenu';
+import { useUiText } from '@/shared/i18n';
 
 export function RepoTabs() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const tabs = useUi((s) => s.repoTabs);
   const worktreeTabs = useUi((s) => s.worktreeTabs);
@@ -125,7 +127,7 @@ export function RepoTabs() {
               {worktreeTabs.includes(path) && (
                 <FolderTree
                   className={cn('size-3 shrink-0', active ? 'text-primary' : 'text-faint')}
-                  aria-label="Worktree"
+                  aria-label={t('Worktree')}
                 />
               )}
               <span className="min-w-0 truncate">{label(path)}</span>
@@ -147,12 +149,12 @@ export function RepoTabs() {
           );
         })}
       </div>
-      <Hint label="Open another repository">
+      <Hint label={t('Open another repository')}>
         <Button
           variant="ghost"
           size="icon-sm"
           className="mb-0.5 shrink-0"
-          aria-label="Open another repository"
+          aria-label={t('Open another repository')}
           onClick={addNew}
         >
           <Plus className="size-4" />

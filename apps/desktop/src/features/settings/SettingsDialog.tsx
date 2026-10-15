@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
   Check,
-  ChevronDown,
   Code,
   Copy,
   FolderOpen,
-  Github,
   Keyboard,
   KeyRound,
   Minus,
@@ -16,23 +14,17 @@ import {
   Plus,
   RefreshCw,
   Sparkles,
-  SquareTerminal,
   Sun,
   Trash2,
   User,
   UserRound,
   UsersRound,
-  Wifi,
 } from 'lucide-react';
 import {
-  AI_PROVIDER_PRESETS,
   AI_RESPONSE_STYLE_PRESETS,
   COMMIT_STYLE_PRESETS,
   PROJECT_REVIEW_FILE,
-  listAiModels,
   resolveCommitPrefix,
-  type AiProviderKind,
-  type CliAgentInfo,
   type CommitStylePreset,
   type AiResponseStyle,
 } from '@gitmd/core';
@@ -72,7 +64,6 @@ import { installCliTool } from './cliTool';
 import { useEditors } from './editors';
 import { AccountsTab, providerIcon } from './AccountsTab';
 import { Field, SettingCard, SettingEmpty, SettingRow } from './SettingCard';
-import { getAiProvider } from '@/features/ai/client';
 import { modKey, shortenHome } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
 
@@ -86,12 +77,13 @@ const SECTIONS: Array<{
 }> = [
   { id: 'appearance', label: 'Appearance', description: 'Theme, accent color, zoom and motion', icon: Palette },
   { id: 'git', label: 'Git', description: 'Auto fetch, pull requests, command line, identity and profiles', icon: User },
-  { id: 'accounts', label: 'Authentication', description: 'https:// remotes use accounts · git@ remotes use SSH keys', icon: Github },
-  { id: 'ai', label: 'AI Assistant', description: 'Provider, connection and message style', icon: Sparkles },
+  { id: 'accounts', label: 'Authentication', description: 'https:// remotes use accounts · git@ remotes use SSH keys', icon: KeyRound },
+  { id: 'ai', label: 'AI Assistant', description: 'GitMD Code and message style', icon: Sparkles },
   { id: 'shortcuts', label: 'Shortcuts', description: 'Keyboard reference', icon: Keyboard },
 ];
 
 function SshCard() {
+  const t = useUiText();
   const settings = useSettings();
   const [publicKey, setPublicKey] = useState('');
   const [busy, setBusy] = useState(false);
@@ -129,17 +121,17 @@ function SshCard() {
 
   return (
     <SettingCard
-      title="SSH"
-      description="Used for git@… remotes; https:// remotes use the accounts above instead."
+      title={t('SSH')}
+      description={t('Used for git@… remotes; https:// remotes use the accounts above instead.')}
     >
       <div className="flex flex-col gap-3">
         <SettingRow
-          title="Use the SSH agent"
-          description="Tried before any key file, and the only way a passphrase-protected key can work."
+          title={t('Use the SSH agent')}
+          description={t('Tried before any key file, and the only way a passphrase-protected key can work.')}
           control={<Switch checked={settings.sshUseAgent} onCheckedChange={settings.setSshUseAgent} />}
         />
 
-        <Field label="Private key">
+        <Field label={t('Private key')}>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <KeyRound className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
@@ -150,11 +142,11 @@ function SshCard() {
                 placeholder="~/.ssh/id_ed25519"
               />
             </div>
-            <Hint label="Browse for a key">
+            <Hint label={t('Browse for a key')}>
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label="Browse for a private key"
+                aria-label={t('Browse for a private key')}
                 onClick={async () => {
                   const picked = await pickFile('Choose an SSH private key');
                   if (picked) settings.setSshKeyPath(picked);
@@ -167,9 +159,7 @@ function SshCard() {
         </Field>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void showPublicKey()}>
-            Show public key
-          </Button>
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void showPublicKey()}>{t('Show public key')}</Button>
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => void generate()}>
             {busy ? <Spinner /> : null}
             Generate a key
@@ -185,11 +175,10 @@ function SshCard() {
               className="self-start"
               onClick={() => {
                 void navigator.clipboard.writeText(publicKey);
-                toast.success('Public key copied — paste it into your host');
+                toast.success(t('Public key copied — paste it into your host'));
               }}
             >
-              <Copy /> Copy public key
-            </Button>
+              <Copy />{t('Copy public key')}</Button>
           </div>
         )}
       </div>
@@ -198,226 +187,27 @@ function SshCard() {
 }
 
 function CredentialHelperCard() {
+  const t = useUiText();
   const useCredentialHelper = useSettings((s) => s.useCredentialHelper);
   const setUseCredentialHelper = useSettings((s) => s.setUseCredentialHelper);
   return (
     <SettingCard
-      title="System credential helper"
-      description="After your accounts, fall back to credentials saved by git or another client. Turn off to test the accounts on their own."
+      title={t('System credential helper')}
+      description={t('After your accounts, fall back to credentials saved by git or another client. Turn off to test the accounts on their own.')}
       action={<Switch checked={useCredentialHelper} onCheckedChange={setUseCredentialHelper} />}
     />
   );
 }
 
-function ModelField() {
-  const ai = useSettings((s) => s.ai);
-  const setAi = useSettings((s) => s.setAi);
-  const [models, setModels] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const preset = AI_PROVIDER_PRESETS[ai.provider];
-
-  useEffect(() => {
-    setModels([]);
-    setOpen(false);
-  }, [ai.provider]);
-
-  const load = async () => {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-    if (models.length > 0) {
-      setOpen(true);
-      return;
-    }
-    const { ai: current } = useSettings.getState();
-    if (preset.needsApiKey && !current.apiKey) {
-      toast.info('Enter your API key first — the model list is specific to your account');
-      return;
-    }
-    setLoading(true);
-    try {
-      const found = await listAiModels({ ...current, baseUrl: current.baseUrl || undefined }, (request) =>
-        ipc.httpRequest(request),
-      );
-      setModels(found);
-      setOpen(found.length > 0);
-      if (found.length === 0) toast.info('The provider returned no models');
-    } catch (error) {
-      toast.error(`Could not load models: ${(error as { message?: string }).message ?? error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refresh = async () => {
-    setModels([]);
-    setOpen(false);
-    await load();
-  };
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted">
-          Model <span className="font-normal text-faint">· type any name or load the list your key can access</span>
-        </span>
-        <div className="flex items-center gap-1">
-          {models.length > 0 && !open && (
-            <Hint label="Fetch the list again">
-              <Button variant="ghost" size="icon-sm" aria-label="Refresh model list" onClick={() => void refresh()} disabled={loading}>
-                <RefreshCw className="size-3.5" />
-              </Button>
-            </Hint>
-          )}
-          <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
-            {loading ? <Spinner /> : <ChevronDown className={cn('size-3.5 transition-transform', open && 'rotate-180')} />}
-            {open ? 'Hide models' : models.length > 0 ? 'Show models' : 'Load models'}
-          </Button>
-        </div>
-      </div>
-      <Input
-        value={ai.model}
-        onChange={(e) => setAi({ model: e.target.value })}
-        placeholder={preset.defaultModel}
-      />
-      {open && (
-        <div className="max-h-44 overflow-y-auto rounded-md border border-border-subtle">
-          {models.map((model) => {
-            const isActive = ai.model === model;
-            return (
-              <button
-                key={model}
-                onClick={() => {
-                  setAi({ model });
-                  setOpen(false);
-                }}
-                className={cn(
-                  'flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors',
-                  isActive ? 'bg-primary/10 text-foreground' : 'hover:bg-surface-raised',
-                )}
-              >
-                <span className="min-w-0 flex-1 truncate font-mono text-xs">{model}</span>
-                {isActive && <Check className="size-3.5 shrink-0 text-primary" />}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CliAgentPicker() {
-  const ai = useSettings((s) => s.ai);
-  const [agents, setAgents] = useState<CliAgentInfo[]>([]);
-  const [scanning, setScanning] = useState(true);
-
-  const scan = useCallback(async () => {
-    setScanning(true);
-    try {
-      const found = await ipc.aiCliDetect();
-      setAgents(found);
-      const { ai: current, setAi } = useSettings.getState();
-      if (found.length > 0 && !found.some((a) => a.id === current.cliAgent)) {
-        setAi({ cliAgent: found[0].id, cliPath: found[0].path });
-      } else {
-        const selected = found.find((a) => a.id === current.cliAgent);
-        if (selected && selected.path !== current.cliPath) setAi({ cliPath: selected.path });
-      }
-    } catch {
-      setAgents([]);
-    } finally {
-      setScanning(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void scan();
-  }, [scan]);
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted">Detected on this machine</span>
-        <Button variant="ghost" size="sm" onClick={() => void scan()} disabled={scanning}>
-          {scanning ? <Spinner /> : <RefreshCw className="size-3.5" />}
-          Scan again
-        </Button>
-      </div>
-      {agents.map((agent) => {
-        const isActive = ai.cliAgent === agent.id;
-        return (
-          <button
-            key={agent.id}
-            onClick={() => useSettings.getState().setAi({ cliAgent: agent.id, cliPath: agent.path })}
-            className={cn(
-              'flex items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-              isActive ? 'border-primary/40 bg-primary/5' : 'border-border-subtle bg-surface-raised/40 hover:border-border',
-            )}
-          >
-            <span
-              className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-md',
-                isActive ? 'bg-primary/15 text-primary' : 'bg-surface text-muted',
-              )}
-            >
-              <SquareTerminal className="size-4" />
-            </span>
-            <div className="min-w-0 flex-1 leading-tight">
-              <p className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <span className="truncate">{agent.label}</span>
-                {isActive && (
-                  <Badge tone="primary">
-                    <Check className="size-3" /> In use
-                  </Badge>
-                )}
-                {agent.version && <span className="font-mono text-[11px] font-normal text-faint">{agent.version}</span>}
-              </p>
-              <p className="truncate font-mono text-[11px] text-faint">{agent.path}</p>
-            </div>
-          </button>
-        );
-      })}
-      {scanning && agents.length === 0 && (
-        <div className="flex items-center gap-2.5 rounded-md border border-border-subtle p-2.5">
-          <div className="size-8 animate-pulse rounded-md bg-surface-raised" />
-          <div className="flex flex-1 flex-col gap-1.5">
-            <div className="h-3.5 w-32 animate-pulse rounded bg-surface-raised" />
-            <div className="h-3 w-56 animate-pulse rounded bg-surface-raised" />
-          </div>
-        </div>
-      )}
-      {!scanning && agents.length === 0 && (
-        <SettingEmpty
-          icon={<SquareTerminal className="size-4" />}
-          title="No AI CLI found"
-          description="Install the GitMD Code engine, Codex CLI, Gemini CLI, OpenCode or Antigravity CLI, then scan again."
-          action={
-            <Button variant="secondary" size="sm" onClick={() => void scan()}>
-              <RefreshCw className="size-3.5" /> Scan again
-            </Button>
-          }
-        />
-      )}
-      <p className="mt-1 text-[11px] leading-relaxed text-faint">
-        Requests run through the CLI on this machine with its own login and quota. GitMD stores no key and
-        sends nothing anywhere itself.
-      </p>
-    </div>
-  );
-}
-
 function GitmdCodeSettings() {
+  const t = useUiText();
   const config = useSettings((s) => s.gitmdCode);
-  const language = useSettings((s) => s.uiLanguage);
   const setConfig = useSettings((s) => s.setGitmdCode);
 
   return (
-    <SettingCard title="GitMD Code">
+    <SettingCard title={t('GitMD Code')}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="API Key">
+        <Field label={t('API Key')}>
           <Input
             type="password"
             autoComplete="off"
@@ -426,14 +216,14 @@ function GitmdCodeSettings() {
             placeholder="sk-..."
           />
         </Field>
-        <Field label={language === 'chinese' ? '模型' : 'Model'}>
+        <Field label={t('Model')}>
           <Input
             value={config.model}
             onChange={(event) => setConfig({ model: event.target.value })}
             placeholder="claude-sonnet-4-6"
           />
         </Field>
-        <Field label="Base URL" hint={language === 'chinese' ? '可选' : 'optional'}>
+        <Field label={t('Base URL')} hint={t('optional')}>
           <Input
             className="sm:col-span-2"
             value={config.baseUrl}
@@ -443,10 +233,8 @@ function GitmdCodeSettings() {
         </Field>
         <div className="sm:col-span-2 border-t border-border-subtle pt-3">
           <SettingRow
-            title={language === 'chinese' ? '每轮使用全新上下文' : 'Start each turn with fresh context'}
-            description={language === 'chinese'
-              ? '不发送之前的问答，可显著减少 token；用户规则和 Git 规则仍会每轮注入。'
-              : 'Do not send earlier messages to the model. This saves tokens while user and Git rules are still included every turn.'}
+            title={t('Start each turn with fresh context')}
+            description={t('Do not send earlier messages to the model. This saves tokens while user and Git rules are still included every turn.')}
             control={
               <Switch
                 checked={config.freshContextEachTurn}
@@ -461,6 +249,7 @@ function GitmdCodeSettings() {
 }
 
 function CommitStyleCard() {
+  const t = useUiText();
   const commit = useSettings((s) => s.aiStyle.commit);
   const setCommitStyle = useSettings((s) => s.setCommitStyle);
   const branch = useRepo((s) => s.status?.branch ?? null);
@@ -478,8 +267,8 @@ function CommitStyleCard() {
 
   return (
     <SettingCard
-      title="Commit message style"
-      description={COMMIT_STYLE_PRESETS[commit.preset].description}
+      title={t('Commit message style')}
+      description={t(COMMIT_STYLE_PRESETS[commit.preset].description)}
       action={
         <Select
           value={commit.preset}
@@ -491,7 +280,7 @@ function CommitStyleCard() {
           <SelectContent>
             {(Object.keys(COMMIT_STYLE_PRESETS) as CommitStylePreset[]).map((preset) => (
               <SelectItem key={preset} value={preset}>
-                {COMMIT_STYLE_PRESETS[preset].label}
+                {t(COMMIT_STYLE_PRESETS[preset].label)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -500,7 +289,7 @@ function CommitStyleCard() {
     >
       <div className="flex flex-col gap-3">
         {commit.preset === 'custom' && (
-          <Field label="Your convention, in plain words">
+          <Field label={t('Your convention, in plain words')}>
             <Textarea
               value={commit.instructions}
               onChange={(e) => setCommitStyle({ instructions: e.target.value })}
@@ -523,16 +312,14 @@ function CommitStyleCard() {
                 setCommitStyle({ prefixRules: [...commit.prefixRules, { pattern: '', prefix: '' }] })
               }
             >
-              <Plus className="size-3.5" />
-              Add rule
-            </Button>
+              <Plus className="size-3.5" />{t('Add rule')}</Button>
           </div>
           {commit.prefixRules.length > 0 ? (
             <div className="flex flex-col divide-y divide-border-subtle rounded-lg border border-border-subtle bg-surface-raised/40">
               <div className="grid grid-cols-[1fr_auto_1fr_28px] items-center gap-2 px-2.5 pt-2 text-[10px] font-semibold uppercase tracking-wide text-faint">
-                <span>Branch matches</span>
+                <span>{t('Branch matches')}</span>
                 <span />
-                <span>Message starts with</span>
+                <span>{t('Message starts with')}</span>
                 <span />
               </div>
               {commit.prefixRules.map((rule, index) => (
@@ -553,7 +340,7 @@ function CommitStyleCard() {
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Remove rule"
+                    aria-label={t('Remove rule')}
                     onClick={() => removeRule(index)}
                   >
                     <Trash2 className="size-3.5 text-danger" />
@@ -580,7 +367,7 @@ function CommitStyleCard() {
                   messages start with <span className="font-mono text-foreground">{preview}</span>
                 </>
               ) : (
-                <>messages get no prefix, no rule matches</>
+                <>{t('messages get no prefix, no rule matches')}</>
               )}
             </p>
           )}
@@ -591,6 +378,7 @@ function CommitStyleCard() {
 }
 
 function CloneFolderCard() {
+  const t = useUiText();
   const cloneRoot = useSettings((s) => s.cloneRoot);
   const setCloneRoot = useSettings((s) => s.setCloneRoot);
   const browse = async () => {
@@ -599,18 +387,15 @@ function CloneFolderCard() {
   };
   return (
     <SettingCard
-      title="Clone destination"
-      description="The folder the clone dialog starts from. The last folder you cloned into is remembered here automatically."
+      title={t('Clone destination')}
+      description={t('The folder the clone dialog starts from. The last folder you cloned into is remembered here automatically.')}
       action={
         <span className="flex items-center gap-1.5">
           {cloneRoot && (
-            <Button variant="ghost" size="sm" onClick={() => setCloneRoot(null)}>
-              Clear
-            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setCloneRoot(null)}>{t('Clear')}</Button>
           )}
           <Button variant="secondary" size="sm" onClick={() => void browse()}>
-            <FolderOpen className="size-3.5" /> Choose folder
-          </Button>
+            <FolderOpen className="size-3.5" />{t('Choose folder')}</Button>
         </span>
       }
     >
@@ -622,6 +407,7 @@ function CloneFolderCard() {
 }
 
 function CliToolCard() {
+  const t = useUiText();
   const [status, setStatus] = useState<CliToolStatus | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -645,7 +431,7 @@ function CliToolCard() {
     try {
       await ipc.cliUninstall();
       setStatus(null);
-      toast.success('Command line tool removed');
+      toast.success(t('Command line tool removed'));
     } catch (error) {
       toast.error(`Could not uninstall: ${(error as { message?: string }).message ?? error}`);
     } finally {
@@ -655,17 +441,13 @@ function CliToolCard() {
 
   return (
     <SettingCard
-      title="Command line tool"
-      description="Open or clone a repository from the terminal as gitmd or the short gmd. Run gmd --help for the full usage."
+      title={t('Command line tool')}
+      description={t('Open or clone a repository from the terminal as gitmd or the short gmd. Run gmd --help for the full usage.')}
       action={
         status ? (
-          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void uninstall()}>
-            Uninstall
-          </Button>
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => void uninstall()}>{t('Uninstall')}</Button>
         ) : (
-          <Button size="sm" disabled={busy} onClick={() => void install()}>
-            Install
-          </Button>
+          <Button size="sm" disabled={busy} onClick={() => void install()}>{t('Install')}</Button>
         )
       }
     >
@@ -691,6 +473,7 @@ gitmd clone [-b branch] <url>`}
 }
 
 function EditorCard() {
+  const t = useUiText();
   const editorId = useSettings((s) => s.editorId);
   const setEditorId = useSettings((s) => s.setEditorId);
   const { editors, loading, rescan } = useEditors();
@@ -698,20 +481,20 @@ function EditorCard() {
 
   return (
     <SettingCard
-      title="External editor"
-      description="Open the repository or a file in an editor installed on this machine, from the toolbar, the palette and the file menus."
+      title={t('External editor')}
+      description={t('Open the repository or a file in an editor installed on this machine, from the toolbar, the palette and the file menus.')}
       action={
         <Button variant="ghost" size="sm" onClick={() => void rescan()} disabled={loading}>
           {loading ? <Spinner /> : <RefreshCw className="size-3.5" />}
-          Scan again
+          {t('Scan again')}
         </Button>
       }
     >
       {editors.length === 0 && !loading ? (
         <SettingEmpty
           icon={<Code className="size-4" />}
-          title="No editor found"
-          description="Install your editor's command line launcher (VS Code calls it the shell command) and scan again."
+          title={t('No editor found')}
+          description={t("Install your editor's command line launcher (VS Code calls it the shell command) and scan again.")}
         />
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -740,8 +523,7 @@ function EditorCard() {
                     <span className="truncate">{editor.label}</span>
                     {isActive && (
                       <Badge tone="primary">
-                        <Check className="size-3" /> In use
-                      </Badge>
+                        <Check className="size-3" />{t('In use')}</Badge>
                     )}
                   </p>
                   <p className="truncate font-mono text-[11px] text-faint">{editor.path}</p>
@@ -765,13 +547,14 @@ function EditorCard() {
 }
 
 function ReviewStyleCard() {
+  const t = useUiText();
   const review = useSettings((s) => s.aiStyle.review);
   const setReviewStyle = useSettings((s) => s.setReviewStyle);
 
   return (
     <SettingCard
-      title="AI review conventions"
-      description="What the AI reviewer pays attention to when it reviews staged changes. Applies to every repository."
+      title={t('AI review conventions')}
+      description={t('What the AI reviewer pays attention to when it reviews staged changes. Applies to every repository.')}
     >
       <div className="flex flex-col gap-2">
         <Textarea
@@ -820,12 +603,10 @@ export function SettingsDialog() {
   const open = dialog === 'settings';
   const settings = useSettings();
   const t = useUiText();
-  const aiStatus = settings.aiStatus;
 
   const [section, setSection] = useState<SectionId>('appearance');
   const [gitName, setGitName] = useState('');
   const [gitEmail, setGitEmail] = useState('');
-  const [testing, setTesting] = useState(false);
   const [profileLabel, setProfileLabel] = useState('');
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
@@ -856,7 +637,7 @@ export function SettingsDialog() {
     try {
       await ipc.configSet(repo?.path ?? null, 'user.name', gitName, !repo);
       await ipc.configSet(repo?.path ?? null, 'user.email', gitEmail, !repo);
-      toast.success('Git identity saved');
+      toast.success(t('Git identity saved'));
     } catch (error) {
       toast.error(`Save failed: ${(error as { message?: string }).message ?? error}`);
     }
@@ -909,23 +690,12 @@ export function SettingsDialog() {
       title: `Remove profile "${profile.label}"?`,
       description:
         'Repositories already assigned to it keep the identity written in their config; they just lose the profile link.',
-      confirmLabel: 'Remove profile',
+      confirmLabel: t('Remove profile'),
       destructive: true,
     });
     if (ok) settings.removeProfile(profile.id);
   };
 
-  const testAi = async () => {
-    setTesting(true);
-    try {
-      const ok = await getAiProvider().ping();
-      settings.setAiStatus(ok ? 'ok' : 'fail');
-    } catch {
-      settings.setAiStatus('fail');
-    } finally {
-      setTesting(false);
-    }
-  };
   useEffect(() => {
     if (!open) return;
     if (dialogContext && typeof dialogContext === 'object' && 'section' in dialogContext) {
@@ -933,7 +703,6 @@ export function SettingsDialog() {
     }
   }, [open, dialogContext]);
 
-  const preset = AI_PROVIDER_PRESETS[settings.ai.provider];
   const active = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0];
   const activeProfile =
     settings.profiles.find((p) => p.email === gitEmail && p.name === gitName) ?? null;
@@ -982,7 +751,7 @@ export function SettingsDialog() {
                 <div className="flex flex-col gap-4">
                   <SettingCard
                     title={t('Interface language')}
-                    description={t('Language used throughout the app. Git and developer terms stay in English.')}
+                    description={t('Language used throughout the app.')}
                     action={
                       <Select
                         value={settings.uiLanguage}
@@ -992,7 +761,7 @@ export function SettingsDialog() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="english">{t('English')}</SelectItem>
                           <SelectItem value="chinese">中文</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1000,27 +769,27 @@ export function SettingsDialog() {
                   />
                   <SettingCard
                     title={t('Theme')}
-                    description="Popular editor palettes — surfaces and syntax colors follow the theme."
+                    description={t('Popular editor palettes — surfaces and syntax colors follow the theme.')}
                   >
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      {THEMES.map((t) => (
+                      {THEMES.map((theme) => (
                         <button
-                          key={t.id}
-                          onClick={() => settings.setTheme(t.id)}
-                          aria-label={`Theme: ${t.label}`}
+                          key={theme.id}
+                          onClick={() => settings.setTheme(theme.id)}
+                          aria-label={`Theme: ${t(theme.label)}`}
                           className={cn(
                             'group flex flex-col overflow-hidden rounded-lg border text-left transition-colors',
-                            settings.theme === t.id
+                            settings.theme === theme.id
                               ? 'border-primary ring-1 ring-primary'
                               : 'border-border hover:border-muted',
                           )}
                         >
                           <span
                             className="flex h-14 flex-col justify-center gap-1.5 px-3"
-                            style={{ backgroundColor: t.swatch.bg }}
+                            style={{ backgroundColor: theme.swatch.bg }}
                           >
                             <span className="flex items-center gap-1">
-                              {t.swatch.dots.map((dot) => (
+                              {theme.swatch.dots.map((dot) => (
                                 <span
                                   key={dot}
                                   className="size-2 rounded-full"
@@ -1030,21 +799,21 @@ export function SettingsDialog() {
                             </span>
                             <span
                               className="h-1.5 w-3/4 rounded-full opacity-60"
-                              style={{ backgroundColor: t.swatch.fg }}
+                              style={{ backgroundColor: theme.swatch.fg }}
                             />
                             <span
                               className="h-1.5 w-1/2 rounded-full opacity-30"
-                              style={{ backgroundColor: t.swatch.fg }}
+                              style={{ backgroundColor: theme.swatch.fg }}
                             />
                           </span>
                           <span
                             className={cn(
                               'flex items-center justify-between px-3 py-1.5 text-xs',
-                              settings.theme === t.id ? 'text-primary' : 'text-muted group-hover:text-foreground',
+                              settings.theme === theme.id ? 'text-primary' : 'text-muted group-hover:text-foreground',
                             )}
                           >
-                            {t.label}
-                            {t.base === 'dark' ? <Moon className="size-3" /> : <Sun className="size-3" />}
+                            {t(theme.label)}
+                            {theme.base === 'dark' ? <Moon className="size-3" /> : <Sun className="size-3" />}
                           </span>
                         </button>
                       ))}
@@ -1053,13 +822,13 @@ export function SettingsDialog() {
 
                   <SettingCard
                     title={t('Accent color')}
-                    description="Buttons, highlights and focus follow your accent. Graph and diff colors keep their meaning."
+                    description={t('Buttons, highlights and focus follow your accent. Graph and diff colors keep their meaning.')}
                   >
                     <div className="flex items-center gap-3">
                       {ACCENTS.map((accent) => (
-                        <Hint key={accent.id} label={accent.label}>
+                        <Hint key={accent.id} label={t(accent.label)}>
                           <button
-                            aria-label={`Accent: ${accent.label}`}
+                            aria-label={`${t('Accent color')}: ${t(accent.label)}`}
                             onClick={() => settings.setAccent(accent.id)}
                             className={cn(
                               'flex size-8 items-center justify-center rounded-full transition-transform hover:scale-110',
@@ -1087,7 +856,7 @@ export function SettingsDialog() {
                         <Button
                           variant="secondary"
                           size="icon-sm"
-                          aria-label="Zoom out"
+                          aria-label={t('Zoom out')}
                           disabled={settings.zoom <= ZOOM_MIN}
                           onClick={settings.zoomOut}
                         >
@@ -1095,7 +864,7 @@ export function SettingsDialog() {
                         </Button>
                         <button
                           className="w-14 text-center font-mono text-xs text-muted hover:text-foreground"
-                          title="Reset zoom"
+                          title={t('Reset zoom')}
                           onClick={settings.zoomReset}
                         >
                           {Math.round(settings.zoom * 100)}%
@@ -1103,7 +872,7 @@ export function SettingsDialog() {
                         <Button
                           variant="secondary"
                           size="icon-sm"
-                          aria-label="Zoom in"
+                          aria-label={t('Zoom in')}
                           disabled={settings.zoom >= ZOOM_MAX}
                           onClick={settings.zoomIn}
                         >
@@ -1124,8 +893,8 @@ export function SettingsDialog() {
               {section === 'git' && (
                 <div className="flex flex-col gap-4">
                   <SettingCard
-                    title="Auto fetch"
-                    description="Fetch from the first remote in the background so teammates' commits show up by themselves. Failures stay silent."
+                    title={t('Auto fetch')}
+                    description={t("Fetch from the first remote in the background so teammates' commits show up by themselves. Failures stay silent.")}
                     action={
                       <Select
                         value={String(settings.autoFetchMinutes)}
@@ -1135,18 +904,18 @@ export function SettingsDialog() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="0">Off</SelectItem>
-                          <SelectItem value="1">Every minute</SelectItem>
-                          <SelectItem value="5">Every 5 minutes</SelectItem>
-                          <SelectItem value="15">Every 15 minutes</SelectItem>
+                          <SelectItem value="0">{t('Off')}</SelectItem>
+                          <SelectItem value="1">{t('Every minute')}</SelectItem>
+                          <SelectItem value="5">{t('Every 5 minutes')}</SelectItem>
+                          <SelectItem value="15">{t('Every 15 minutes')}</SelectItem>
                         </SelectContent>
                       </Select>
                     }
                   />
 
                   <SettingCard
-                    title="Pull requests"
-                    description="Show the pull requests section in the sidebar, loaded through your connected account."
+                    title={t('Pull requests')}
+                    description={t('Show the pull requests section in the sidebar, loaded through your connected account.')}
                     action={
                       <Switch
                         checked={settings.showPullRequests}
@@ -1162,11 +931,11 @@ export function SettingsDialog() {
                   <EditorCard />
 
                   <SettingCard
-                    title={repo ? 'Identity for this repository' : 'Global identity'}
+                    title={repo ? t('Identity for this repository') : t('Global identity')}
                     description={
                       repo
-                        ? 'The name and email written on commits made here. Saved to this repository, so it wins over your global git config.'
-                        : 'The name and email written on commits when a repository has no identity of its own.'
+                        ? t('The name and email written on commits made here. Saved to this repository, so it wins over your global git config.')
+                        : t('The name and email written on commits when a repository has no identity of its own.')
                     }
                     action={
                       activeProfile ? (
@@ -1177,10 +946,10 @@ export function SettingsDialog() {
                     }
                   >
                     <div className="grid grid-cols-2 gap-3">
-                      <Field label="Name">
+                      <Field label={t('Name')}>
                         <Input value={gitName} onChange={(e) => setGitName(e.target.value)} placeholder="Your Name" />
                       </Field>
-                      <Field label="Email">
+                      <Field label={t('Email')}>
                         <Input
                           value={gitEmail}
                           onChange={(e) => setGitEmail(e.target.value)}
@@ -1192,20 +961,17 @@ export function SettingsDialog() {
                       <span className="text-[11px] text-faint">
                         {repo ? `Writes user.name and user.email to ${repo.name}/.git/config` : 'Writes user.name and user.email to ~/.gitconfig'}
                       </span>
-                      <Button size="sm" onClick={() => void saveIdentity()}>
-                        Save identity
-                      </Button>
+                      <Button size="sm" onClick={() => void saveIdentity()}>{t('Save identity')}</Button>
                     </div>
                   </SettingCard>
 
                   <SettingCard
-                    title="Profiles"
-                    description="Work and personal identities, each with the hosting accounts linked to it. A repository is assigned to one profile the first time you commit or push, and that choice stays with the repository."
+                    title={t('Profiles')}
+                    description={t('Work and personal identities, each with the hosting accounts linked to it. A repository is assigned to one profile the first time you commit or push, and that choice stays with the repository.')}
                     action={
                       !addingProfile && settings.profiles.length > 0 ? (
                         <Button variant="secondary" size="sm" onClick={() => setAddingProfile(true)}>
-                          <Plus className="size-3.5" /> New profile
-                        </Button>
+                          <Plus className="size-3.5" />{t('New profile')}</Button>
                       ) : undefined
                     }
                   >
@@ -1227,7 +993,7 @@ export function SettingsDialog() {
                                   <span className="truncate">{profile.label}</span>
                                   {isActive && (
                                     <Badge tone="primary">
-                                      <Check className="size-3" /> {repo ? 'In use here' : 'In use'}
+                                      <Check className="size-3" /> {repo ? t('In use here') : t('In use')}
                                     </Badge>
                                   )}
                                 </p>
@@ -1237,7 +1003,7 @@ export function SettingsDialog() {
                               </div>
                               {!isActive && (
                                 <Button variant="secondary" size="sm" onClick={() => void applyProfile(profile)}>
-                                  {repo ? 'Use for this repo' : 'Use'}
+                                  {repo ? t('Use for this repo') : t('Use')}
                                 </Button>
                               )}
                               <DropdownMenu>
@@ -1248,11 +1014,10 @@ export function SettingsDialog() {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem disabled={isActive} onClick={() => void applyProfile(profile)}>
-                                    <Check /> {repo ? 'Use for this repo' : 'Use as global identity'}
+                                    <Check /> {repo ? t('Use for this repo') : t('Use as global identity')}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem destructive onClick={() => void removeProfile(profile)}>
-                                    <Trash2 /> Remove profile…
-                                  </DropdownMenuItem>
+                                    <Trash2 />{t('Remove profile…')}</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </div>
@@ -1266,7 +1031,7 @@ export function SettingsDialog() {
                                       {sortedAccounts.length}
                                     </span>
                                   </span>
-                                  <span className="text-[11px] text-faint">Tried first for their host</span>
+                                  <span className="text-[11px] text-faint">{t('Tried first for their host')}</span>
                                 </div>
                                 <div className="flex flex-col divide-y divide-border-subtle rounded-md border border-border-subtle bg-surface">
                                   {sortedAccounts.map((account) => {
@@ -1308,21 +1073,20 @@ export function SettingsDialog() {
                       {settings.profiles.length === 0 && !addingProfile && (
                         <SettingEmpty
                           icon={<UsersRound className="size-4" />}
-                          title="No profiles yet"
-                          description="Add Work and Personal once, then every repository picks the right name, email and account."
+                          title={t('No profiles yet')}
+                          description={t('Add Work and Personal once, then every repository picks the right name, email and account.')}
                           action={
                             <Button variant="secondary" size="sm" onClick={() => setAddingProfile(true)}>
-                              <Plus className="size-3.5" /> New profile
-                            </Button>
+                              <Plus className="size-3.5" />{t('New profile')}</Button>
                           }
                         />
                       )}
 
                       {addingProfile && (
                         <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-                          <p className="mb-3 text-xs font-medium text-foreground">New profile</p>
+                          <p className="mb-3 text-xs font-medium text-foreground">{t('New profile')}</p>
                           <div className="grid grid-cols-3 gap-3">
-                            <Field label="Label">
+                            <Field label={t('Label')}>
                               <Input
                                 autoFocus
                                 placeholder="Work"
@@ -1334,7 +1098,7 @@ export function SettingsDialog() {
                                 }}
                               />
                             </Field>
-                            <Field label="Name">
+                            <Field label={t('Name')}>
                               <Input
                                 placeholder="Your Name"
                                 value={profileName}
@@ -1345,7 +1109,7 @@ export function SettingsDialog() {
                                 }}
                               />
                             </Field>
-                            <Field label="Email">
+                            <Field label={t('Email')}>
                               <Input
                                 placeholder="you@company.com"
                                 value={profileEmail}
@@ -1358,20 +1122,14 @@ export function SettingsDialog() {
                             </Field>
                           </div>
                           <div className="mt-3 flex items-center justify-between gap-3">
-                            <span className="text-[11px] text-faint">
-                              Link hosting accounts to the profile after adding it.
-                            </span>
+                            <span className="text-[11px] text-faint">{t('Link hosting accounts to the profile after adding it.')}</span>
                             <span className="flex gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => setAddingProfile(false)}>
-                                Cancel
-                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => setAddingProfile(false)}>{t('Cancel')}</Button>
                               <Button
                                 size="sm"
                                 disabled={!profileLabel.trim() || !profileName.trim() || !profileEmail.trim()}
                                 onClick={addProfile}
-                              >
-                                Add profile
-                              </Button>
+                              >{t('Add profile')}</Button>
                             </span>
                           </div>
                         </div>
@@ -1393,91 +1151,8 @@ export function SettingsDialog() {
                 <div className="flex flex-col gap-4">
                   <GitmdCodeSettings />
                   <SettingCard
-                    title="Provider"
-                    description={
-                      settings.ai.provider === 'cli'
-                        ? 'Uses an AI CLI already installed on this machine — GitMD Code, Codex, Gemini CLI, OpenCode or Antigravity — with its own login and quota. No API key needed.'
-                        : 'Used for commit messages, diff explanations, conflict help and reviews. Local models via Ollama or LM Studio need no API key.'
-                    }
-                    action={
-                      <Select
-                        value={settings.ai.provider}
-                        onValueChange={(value) => settings.setAiProvider(value as AiProviderKind)}
-                      >
-                        <SelectTrigger className="h-8 w-48">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(Object.keys(AI_PROVIDER_PRESETS) as AiProviderKind[]).map((kind) => (
-                            <SelectItem key={kind} value={kind}>
-                              {AI_PROVIDER_PRESETS[kind].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    }
-                  >
-                    <div className="flex flex-col gap-3">
-                      {settings.ai.provider === 'cli' ? (
-                        <>
-                          <CliAgentPicker />
-                          <Field label="Model override" hint="optional, the CLI's default when empty">
-                            <Input
-                              value={settings.ai.model}
-                              onChange={(e) => settings.setAi({ model: e.target.value })}
-                              placeholder="CLI default"
-                            />
-                          </Field>
-                        </>
-                      ) : (
-                        <>
-                          {preset.needsApiKey && (
-                            <Field label="API key">
-                              <Input
-                                type="password"
-                                value={settings.ai.apiKey}
-                                onChange={(e) => settings.setAi({ apiKey: e.target.value })}
-                                placeholder="sk-…"
-                              />
-                            </Field>
-                          )}
-                          <Field label="Base URL" hint={`optional, defaults to ${preset.defaultBaseUrl}`}>
-                            <Input
-                              value={settings.ai.baseUrl ?? ''}
-                              onChange={(e) => settings.setAi({ baseUrl: e.target.value })}
-                              placeholder={preset.defaultBaseUrl}
-                            />
-                          </Field>
-                          <ModelField />
-                        </>
-                      )}
-                      <div className="flex items-center justify-between gap-3 border-t border-border-subtle pt-3">
-                        <span className="flex items-center gap-1.5 text-xs">
-                          {aiStatus === 'ok' && (
-                            <>
-                              <span className="size-1.5 rounded-full bg-success" />
-                              <span className="text-success">Reachable</span>
-                            </>
-                          )}
-                          {aiStatus === 'fail' && (
-                            <>
-                              <span className="size-1.5 rounded-full bg-danger" />
-                              <span className="text-danger">Not reachable. Check the key, URL or that the local server is running.</span>
-                            </>
-                          )}
-                          {aiStatus === 'untested' && <span className="text-faint">Connection not tested yet</span>}
-                          {aiStatus === 'stale' && <span className="text-faint">Settings changed since the last test</span>}
-                        </span>
-                        <Button variant="secondary" size="sm" onClick={() => void testAi()} disabled={testing}>
-                          {testing ? <Spinner /> : <Wifi className="size-3.5" />}
-                          Test connection
-                        </Button>
-                      </div>
-                    </div>
-                  </SettingCard>
-                  <SettingCard
-                    title="AI response language"
-                    description="Language used for commit messages, diff explanations, reviews and other AI responses."
+                    title={t('AI response language')}
+                    description={t('Language used for commit messages, diff explanations, reviews and other AI responses.')}
                     action={
                       <Select
                         value={settings.aiCommitLanguage}
@@ -1487,15 +1162,15 @@ export function SettingsDialog() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="english">{t('English')}</SelectItem>
                           <SelectItem value="chinese">中文</SelectItem>
                         </SelectContent>
                       </Select>
                     }
                   />
                   <SettingCard
-                    title="AI response detail"
-                    description="Controls how much context GitMD AI includes in answers across Git tasks and explanations."
+                    title={t('AI response detail')}
+                    description={t('Controls how much context GitMD AI includes in answers across Git tasks and explanations.')}
                     action={
                       <Select
                         value={settings.aiStyle.responseStyle}
@@ -1504,13 +1179,13 @@ export function SettingsDialog() {
                         <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {(Object.keys(AI_RESPONSE_STYLE_PRESETS) as AiResponseStyle[]).map((style) => (
-                            <SelectItem key={style} value={style}>{AI_RESPONSE_STYLE_PRESETS[style].label}</SelectItem>
+                            <SelectItem key={style} value={style}>{t(AI_RESPONSE_STYLE_PRESETS[style].label)}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     }
                   >
-                    <p className="text-xs text-faint">{AI_RESPONSE_STYLE_PRESETS[settings.aiStyle.responseStyle].description}</p>
+                    <p className="text-xs text-faint">{t(AI_RESPONSE_STYLE_PRESETS[settings.aiStyle.responseStyle].description)}</p>
                   </SettingCard>
                   <CommitStyleCard />
                   <ReviewStyleCard />
@@ -1518,13 +1193,13 @@ export function SettingsDialog() {
               )}
 
               {section === 'shortcuts' && (
-                <SettingCard title="Keyboard shortcuts">
+                <SettingCard title={t('Keyboard shortcuts')}>
                   <div className="flex flex-col">
                     {SHORTCUTS.map(([label, keys], index) => (
                       <div key={label}>
                         {index > 0 && <Separator />}
                         <div className="flex items-center justify-between py-2.5">
-                          <span className="text-sm">{label}</span>
+                          <span className="text-sm">{t(label)}</span>
                           <span className="flex items-center gap-1">
                             {keys.map((key) => (
                               <Kbd key={key}>{key === 'mod' ? modKey() : key}</Kbd>

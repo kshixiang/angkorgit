@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { create } from 'zustand';
 import { AlertTriangle } from 'lucide-react';
+import { useUiText } from '@/shared/i18n';
 import {
   Button,
   Dialog,
@@ -69,6 +70,7 @@ function PathBlock({ path }: { path: string }) {
 }
 
 export function ConfirmHost() {
+  const t = useUiText();
   const { request, settle } = useConfirmStore();
   const confirmRef = useRef<HTMLButtonElement>(null);
   return (
@@ -83,22 +85,20 @@ export function ConfirmHost() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {request?.destructive && <AlertTriangle className="size-4 shrink-0 text-danger" />}
-            {request?.title}
+            {request ? t(request.title) : ''}
           </DialogTitle>
-          <DialogDescription>{request?.description}</DialogDescription>
+          <DialogDescription>{request ? t(request.description) : ''}</DialogDescription>
           {request?.path && <PathBlock path={request.path} />}
         </DialogHeader>
         <DialogFooter className="flex-wrap">
-          <Button variant="ghost" onClick={() => settle(false)}>
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={() => settle(false)}>{t('Cancel')}</Button>
           <Button
             ref={confirmRef}
             variant={request?.destructive ? 'danger' : 'default'}
             className="min-w-0 max-w-full"
             onClick={() => settle(true)}
           >
-            <span className="min-w-0 truncate">{request?.confirmLabel ?? 'Confirm'}</span>
+            <span className="min-w-0 truncate">{t(request?.confirmLabel ?? 'Confirm')}</span>
           </Button>
         </DialogFooter>
       </DialogContent>

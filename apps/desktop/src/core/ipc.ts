@@ -26,6 +26,7 @@ import type {
   WorktreeInfo,
 } from '@gitmd/core';
 import type { FileBlame } from '@gitmd/core';
+import { observeGitOperation } from './gitOperationEvents';
 let demo = null as unknown as typeof import('./demo');
 
 export interface OpOutcome {
@@ -74,6 +75,20 @@ export interface GitmdAgentUsage {
   totalTokens: number;
 }
 
+export interface GitmdAgentUiContext {
+  view: 'repository' | 'workingCopy' | 'diff' | 'commitDiff' | 'fileHistory' | 'blame' | 'editor' | 'conflict' | 'commit';
+  headBranch: string | null;
+  headOid: string | null;
+  repoState: string;
+  selectedOid: string | null;
+  path: string | null;
+  staged: boolean | null;
+  oid: string | null;
+  oldPath: string | null;
+  rev: string | null;
+  files?: { path: string; staged: boolean; oid?: string; oldPath?: string | null }[];
+}
+
 export type GitmdAgentTaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface GitmdAgentTask {
@@ -104,12 +119,11 @@ export interface GitmdUiRefreshRequest {
 export type GitmdAgentStreamEvent =
   | { type: 'taskStarted'; requestId: string; taskId: string; label: string }
   | { type: 'taskCompleted'; requestId: string; taskId: string }
-  | { type: 'textDelta'; requestId: string; delta: string };
+  | { type: 'textDelta'; requestId: string; delta: string }
+  | { type: 'toolApprovalRequested'; requestId: string; approvalId: string; tool: string; label: string; detail: string };
 
 export interface GitmdAgentResponse {
   content: string;
-  changes?: Array<{ path: string; status: string }>;
-  diff?: string | null;
   usage?: GitmdAgentUsage;
 }
 
@@ -500,18 +514,34 @@ export const ipc = {
     return invoke('remote_remove', { path, name });
   },
   async fetch(path: string, remote: string, tags: boolean, prune: boolean): Promise<OpOutcome> {
-    if (!isTauri()) {
-      await delay(400);
-      return { status: 'ok', message: `Fetched ${remote} (demo)` };
-    }
-    return invoke('remote_fetch', { path, remote, tags, prune });
+    return observeGitOperation(
+      path,
+      'fetch',
+      `Fetch ${remote}${tags ? ' with tags' : ''}${prune ? ' with prune' : ''}`,
+      async () => {
+        if (!isTauri()) {
+          await delay(400);
+          return { status: 'ok', message: `Fetched ${remote} (demo)` };
+        }
+        return invoke<OpOutcome>('remote_fetch', { path, remote, tags, prune });
+      },
+      (result) => result.message,
+    );
   },
   async pull(path: string, remote: string, mode?: 'merge' | 'rebase'): Promise<OpOutcome> {
-    if (!isTauri()) {
-      await delay(400);
-      return { status: 'ok', message: 'Already up to date (demo)' };
-    }
-    return invoke('remote_pull', { path, remote, mode: mode ?? null });
+    return observeGitOperation(
+      path,
+      'pull',
+      `Pull ${remote} (${mode ?? 'default strategy'})`,
+      async () => {
+        if (!isTauri()) {
+          await delay(400);
+          return { status: 'ok', message: 'Already up to date (demo)' };
+        }
+        return invoke<OpOutcome>('remote_pull', { path, remote, mode: mode ?? null });
+      },
+      (result) => result.message,
+    );
   },
   async push(
     path: string,
@@ -521,11 +551,19 @@ export const ipc = {
     setUpstream: boolean,
     branch?: string,
   ): Promise<OpOutcome> {
-    if (!isTauri()) {
-      await delay(400);
-      return { status: 'ok', message: `Pushed to ${remote} (demo)` };
-    }
-    return invoke('remote_push', { path, remote, branch: branch ?? null, force, withTags, setUpstream });
+    return observeGitOperation(
+      path,
+      'push',
+      `Push ${branch ?? 'current branch'} to ${remote}${force ? ' (force)' : ''}${withTags ? ' with tags' : ''}${setUpstream ? ' (set upstream)' : ''}`,
+      async () => {
+        if (!isTauri()) {
+          await delay(400);
+          return { status: 'ok', message: `Pushed to ${remote} (demo)` };
+        }
+        return invoke<OpOutcome>('remote_push', { path, remote, branch: branch ?? null, force, withTags, setUpstream });
+      },
+      (result) => result.message,
+    );
   },
   async pullBranch(path: string, branch: string): Promise<OpOutcome> {
     if (!isTauri()) return { status: 'ok', message: `Pulled ${branch} (demo)` };
@@ -683,10 +721,12 @@ export const ipc = {
     model: string;
     history: GitmdAgentMessage[];
     prompt: string;
+    uiContext?: GitmdAgentUiContext;
     shellCommand?: string | null;
     allowChanges: boolean;
     language: 'english' | 'chinese';
     responseStyle: 'concise' | 'balanced' | 'detailed';
+    responseContract?: 'commit_message';
   }): Promise<GitmdAgentResponse> {
     if (!isTauri()) {
       await delay(350);
@@ -695,8 +735,6 @@ export const ipc = {
           request.language === 'chinese'
             ? '已检查 `src/app/App.tsx`。提交 `a1b2c3d` 可点击复制，文件可直接在编辑器中打开。\n\n```ts\nexport const ready = true;\n```'
             : 'Checked `src/app/App.tsx`. Click commit `a1b2c3d` to copy it, or open the file directly in your editor.\n\n```ts\nexport const ready = true;\n```',
-        changes: [],
-        diff: null,
       };
     }
     return invoke('gitmd_agent_chat', { request });
@@ -704,6 +742,10 @@ export const ipc = {
   async gitmdAgentCancel(requestId: string): Promise<boolean> {
     if (!isTauri()) return true;
     return invoke('gitmd_agent_cancel', { requestId });
+  },
+  async gitmdAgentApprove(approvalId: string, approved: boolean): Promise<boolean> {
+    if (!isTauri()) return true;
+    return invoke('gitmd_agent_approve', { approvalId, approved });
   },
   async termWrite(id: number, data: string): Promise<void> {
     if (!isTauri()) return;

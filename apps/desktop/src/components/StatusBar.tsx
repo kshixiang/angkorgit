@@ -50,14 +50,14 @@ export function StatusBar() {
       : AI_PROVIDER_PRESETS[ai.provider].label;
   const aiLabel = aiConfigured ? aiName : 'Set up AI';
   const aiHint = !aiConfigured
-    ? 'No AI provider is set up yet. Click to choose one in Settings.'
+    ? 'No AI provider is set up yet. Click to open the AI settings.'
     : aiStatus === 'ok'
       ? `${aiName} answered the last connection test. Click to open the AI settings.`
       : aiStatus === 'fail'
         ? `${aiName} did not answer the last connection test. Click to open the AI settings.`
         : aiStatus === 'stale'
-          ? `The AI settings changed since ${aiName} was last tested. Click to open them and run Test connection again.`
-          : `${aiName} is set up. Its connection has not been tested yet — click to open the AI settings and run Test connection.`;
+          ? `The AI settings changed since ${aiName} was last tested. Click to open the AI settings.`
+          : `${aiName} is set up. Click to open the AI settings.`;
   const [version, setVersion] = useState('');
   const t = useUiText();
 
@@ -172,7 +172,7 @@ export function StatusBar() {
           <button
             type="button"
             className="flex items-center gap-1 rounded px-1 hover:bg-surface-raised hover:text-foreground"
-            aria-label="UI zoom"
+            aria-label={t('UI zoom')}
           >
             <ZoomIn className="size-3" />
             {Math.round(zoom * 100)}%
@@ -187,7 +187,7 @@ export function StatusBar() {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Hint label="Check for updates">
+      <Hint label={t('Check for updates')}>
         <button
           type="button"
           className="rounded px-1 hover:bg-surface-raised hover:text-foreground"

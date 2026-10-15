@@ -7,6 +7,7 @@ import { Avatar } from '@/components/Avatar';
 import { toast } from 'sonner';
 import { formatDate, timeAgo } from '@/shared/utils';
 import { DEFAULT_GRAPH_COLUMNS, type GraphColumns } from '@/features/ui/store';
+import { useUiText } from '@/shared/i18n';
 
 export const ROW_HEIGHT = 32;
 export const REF_COL_WIDTH = 150;
@@ -69,10 +70,11 @@ export function gutterWidthFor(maxLane: number, laneWidth: number): number {
 const CY = ROW_HEIGHT / 2;
 
 function StashNode({ color }: { color?: number }) {
+  const t = useUiText();
   return (
     <span
       role="img"
-      aria-label="Stash"
+      aria-label={t('Stash')}
       className="flex items-center justify-center"
       style={{
         width: AVATAR_SIZE,

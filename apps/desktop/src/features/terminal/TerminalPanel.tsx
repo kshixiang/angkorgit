@@ -20,6 +20,7 @@ import { killTerminalSession, sessions, terminalSessionKey, type TerminalSession
 import { terminalThemeFromTokens } from './theme';
 import { filterGitmdCodeOutput, updateRuntimeErrorHint } from './gitmdCodeOutput';
 import { GitmdCodePanel } from './GitmdCodePanel';
+import { useUiText } from '@/shared/i18n';
 
 function newSession(): TerminalSession {
   const container = document.createElement('div');
@@ -152,6 +153,7 @@ function spawnTerminal(session: TerminalSession, repoPath: string, mode: Termina
 }
 
 export function TerminalPanel() {
+  const t = useUiText();
   const repoPath = useRepo((s) => s.repo?.path ?? null);
   const toggleTerminal = useUi((s) => s.toggleTerminal);
   const toggleGitmdCode = useUi((s) => s.toggleGitmdCode);
@@ -243,8 +245,8 @@ export function TerminalPanel() {
           {mode === 'gitmd-code' ? 'GitMD Code' : 'Terminal'}
         </span>
         <span className="ml-2 min-w-0 flex-1 truncate font-mono text-[10px] text-faint">{repoPath}</span>
-        <Hint label="Close terminal">
-          <Button variant="ghost" size="icon-sm" className="ml-auto shrink-0" aria-label="Close terminal" onClick={close}>
+        <Hint label={t('Close terminal')}>
+          <Button variant="ghost" size="icon-sm" className="ml-auto shrink-0" aria-label={t('Close terminal')} onClick={close}>
             <X className="size-3" />
           </Button>
         </Hint>
@@ -264,14 +266,12 @@ export function TerminalPanel() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DropdownMenuItem disabled={!menu.hasSelection} onSelect={copySelection}>
-              <Copy /> Copy
-            </DropdownMenuItem>
+              <Copy />{t('Copy')}</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void paste()}>
               <ClipboardPaste /> Paste
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={selectAll}>
-              <TextSelect /> Select all
-            </DropdownMenuItem>
+              <TextSelect />{t('Select all')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={clear}>
               <Eraser /> Clear terminal

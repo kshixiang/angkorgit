@@ -70,6 +70,17 @@ export interface CreateFilePreset {
   folder: string;
 }
 
+export interface GitmdCodeFileRef {
+  path: string;
+  staged: boolean;
+  oid?: string;
+  oldPath?: string | null;
+}
+
+export interface GitmdCodePrompt {
+  files: GitmdCodeFileRef[];
+}
+
 export interface FileHistoryPreset {
   pane: 'blame';
   rev: string | null;
@@ -101,6 +112,7 @@ interface UiState {
   sidebarHiddenForDiff: boolean;
   terminalOpen: boolean;
   terminalMode: TerminalMode;
+  gitmdCodePrompt: GitmdCodePrompt | null;
   paletteOpen: boolean;
   dialog: DialogKind;
   dialogContext: DialogContext;
@@ -132,6 +144,8 @@ interface UiState {
   setSidebarOpen: (open: boolean) => void;
   toggleTerminal: () => void;
   toggleGitmdCode: () => void;
+  askGitmdCodeAboutFiles: (files: GitmdCodeFileRef[]) => void;
+  consumeGitmdCodePrompt: () => GitmdCodePrompt | null;
   setPaletteOpen: (open: boolean) => void;
   openDialog: (dialog: DialogKind, context?: DialogContext) => void;
   closeDialog: () => void;
@@ -169,6 +183,17 @@ export const sidebarVisible = (s: UiState) => s.sidebarOpen && !s.sidebarHiddenF
 
 export const focusRequests = { inspectorConsumed: 0 };
 
+function normalizeAskedFile(file: GitmdCodeFileRef): GitmdCodeFileRef | null {
+  const path = file.path.trim();
+  if (!path) return null;
+  const oid = file.oid?.trim();
+  if (oid) {
+    const oldPath = file.oldPath?.trim();
+    return oldPath ? { path, staged: false, oid, oldPath } : { path, staged: false, oid };
+  }
+  return { path, staged: file.staged === true };
+}
+
 let dialogReturnFocus: HTMLElement | null = null;
 
 const captureDialogFocus = () => {
@@ -191,6 +216,7 @@ export const useUi = create<UiState>()(
   sidebarHiddenForDiff: false,
   terminalOpen: false,
   terminalMode: 'shell',
+  gitmdCodePrompt: null,
   paletteOpen: false,
   dialog: null,
   dialogContext: null,
@@ -235,6 +261,25 @@ export const useUi = create<UiState>()(
       terminalOpen: s.terminalMode === 'gitmd-code' ? !s.terminalOpen : true,
       terminalMode: 'gitmd-code',
     })),
+  askGitmdCodeAboutFiles: (files) =>
+    set({
+      terminalOpen: true,
+      terminalMode: 'gitmd-code',
+      gitmdCodePrompt: {
+        files: files.flatMap((file) => {
+          const normalized = normalizeAskedFile(file);
+          return normalized ? [normalized] : [];
+        }).slice(0, 12),
+      },
+    }),
+  consumeGitmdCodePrompt: () => {
+    let prompt: GitmdCodePrompt | null = null;
+    set((s) => {
+      prompt = s.gitmdCodePrompt;
+      return s.gitmdCodePrompt ? { gitmdCodePrompt: null } : s;
+    });
+    return prompt;
+  },
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   openDialog: (dialog, context = null) => {
     captureDialogFocus();

@@ -1,18 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, Check, Circle, CircleAlert, Clock3, Copy, Eraser, Send, Settings2, ShieldCheck, Square, User, X, XCircle } from 'lucide-react';
+import { Bot, Check, Circle, CircleAlert, Clock3, Copy, Eraser, File, MessageSquareText, Send, Settings2, ShieldCheck, Square, User, X, XCircle } from 'lucide-react';
 import { Button, Checkbox, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Hint, Spinner, Textarea } from '@gitmd/design-system';
 import { toast } from 'sonner';
 import { ipc, listen, type GitmdAgentMessage, type GitmdAgentStreamEvent, type GitmdAgentTask, type GitmdAgentTaskStatus, type GitmdAgentUsage } from '@/core/ipc';
 import { useSettings } from '@/features/settings/store';
+import { useGraph } from '@/features/graph/store';
+import { useRepo } from '@/features/repository/store';
 import { useUi } from '@/features/ui/store';
 import { useUiText } from '@/shared/i18n';
-import { GitmdCodeText, GitmdFileLink } from './GitmdCodeText';
+import { GitmdCodeText } from './GitmdCodeText';
 import {
+  cycleGitmdChangeMode,
+  gitmdChangeModeAfterTurn,
+  isReadOnlyChangeBlocked,
   memoryNoteFromInput,
   normalizeSlashCommand,
   persistentMemoryFromInput,
   shellCommandFromInput,
+  shouldAskToSwitchChangeMode,
   slashCommandSuggestions,
+  withoutReadOnlyChangeMarker,
+  type GitmdChangeMode,
   type GitmdCodeSlashCommand,
 } from './gitmdCodeInput';
 import {
@@ -25,16 +33,87 @@ import {
   type GitOperationOption,
 } from './gitOperationRules';
 import { sumGitmdAgentUsage } from './gitmdCodeUsage';
+import { buildGitmdAgentUiContext } from './gitmdCodeContext';
+import {
+  attachedFilesPrompt,
+  gitmdCodeFileKey,
+  gitmdCodeFileName,
+  mergeGitmdCodeFiles,
+  normalizeGitmdCodeFiles,
+  type GitmdCodeFileRef,
+} from './gitmdCodeFiles';
+import type { GitmdAgentUiContext } from '@/core/ipc';
+import {
+  clearObservedGitOperations,
+  getObservedGitOperations,
+  subscribeObservedGitOperations,
+  type ObservedGitOperation,
+} from '@/core/gitOperationEvents';
+
+interface GitmdCodeTurn extends GitmdAgentMessage {
+  pendingModePrompt?: string;
+  files?: GitmdCodeFileRef[];
+}
 
 interface AgentSession {
-  messages: GitmdAgentMessage[];
+  messages: GitmdCodeTurn[];
   draft: string;
+  files: GitmdCodeFileRef[];
   memories: string[];
+  changeMode: GitmdChangeMode;
 }
 
 interface RulePromptState {
   prompt: string;
   operation: GitOperationKind;
+}
+
+interface ToolApprovalState {
+  requestId: string;
+  approvalId: string;
+  tool: string;
+  label: string;
+  detail: string;
+}
+
+function ToolApprovalPrompt({
+  request,
+  language,
+  onResolve,
+}: {
+  request: ToolApprovalState | null;
+  language: 'english' | 'chinese';
+  onResolve: (approved: boolean) => void;
+}) {
+  const title = language === 'chinese' ? '确认这一 Git 操作' : 'Confirm this Git operation';
+  const detail = request?.detail?.trim();
+  return (
+    <Dialog open={request !== null} onOpenChange={(open) => !open && onResolve(false)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {language === 'chinese'
+              ? `GitMD Code 将要执行：${request?.label ?? ''}。确认后才会真正执行。`
+              : `GitMD Code wants to run: ${request?.label ?? ''}. It runs only after you confirm.`}
+          </DialogDescription>
+        </DialogHeader>
+        {detail && (
+          <pre className="max-h-48 overflow-auto rounded-md border border-border bg-surface-raised p-3 text-[11px] leading-relaxed text-muted">
+            {detail}
+          </pre>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onResolve(false)}>
+            {language === 'chinese' ? '取消' : 'Cancel'}
+          </Button>
+          <Button autoFocus onClick={() => onResolve(true)}>
+            {language === 'chinese' ? '确认执行' : 'Run'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function GitOperationRulePrompt({
@@ -117,7 +196,7 @@ const sessions = new Map<string, AgentSession>();
 function sessionFor(repoPath: string): AgentSession {
   const existing = sessions.get(repoPath);
   if (existing) return existing;
-  const session = { messages: [], draft: '', memories: [] };
+  const session = { messages: [], draft: '', files: [], memories: [], changeMode: 'readonly' as const };
   sessions.set(repoPath, session);
   return session;
 }
@@ -147,6 +226,15 @@ function formatSessionTotal(usage: GitmdAgentUsage, language: 'english' | 'chine
   return language === 'chinese' ? `会话 ${total} tokens` : `Session ${total} tokens`;
 }
 
+function describeUiContext(context: GitmdAgentUiContext, language: 'english' | 'chinese'): string {
+  const labels = language === 'chinese'
+    ? { repository: '仓库', workingCopy: '工作区', diff: context.staged ? '暂存 Diff' : '工作区 Diff', commitDiff: '提交 Diff', fileHistory: '文件历史', blame: 'Blame', editor: '编辑器', conflict: '冲突', commit: '提交' }
+    : { repository: 'Repository', workingCopy: 'Working tree', diff: context.staged ? 'Staged diff' : 'Working diff', commitDiff: 'Commit diff', fileHistory: 'File history', blame: 'Blame', editor: 'Editor', conflict: 'Conflict', commit: 'Commit' };
+  const subject = context.path ?? context.oid ?? context.selectedOid;
+  const branch = context.headBranch;
+  return [labels[context.view], subject, branch].filter(Boolean).join(' · ');
+}
+
 function TaskStatusIcon({ status }: { status: GitmdAgentTaskStatus }) {
   if (status === 'completed') return <Check className="size-3.5 text-success" />;
   if (status === 'running') return <Spinner className="size-3.5 text-primary" />;
@@ -155,33 +243,105 @@ function TaskStatusIcon({ status }: { status: GitmdAgentTaskStatus }) {
   return <Circle className="size-3.5 text-faint" />;
 }
 
+
+function GitmdCodeFileChips({
+  files,
+  onRemove,
+}: {
+  files: GitmdCodeFileRef[];
+  onRemove?: (file: GitmdCodeFileRef) => void;
+}) {
+  const t = useUiText();
+  return (
+    <div className="mb-1.5 flex flex-wrap gap-1" aria-label={t('Attached files')}>
+      {files.map((file) => (
+        <span
+          key={gitmdCodeFileKey(file)}
+          title={file.path}
+          className="inline-flex max-w-full items-center gap-1 rounded border border-border-subtle bg-background px-1.5 py-0.5 font-sans text-[11px] text-foreground"
+        >
+          <File className="size-3 shrink-0 text-primary" />
+          <span className="max-w-40 truncate">{gitmdCodeFileName(file.path)}</span>
+          {file.oid ? (
+            <span className="font-mono text-[10px] text-faint" title={file.oid}>{file.oid.slice(0, 7)}</span>
+          ) : (
+            file.staged && <span className="text-[10px] text-faint">{t('Staged')}</span>
+          )}
+          {onRemove && (
+            <button
+              type="button"
+              className="inline-flex size-4 items-center justify-center rounded text-faint hover:bg-surface-raised hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              aria-label={t('Remove attached file')}
+              onClick={() => onRemove(file)}
+            >
+              <X className="size-3" />
+            </button>
+          )}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClose: () => void }) {
   const stored = sessionFor(repoPath);
   const settings = useSettings((state) => state.gitmdCode);
   const language = useSettings((state) => state.uiLanguage);
   const t = useUiText();
-  const [messages, setMessages] = useState<GitmdAgentMessage[]>(stored.messages);
+  const activeRepo = useRepo((state) => state.repo);
+  const selectedOid = useGraph((state) => state.selectedOid);
+  const conflictFile = useUi((state) => state.conflictFile);
+  const centerDiff = useUi((state) => state.centerDiff);
+  const centerFileHistory = useUi((state) => state.centerFileHistory);
+  const fileHistoryPreset = useUi((state) => state.fileHistoryPreset);
+  const centerEditor = useUi((state) => state.centerEditor);
+  const selectedFile = useUi((state) => state.selectedFile);
+  const gitmdCodePrompt = useUi((state) => state.gitmdCodePrompt);
+  const [messages, setMessages] = useState<GitmdCodeTurn[]>(stored.messages);
   const [draft, setDraft] = useState(stored.draft);
+  const [attachments, setAttachments] = useState<GitmdCodeFileRef[]>(stored.files);
   const [memories, setMemories] = useState(stored.memories);
   const [selectedCommand, setSelectedCommand] = useState(0);
-  const [allowChanges, setAllowChanges] = useState(false);
+  const [changeMode, setChangeMode] = useState<GitmdChangeMode>(stored.changeMode ?? 'readonly');
   const [operationRules, setOperationRules] = useState(() => new Map<GitOperationKind, { operation: GitOperationKind; choice: string }>());
   const [rulePrompt, setRulePrompt] = useState<RulePromptState | null>(null);
-  const [review, setReview] = useState<{ changes: Array<{ path: string; status: string }>; diff: string | null } | null>(null);
+  const [approvalPrompt, setApprovalPrompt] = useState<ToolApprovalState | null>(null);
   const [repoFiles, setRepoFiles] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [observedOperations, setObservedOperations] = useState<ObservedGitOperation[]>(() => getObservedGitOperations(repoPath));
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const attachmentsRef = useRef(attachments);
+  attachmentsRef.current = attachments;
   const activeRequestRef = useRef<string | null>(null);
   const streamQueuesRef = useRef(new Map<string, string>());
   const streamReceivedRef = useRef(new Map<string, string>());
   const streamFinalRef = useRef(new Map<string, string>());
   const ruleOverrideRef = useRef<{ operation: GitOperationKind; choice: string } | null>(null);
-  const knownFiles = useMemo(
-    () => new Set([...repoFiles, ...(review?.changes.map((change) => change.path) ?? [])]),
-    [repoFiles, review],
-  );
+  const modeChoiceRef = useRef<GitmdChangeMode | null>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const knownFiles = useMemo(() => new Set(repoFiles), [repoFiles]);
   const sessionUsage = useMemo(() => sumGitmdAgentUsage(messages), [messages]);
+  const uiContext = useMemo(() => buildGitmdAgentUiContext(
+    activeRepo?.path === repoPath ? activeRepo : null,
+    { conflictFile, centerDiff, centerFileHistory, fileHistoryPreset, centerEditor, selectedFile },
+    selectedOid,
+  ), [activeRepo, centerDiff, centerEditor, centerFileHistory, conflictFile, fileHistoryPreset, repoPath, selectedFile, selectedOid]);
+
+  useEffect(() => {
+    if (!gitmdCodePrompt || activeRepo?.path !== repoPath) return;
+    const files = normalizeGitmdCodeFiles(gitmdCodePrompt);
+    const first = files[0];
+    if (first?.oid) useUi.getState().selectFile(null);
+    else if (first) useUi.getState().selectFile({ path: first.path, staged: first.staged });
+    useUi.getState().closeCenterDiff();
+    useUi.getState().closeFileHistory();
+    useUi.getState().closeEditor();
+    setAttachments((current) => mergeGitmdCodeFiles(current, files));
+    useUi.getState().consumeGitmdCodePrompt();
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, [activeRepo?.path, gitmdCodePrompt, repoPath]);
 
   useEffect(() => {
     let disposed = false;
@@ -194,6 +354,10 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
       disposed = true;
     };
   }, [repoPath]);
+
+  useEffect(() => subscribeObservedGitOperations((operationRepoPath, operations) => {
+    if (operationRepoPath === repoPath) setObservedOperations(operations);
+  }), [repoPath]);
 
   useEffect(() => {
     let disposed = false;
@@ -225,6 +389,10 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
   }, [draft, stored]);
 
   useEffect(() => {
+    stored.files = attachments;
+  }, [attachments, stored]);
+
+  useEffect(() => {
     const input = inputRef.current;
     if (!input) return;
     input.style.height = '0px';
@@ -234,6 +402,10 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
   useEffect(() => {
     stored.memories = memories;
   }, [memories, stored]);
+
+  useEffect(() => {
+    stored.changeMode = changeMode;
+  }, [changeMode, stored]);
 
   useEffect(() => {
     const scroller = scrollRef.current;
@@ -263,6 +435,16 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
       if (disposed || !payload || typeof payload !== 'object') return;
       const event = payload as GitmdAgentStreamEvent;
       if (!event.requestId || event.requestId !== activeRequestRef.current) return;
+      if (event.type === 'toolApprovalRequested') {
+        setApprovalPrompt({
+          requestId: event.requestId,
+          approvalId: event.approvalId,
+          tool: event.tool,
+          label: event.label,
+          detail: event.detail,
+        });
+        return;
+      }
       setMessages((current) => current.map((message) => {
         if (message.id !== event.requestId) return message;
         const tasks = [...(message.tasks ?? [])];
@@ -301,18 +483,28 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
     };
   }, [t]);
 
+  const resolveApproval = (approved: boolean) => {
+    const request = approvalPrompt;
+    setApprovalPrompt(null);
+    if (!request) return;
+    void ipc.gitmdAgentApprove(request.approvalId, approved).catch(() => undefined);
+  };
+
   const clear = () => {
     streamQueuesRef.current.clear();
     streamReceivedRef.current.clear();
     streamFinalRef.current.clear();
     stored.messages = [];
     stored.draft = '';
+    stored.files = [];
     stored.memories = [];
+    clearObservedGitOperations(repoPath);
     setMessages([]);
     setDraft('');
+    setAttachments([]);
     setMemories([]);
-    setAllowChanges(false);
-    setReview(null);
+    modeChoiceRef.current = null;
+    setApprovalPrompt(null);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -325,9 +517,33 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
     ]);
   };
 
-  const send = async () => {
-    const prompt = draft.trim();
-    if (!prompt || busy) return;
+  const rememberMessages = (next: GitmdCodeTurn[]) => {
+    messagesRef.current = next;
+    setMessages(next);
+  };
+
+  const askToSwitchMode = (prompt: string, attached: GitmdCodeFileRef[]) => {
+    const current = messagesRef.current.map((message) => message.pendingModePrompt ? { ...message, pendingModePrompt: undefined } : message);
+    const last = current[current.length - 1];
+    const sameFiles = (last?.files ?? []).map(gitmdCodeFileKey).join('\n') === attached.map(gitmdCodeFileKey).join('\n');
+    const withUser = last?.role === 'user' && last.content === prompt && sameFiles
+      ? current
+      : [...current, { role: 'user' as const, content: prompt, createdAt: Date.now(), files: attached }];
+    rememberMessages([...withUser, {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: t('This request needs edit mode'),
+      createdAt: Date.now(),
+      pendingModePrompt: prompt,
+    }]);
+    setDraft('');
+    setAttachments([]);
+  };
+
+  const send = async (promptOverride?: string, attachedOverride?: GitmdCodeFileRef[]) => {
+    const prompt = (promptOverride ?? draft).trim();
+    const attached = attachedOverride ?? attachmentsRef.current;
+    if ((!prompt && attached.length === 0) || busy) return;
 
     const command = normalizeSlashCommand(prompt);
     if (command?.local === 'clear') {
@@ -393,31 +609,51 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
       useUi.getState().openDialog('settings', { section: 'ai' });
       return;
     }
+    const explicitMode = modeChoiceRef.current;
+    modeChoiceRef.current = null;
+    if (!shellCommand && shouldAskToSwitchChangeMode(prompt, changeMode, explicitMode)) {
+      askToSwitchMode(prompt, attached);
+      return;
+    }
     const operation = shellCommand ? null : detectGitOperation(prompt);
     const existingRule = operation ? operationRules.get(operation) : undefined;
     const override = ruleOverrideRef.current;
     if (operation && (!existingRule || existingRule.choice === 'ask') && override?.operation !== operation) {
+      modeChoiceRef.current = explicitMode;
       setRulePrompt({ prompt, operation });
       return;
     }
     const selectedPolicy = override?.operation === operation ? override.choice : existingRule?.choice;
     ruleOverrideRef.current = null;
-    const history = settings.freshContextEachTurn
+    const history = (settings.freshContextEachTurn
       ? []
-      : messages.filter((message) => !message.content.startsWith('[Error] '));
+      : messagesRef.current.filter((message) => !message.pendingModePrompt && !message.content.startsWith('[Error] ')))
+      .map((message) => ({
+        role: message.role,
+        content: message.role === 'user' ? attachedFilesPrompt(message.files ?? [], message.content) : message.content,
+        createdAt: message.createdAt,
+      }));
     const policyInstruction = operation && selectedPolicy
       ? `\n\nGitMD Code operation rule for ${operation}: use policy "${selectedPolicy}". Follow it unless it would violate safety protections or the user's explicit request.`
       : '';
-    const effectivePrompt = shellCommand
-      ? `Analyze the output of the shell command that was executed before this AI turn. Explain the result and suggest the next repository action only when useful.`
+    const question = shellCommand
+      ? 'Analyze the output of the shell command that was executed before this AI turn. Explain the result and suggest the next repository action only when useful.'
       : memories.length > 0
-        ? `${prompt}\n\nSession notes:\n${memories.map((note) => `- ${note}`).join('\n')}${policyInstruction}`
+        ? `${command?.prompt ?? prompt}\n\nSession notes:\n${memories.map((note) => `- ${note}`).join('\n')}${policyInstruction}`
         : `${command?.prompt ?? prompt}${policyInstruction}`;
-    const effectiveAllowChanges = allowChanges || Boolean(shellCommand);
+    const effectivePrompt = attachedFilesPrompt(attached, question);
+    const activeMode = explicitMode ?? changeMode;
+    if (explicitMode === 'once' || explicitMode === 'keep') setChangeMode(explicitMode);
+    const effectiveAllowChanges = activeMode !== 'readonly' || Boolean(shellCommand);
     const requestId = crypto.randomUUID();
     streamQueuesRef.current.set(requestId, '');
     streamReceivedRef.current.set(requestId, '');
-    const userMessage: GitmdAgentMessage = { role: 'user', content: prompt, createdAt: Date.now() };
+    const userMessage: GitmdCodeTurn = {
+      role: 'user',
+      content: prompt,
+      createdAt: Date.now(),
+      files: attached.length > 0 ? attached : undefined,
+    };
     const assistantMessage: GitmdAgentMessage = {
       id: requestId,
       role: 'assistant',
@@ -425,8 +661,9 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
       createdAt: Date.now(),
       tasks: [{ id: 'analysis', label: t('Analyze request'), status: 'running' }],
     };
-    setMessages([...messages, userMessage, assistantMessage]);
+    rememberMessages([...messagesRef.current, userMessage, assistantMessage]);
     setDraft('');
+    setAttachments([]);
     activeRequestRef.current = requestId;
     setBusy(true);
     try {
@@ -438,6 +675,7 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
         model: settings.model.trim(),
         history,
         prompt: effectivePrompt,
+        uiContext: attached.length > 0 ? { ...uiContext, files: attached } : uiContext,
         shellCommand,
         allowChanges: effectiveAllowChanges,
         language,
@@ -485,20 +723,24 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
              tasks: (message.tasks ?? []).map((task) => ({ ...task, status: 'completed' as const })),
           }
         : message));
-      if (response.changes?.length || response.diff) {
-        setReview({ changes: response.changes ?? [], diff: response.diff ?? null });
-        setRepoFiles((files) => [
-          ...new Set([...files, ...(response.changes ?? []).map((change) => change.path)]),
-        ]);
-      } else {
-        setReview(null);
-      }
     } catch (error) {
       if (activeRequestRef.current !== requestId) return;
+      const rawError = errorText(error);
+      const detail = withoutReadOnlyChangeMarker(rawError);
+      if (isReadOnlyChangeBlocked(rawError) && explicitMode !== 'readonly') {
+        setMessages((current) => {
+          const next = current.map((message) => message.id === requestId
+            ? { ...message, content: t('This request needs edit mode'), tasks: undefined, pendingModePrompt: prompt }
+            : message);
+          messagesRef.current = next;
+          return next;
+        });
+        return;
+      }
       setMessages((current) => current.map((message) => message.id === requestId
         ? {
             ...message,
-            content: message.content || `[Error] ${errorText(error)}`,
+            content: message.content || `[Error] ${detail}`,
             tasks: (message.tasks ?? []).map((task) => task.status === 'running' ? { ...task, status: 'failed' as const } : task),
           }
         : message));
@@ -509,7 +751,7 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
         streamReceivedRef.current.delete(requestId);
         streamFinalRef.current.delete(requestId);
         setBusy(false);
-        setAllowChanges(false);
+        setChangeMode((current) => gitmdChangeModeAfterTurn(current));
         requestAnimationFrame(() => inputRef.current?.focus());
       }
     }
@@ -537,6 +779,7 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
     const request = rulePrompt;
     if (!request) return;
     setRulePrompt(null);
+    modeChoiceRef.current = null;
     setDraft('');
     addLocalExchange(
       request.prompt,
@@ -546,10 +789,37 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
     );
   };
 
+  const confirmChangeMode = (mode: GitmdChangeMode, prompt: string, messageId: string) => {
+    modeChoiceRef.current = mode;
+    const current = messagesRef.current;
+    const index = current.findIndex((message) => message.id === messageId);
+    const previous = index > 0 ? current[index - 1] : undefined;
+    const attached = previous?.role === 'user' ? previous.files ?? [] : [];
+    const next = current.filter((message, messageIndex) => {
+      if (message.id === messageId) return false;
+      return !(messageIndex === index - 1 && message.role === 'user' && message.content === prompt);
+    });
+    rememberMessages(next);
+    void send(prompt, attached);
+  };
+
   const suggestions = slashCommandSuggestions(draft);
+  const changeModeLabel = changeMode === 'keep'
+    ? t('Keep edit mode')
+    : changeMode === 'once'
+      ? t('Allow changes this turn')
+      : t('Read-only mode');
   const chooseSuggestion = (suggestion: GitmdCodeSlashCommand) => {
     setDraft(`${suggestion.name} `);
     setSelectedCommand(0);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const askAboutOperation = (operation: ObservedGitOperation) => {
+    const detail = operation.error ?? operation.result ?? operation.summary;
+    setDraft(language === 'chinese'
+      ? `解释这次 ${operation.kind} 操作。参数：${operation.summary}。${operation.status === 'failed' ? `失败原因：${detail}` : `结果：${detail}`}`
+      : `Explain this ${operation.kind} operation. Parameters: ${operation.summary}. ${operation.status === 'failed' ? `Failure: ${detail}` : `Result: ${detail}`}`);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
@@ -561,7 +831,8 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
     streamReceivedRef.current.delete(requestId);
     streamFinalRef.current.delete(requestId);
     setBusy(false);
-    setAllowChanges(false);
+    setChangeMode((current) => gitmdChangeModeAfterTurn(current));
+    setApprovalPrompt(null);
     setMessages((current) => current.map((message) => message.id === requestId
       ? { ...message, tasks: (message.tasks ?? []).map((task) => task.status === 'running' ? { ...task, status: 'cancelled' as const } : task) }
       : message));
@@ -576,6 +847,11 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
         language={language}
         onClose={skipRulePrompt}
         onSubmit={continueFromRulePrompt}
+      />
+      <ToolApprovalPrompt
+        request={approvalPrompt}
+        language={language}
+        onResolve={resolveApproval}
       />
       <div className="flex h-full min-h-0 flex-col bg-surface">
       <div className="flex h-8 shrink-0 items-center gap-2 border-b border-border-subtle px-3">
@@ -618,6 +894,37 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
         </Hint>
       </div>
 
+      <div className="flex h-6 shrink-0 items-center gap-1.5 border-b border-border-subtle px-3 text-[10px] text-faint" title={describeUiContext(uiContext, language)}>
+        <span className="shrink-0">{language === 'chinese' ? '当前上下文' : 'Context'}</span>
+        <span className="truncate">{describeUiContext(uiContext, language)}</span>
+      </div>
+
+      {observedOperations.length > 0 && (
+        <details className="shrink-0 border-b border-border-subtle px-3 py-1.5 text-[10px]">
+          <summary className="cursor-pointer text-muted">
+            {language === 'chinese' ? 'Git 操作记录' : 'Git activity'}
+            <span className="ml-1 text-faint">{observedOperations.at(-1)?.summary}</span>
+          </summary>
+          <div className="mt-1 flex flex-col gap-1">
+            {observedOperations.slice(-5).reverse().map((operation) => (
+              <div key={operation.id} className="flex min-w-0 items-center gap-1.5 text-faint">
+                {operation.status === 'running'
+                  ? <Spinner className="size-3 shrink-0" />
+                  : operation.status === 'failed'
+                    ? <CircleAlert className="size-3 shrink-0 text-danger" />
+                    : <Check className="size-3 shrink-0 text-success" />}
+                <span className="min-w-0 flex-1 truncate" title={operation.error ?? operation.summary}>
+                  {operation.summary}{operation.error ? ` · ${operation.error}` : operation.result ? ` · ${operation.result}` : ''}
+                </span>
+                <Button variant="ghost" size="icon-sm" aria-label={language === 'chinese' ? '询问 AI 关于此操作' : 'Ask AI about this operation'} title={language === 'chinese' ? '询问 AI' : 'Ask AI'} onClick={() => askAboutOperation(operation)}>
+                  <MessageSquareText className="size-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {messages.length === 0 && !busy ? (
           <div className="flex h-full items-center justify-center text-xs text-faint">
@@ -642,11 +949,11 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
                       {formatMessageTime(message.createdAt || Date.now(), language)}
                     </time>
                     {message.role === 'assistant' && message.content && (
-                      <Hint label={language === 'chinese' ? '复制回复' : 'Copy response'}>
+                      <Hint label={t('Copy response')}>
                         <button
                           type="button"
                           className="ml-auto inline-flex size-5 items-center justify-center rounded text-faint hover:bg-surface-raised hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                          aria-label={language === 'chinese' ? '复制回复' : 'Copy response'}
+                          aria-label={t('Copy response')}
                           onClick={() => {
                             void navigator.clipboard.writeText(message.content);
                             toast.success(language === 'chinese' ? '回复已复制' : 'Response copied');
@@ -670,6 +977,9 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
                       </ol>
                     </div>
                   )}
+                  {message.role === 'user' && message.files && message.files.length > 0 && (
+                    <GitmdCodeFileChips files={message.files} />
+                  )}
                   {message.content && (
                     <GitmdCodeText
                       text={message.content}
@@ -677,6 +987,13 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
                       knownFiles={knownFiles}
                       className={message.content.startsWith('[Error] ') ? 'text-danger' : undefined}
                     />
+                  )}
+                  {message.pendingModePrompt && message.id && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <Button size="sm" onClick={() => confirmChangeMode('once', message.pendingModePrompt ?? '', message.id ?? '')}>{t('Edit this turn')}</Button>
+                      <Button size="sm" variant="secondary" title={t('Edit mode stays on until you switch it off.')} onClick={() => confirmChangeMode('keep', message.pendingModePrompt ?? '', message.id ?? '')}>{t('Keep edit mode')}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => confirmChangeMode('readonly', message.pendingModePrompt ?? '', message.id ?? '')}>{t('Send as read-only')}</Button>
+                    </div>
                   )}
                   {message.role === 'assistant' && message.usage && (
                     <div className="mt-1 text-[10px] text-faint">
@@ -686,55 +1003,18 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
                 </div>
               </div>
             ))}
-            {review && (
-              <details className="rounded-md border border-border-subtle bg-surface-raised/60 px-3 py-2 text-xs" open>
-                <summary className="cursor-pointer font-medium text-foreground">
-                  {language === 'chinese' ? '变更审阅' : 'Review changes'} ({review.changes.length})
-                </summary>
-                <div className="mt-2 flex flex-col gap-2">
-                  {review.changes.length > 0 && (
-                    <ul className="flex flex-col gap-1 font-mono text-[11px] text-muted">
-                      {review.changes.map((change) => (
-                        <li key={`${change.status}-${change.path}`} className="flex min-w-0 items-center gap-2">
-                          <span className="mr-2 text-primary">{change.status}</span>
-                          <GitmdFileLink
-                            displayPath={change.path}
-                            path={change.path}
-                            className="min-w-0"
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {review.diff && (
-                    <div className="relative">
-                      <Hint label={language === 'chinese' ? '复制差异' : 'Copy diff'}>
-                        <button
-                          type="button"
-                          className="absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded bg-surface-raised text-faint hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                          aria-label={language === 'chinese' ? '复制差异' : 'Copy diff'}
-                          onClick={() => {
-                            void navigator.clipboard.writeText(review.diff ?? '');
-                            toast.success(language === 'chinese' ? '差异已复制' : 'Diff copied');
-                          }}
-                        >
-                          <Copy className="size-3" />
-                        </button>
-                      </Hint>
-                      <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded border border-border-subtle bg-background p-2 pr-9 font-mono text-[10px] leading-4 text-muted">
-                        {review.diff}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
         )}
       </div>
 
       <div className="shrink-0 border-t border-border-subtle px-3 pb-2 pt-2">
         <div className="w-full border border-border-subtle bg-surface-raised px-3 pb-2 pt-1.5 font-mono transition-[border-color,box-shadow] focus-within:border-primary/70 focus-within:shadow-[0_0_0_1px_hsl(var(--primary)/0.15)]">
+          {attachments.length > 0 && (
+            <GitmdCodeFileChips
+              files={attachments}
+              onRemove={(file) => setAttachments((current) => current.filter((item) => gitmdCodeFileKey(item) !== gitmdCodeFileKey(file)))}
+            />
+          )}
           <div className="flex min-h-[36px] items-start gap-2 pt-2">
             <span className="select-none text-base leading-5 text-primary">›</span>
             <Textarea
@@ -742,16 +1022,21 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
               value={draft}
               autoFocus
               rows={1}
-              placeholder={t('Ask GitMD Code')}
+              placeholder={attachments.length > 0 ? t('Ask about the attached files') : t('Ask GitMD Code')}
               className="max-h-32 min-h-[24px] flex-1 resize-none overflow-y-auto border-0 bg-transparent p-0 text-[13px] leading-5 shadow-none focus-visible:ring-0"
               onChange={(event) => {
                 setDraft(event.target.value);
                 setSelectedCommand(0);
               }}
               onKeyDown={(event) => {
+                if (event.key === 'Backspace' && draft.length === 0 && attachments.length > 0 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+                  event.preventDefault();
+                  setAttachments((current) => current.slice(0, -1));
+                  return;
+                }
                 if (event.key === 'Tab' && event.shiftKey) {
                   event.preventDefault();
-                  setAllowChanges((current) => !current);
+                  setChangeMode((current) => cycleGitmdChangeMode(current));
                   return;
                 }
                 if (suggestions.length > 0 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
@@ -775,7 +1060,7 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
             />
           </div>
           {suggestions.length > 0 && (
-            <div className="mt-1 overflow-hidden rounded border border-border-subtle bg-background shadow-lg" role="listbox" aria-label="GitMD Code commands">
+            <div className="mt-1 overflow-hidden rounded border border-border-subtle bg-background shadow-lg" role="listbox" aria-label={t('GitMD Code commands')}>
               {suggestions.map((suggestion, index) => (
                 <button
                   key={suggestion.name}
@@ -794,22 +1079,23 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
           )}
           <div className="mt-1 flex min-h-6 items-center gap-2 text-[10px] text-faint">
             <span className="text-primary">●</span>
-            <span>{allowChanges ? 'manual' : 'readonly'} mode</span>
+            <span>{changeMode === 'keep' ? 'edit' : changeMode === 'once' ? 'edit once' : 'readonly'} mode</span>
             <span>·</span>
             <span>{busy ? 'working' : 'ready'}</span>
             <span>·</span>
             <button
               type="button"
-              aria-pressed={allowChanges}
-              className={`inline-flex h-6 items-center gap-1.5 rounded-md px-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${allowChanges ? 'text-primary' : 'text-muted hover:text-foreground'}`}
-              onClick={() => setAllowChanges((current) => !current)}
+              aria-pressed={changeMode !== 'readonly'}
+              title={changeMode === 'keep' ? t('Edit mode stays on until you switch it off.') : undefined}
+              className={`inline-flex h-6 items-center gap-1.5 rounded-md px-1 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary ${changeMode === 'readonly' ? 'text-muted hover:text-foreground' : 'text-primary'}`}
+              onClick={() => setChangeMode((current) => cycleGitmdChangeMode(current))}
             >
               <ShieldCheck className="size-3.5" />
-              {allowChanges ? t('Allow changes this turn') : (language === 'chinese' ? '只读模式' : 'Read-only mode')}
+              {changeModeLabel}
             </button>
             <span>· Shift+Tab {language === 'chinese' ? '切换模式' : 'to toggle'}</span>
-            {draft.trim().startsWith('!') && <span className="text-[10px] text-warning">Shell command</span>}
-            {draft.trim().startsWith('#') && <span className="text-[10px] text-primary">Session note</span>}
+            {draft.trim().startsWith('!') && <span className="text-[10px] text-warning">{t('Shell command')}</span>}
+            {draft.trim().startsWith('#') && <span className="text-[10px] text-primary">{t('Session note')}</span>}
             {memories.length > 0 && !draft.trim().startsWith('#') && (
               <span className="text-[10px] text-faint">
                 {language === 'chinese' ? `${memories.length} 条会话备注` : `${memories.length} session note${memories.length === 1 ? '' : 's'}`}
@@ -821,7 +1107,7 @@ export function GitmdCodePanel({ repoPath, onClose }: { repoPath: string; onClos
                 className="ml-auto shrink-0 rounded-full"
                 variant={busy ? 'danger' : 'default'}
                 aria-label={busy ? t('Stop GitMD Code') : t('Send message')}
-                disabled={!busy && !draft.trim()}
+                disabled={!busy && !draft.trim() && attachments.length === 0}
                 onClick={busy ? stop : () => void send()}
               >
                 {busy ? <Square className="size-3 fill-current" /> : <Send className="size-3.5" />}

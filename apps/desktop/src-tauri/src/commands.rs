@@ -338,8 +338,11 @@ pub async fn reveal_path(path: String) -> AppResult<()> {
             }
             #[cfg(target_os = "windows")]
             {
+                let target = std::path::Path::new(&path)
+                    .to_string_lossy()
+                    .replace('/', "\\");
                 crate::proc::hidden("explorer")
-                    .arg(format!("/select,{path}"))
+                    .arg(format!("/select,{target}"))
                     .status()
             }
             #[cfg(all(unix, not(target_os = "macos")))]
@@ -351,7 +354,9 @@ pub async fn reveal_path(path: String) -> AppResult<()> {
                 crate::proc::hidden("xdg-open").arg(parent).status()
             }
         }?;
-        let _ = status;
+        if !status.success() {
+            return Err(crate::error::AppError::other("could not reveal path"));
+        }
         Ok(())
     })
     .await
@@ -854,16 +859,18 @@ pub async fn gitmd_code_create(
 pub async fn gitmd_agent_chat(
     app: AppHandle,
     state: State<'_, crate::gitmd_agent::AgentTaskState>,
+    approvals: State<'_, crate::gitmd_agent::AgentApprovalState>,
     request: crate::gitmd_agent::AgentRequest,
 ) -> AppResult<crate::gitmd_agent::AgentResponse> {
     let request_id = request.request_id.clone();
+    let approvals = approvals.inner().clone();
     if request_id.trim().is_empty() {
-        return crate::gitmd_agent::chat_with_timeout(app, request).await;
+        return crate::gitmd_agent::chat_with_timeout(app, request, approvals).await;
     }
     let task_app = app.clone();
     let (sender, receiver) = tokio::sync::oneshot::channel();
     let handle = tauri::async_runtime::spawn(async move {
-        let result = crate::gitmd_agent::chat_with_timeout(task_app, request).await;
+        let result = crate::gitmd_agent::chat_with_timeout(task_app, request, approvals).await;
         let _ = sender.send(result);
     });
     state
@@ -880,6 +887,15 @@ pub async fn gitmd_agent_chat(
         .map_err(|_| AppError::other("Agent task state is unavailable"))?
         .remove(&request_id);
     result
+}
+
+#[tauri::command]
+pub fn gitmd_agent_approve(
+    state: State<'_, crate::gitmd_agent::AgentApprovalState>,
+    approval_id: String,
+    approved: bool,
+) -> AppResult<bool> {
+    Ok(state.resolve(&approval_id, approved))
 }
 
 #[tauri::command]

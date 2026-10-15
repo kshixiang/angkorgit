@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { FileDiff } from '@gitmd/core';
 import { useSettings } from '@/features/settings/store';
 import type { DiffViewMode } from '@/features/ui/store';
+import { useUiText } from '@/shared/i18n';
 
 type RowKind = 'header' | 'context' | 'addition' | 'deletion' | 'mixed';
 
@@ -113,6 +114,7 @@ export function DiffMinimap({
   view: DiffViewMode;
   scrollRef: React.RefObject<HTMLDivElement>;
 }) {
+  const t = useUiText();
   const railRef = useRef<HTMLDivElement>(null);
   const indicatorRef = useRef<HTMLSpanElement>(null);
 
@@ -182,7 +184,7 @@ export function DiffMinimap({
       className="relative w-3.5 shrink-0 cursor-pointer border-l border-border-subtle bg-surface"
       onMouseDown={scrub}
       role="scrollbar"
-      aria-label="Change overview — click to jump, drag to scroll"
+      aria-label={t('Change overview — click to jump, drag to scroll')}
     >
       {markers.map(({ kind, start, end }) => (
         <span

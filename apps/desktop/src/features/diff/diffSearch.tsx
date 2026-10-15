@@ -5,6 +5,7 @@ import { Button, Hint, Kbd, cn } from '@gitmd/design-system';
 import { useUi } from '@/features/ui/store';
 import type { SearchRange, SearchRanges } from './diffShared';
 import { flattenDiff, HEADER_H, LINE_H, panControllers } from './VirtualDiff';
+import { useUiText } from '@/shared/i18n';
 
 interface DiffMatch {
   line: DiffLine;
@@ -30,6 +31,7 @@ function findMatches(diff: FileDiff, query: string, caseSensitive: boolean): Dif
 }
 
 export function useDiffFind(diff: FileDiff | null, scrollRef: React.RefObject<HTMLDivElement>) {
+  const t = useUiText();
   const diffView = useUi((s) => s.diffView);
   const wrapLines = useUi((s) => s.wrapLines);
   const [open, setOpen] = useState(false);
@@ -129,32 +131,32 @@ export function useDiffFind(diff: FileDiff | null, scrollRef: React.RefObject<HT
             else next();
           }
         }}
-        placeholder="Find in diff…"
+        placeholder={t('Find in diff…')}
         autoFocus
         spellCheck={false}
         className="w-44 bg-transparent text-xs text-foreground outline-none placeholder:text-faint"
       />
       <span className="shrink-0 whitespace-nowrap px-1 text-[10px] tabular-nums text-muted">
-        {query ? (matches.length > 0 ? `${bounded + 1} of ${matches.length}` : 'No results') : ''}
+        {query ? (matches.length > 0 ? `${bounded + 1} of ${matches.length}` : t('No results')) : ''}
       </span>
-      <Hint label="Match case">
+      <Hint label={t('Match case')}>
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Match case"
+          aria-label={t('Match case')}
           className={cn('size-6', caseSensitive && 'bg-surface-raised text-primary')}
           onClick={() => setCaseSensitive((v) => !v)}
         >
           <CaseSensitive className="size-3.5" />
         </Button>
       </Hint>
-      <Hint label="Previous match (⇧↩)">
-        <Button variant="ghost" size="icon-sm" aria-label="Previous match" className="size-6" disabled={matches.length === 0} onClick={prev}>
+      <Hint label={t('Previous match (⇧↩)')}>
+        <Button variant="ghost" size="icon-sm" aria-label={t('Previous match')} className="size-6" disabled={matches.length === 0} onClick={prev}>
           <ChevronUp className="size-3.5" />
         </Button>
       </Hint>
-      <Hint label="Next match (↩)">
-        <Button variant="ghost" size="icon-sm" aria-label="Next match" className="size-6" disabled={matches.length === 0} onClick={next}>
+      <Hint label={t('Next match (↩)')}>
+        <Button variant="ghost" size="icon-sm" aria-label={t('Next match')} className="size-6" disabled={matches.length === 0} onClick={next}>
           <ChevronDown className="size-3.5" />
         </Button>
       </Hint>
@@ -165,7 +167,7 @@ export function useDiffFind(diff: FileDiff | null, scrollRef: React.RefObject<HT
           </span>
         }
       >
-        <Button variant="ghost" size="icon-sm" aria-label="Close search" className="size-6" onClick={close}>
+        <Button variant="ghost" size="icon-sm" aria-label={t('Close search')} className="size-6" onClick={close}>
           <X className="size-3.5" />
         </Button>
       </Hint>

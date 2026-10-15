@@ -10,16 +10,18 @@ import {
   Hint,
 } from '@gitmd/design-system';
 import { useAuth } from './store';
+import { useUiText } from '@/shared/i18n';
 
 export function AccountMenu() {
+  const t = useUiText();
   const user = useAuth((state) => state.user);
   const signOut = useAuth((state) => state.signOut);
 
   return (
     <DropdownMenu>
-      <Hint label="Account">
+      <Hint label={t('Account')}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label="Account">
+          <Button variant="ghost" size="icon-sm" aria-label={t('Account')}>
             <CircleUserRound className="size-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -30,9 +32,7 @@ export function AccountMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
-          <LogOut className="size-4" />
-          Sign out
-        </DropdownMenuItem>
+          <LogOut className="size-4" />{t('Sign out')}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

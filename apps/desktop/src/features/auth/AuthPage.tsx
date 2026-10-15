@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode, type ChangeEvent } from 'reac
 import { KeyRound, Mail, UserRound } from 'lucide-react';
 import { Button, Input, Logo, Spinner, TemplePattern } from '@gitmd/design-system';
 import { useAuth } from './store';
+import { useUiText } from '@/shared/i18n';
 
 type Mode = 'login' | 'register' | 'reset';
 
@@ -16,6 +17,7 @@ const messageOf = (error: unknown): string => {
 };
 
 export function AuthPage() {
+  const t = useUiText();
   const status = useAuth((state) => state.status);
   const user = useAuth((state) => state.user);
   const authError = useAuth((state) => state.error);
@@ -96,7 +98,7 @@ export function AuthPage() {
     return (
       <AuthLayout>
         <Mail className="size-6 text-primary" />
-        <h1 className="mt-5 text-xl font-semibold">Enter verification code</h1>
+        <h1 className="mt-5 text-xl font-semibold">{t('Enter verification code')}</h1>
         <p className="mt-2 text-sm text-muted">
           We sent a verification code to {user?.email || email || 'your email address'}.
         </p>
@@ -109,7 +111,7 @@ export function AuthPage() {
             maxLength={10}
             value={verificationCode}
             onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 10))}
-            placeholder="Enter code"
+            placeholder={t('Enter code')}
             className="h-11 text-center text-lg tracking-[0.35em]"
             required
           />
@@ -120,12 +122,8 @@ export function AuthPage() {
             Verify email
           </Button>
         </form>
-        <Button className="mt-2 w-full" variant="link" onClick={() => void resendConfirmation()} disabled={busy}>
-          Resend verification code
-        </Button>
-        <Button className="mt-1 w-full" variant="secondary" onClick={() => { showSignIn(); changeMode('login'); }}>
-          Back to sign in
-        </Button>
+        <Button className="mt-2 w-full" variant="link" onClick={() => void resendConfirmation()} disabled={busy}>{t('Resend verification code')}</Button>
+        <Button className="mt-1 w-full" variant="secondary" onClick={() => { showSignIn(); changeMode('login'); }}>{t('Back to sign in')}</Button>
       </AuthLayout>
     );
   }
@@ -208,17 +206,11 @@ export function AuthPage() {
       <div className="mt-5 flex items-center justify-between text-xs">
         {mode === 'login' ? (
           <>
-            <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('register')}>
-              Create account
-            </Button>
-            <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('reset')}>
-              Forgot password?
-            </Button>
+            <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('register')}>{t('Create account')}</Button>
+            <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('reset')}>{t('Forgot password?')}</Button>
           </>
         ) : (
-          <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('login')}>
-            Back to sign in
-          </Button>
+          <Button variant="link" size="sm" className="px-0" onClick={() => changeMode('login')}>{t('Back to sign in')}</Button>
         )}
       </div>
     </AuthLayout>

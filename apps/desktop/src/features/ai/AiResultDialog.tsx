@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from '@gitmd/design-system';
 import { AiText } from './AiText';
+import { useUiText } from '@/shared/i18n';
 
 export function AiResultDialog({
   open,
@@ -23,6 +24,7 @@ export function AiResultDialog({
   icon?: ReactNode;
   text: string;
 }) {
+  const t = useUiText();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -44,12 +46,11 @@ export function AiResultDialog({
             onClick={() => {
               navigator.clipboard
                 .writeText(text)
-                .then(() => toast.success('Copied'))
-                .catch(() => toast.error('Could not copy'));
+                .then(() => toast.success(t('Copied')))
+                .catch(() => toast.error(t('Could not copy')));
             }}
           >
-            <Copy className="size-3" /> Copy
-          </Button>
+            <Copy className="size-3" />{t('Copy')}</Button>
           <Button size="sm" onClick={() => onOpenChange(false)}>
             Done
           </Button>

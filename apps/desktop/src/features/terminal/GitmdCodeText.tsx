@@ -5,6 +5,7 @@ import { openExternal } from '@/core/ipc';
 import { useGraph } from '@/features/graph/store';
 import { useUi } from '@/features/ui/store';
 import { parseGitmdCodeTable } from './gitmdCodeMarkdown';
+import { useUiText } from '@/shared/i18n';
 import {
   classifyGitmdCodeReference,
   parseGitmdCodeOutputParts,
@@ -54,6 +55,7 @@ export function GitmdFileLink({
   path,
   className,
 }: GitmdFileLinkProps) {
+  const t = useUiText();
   const openDiff = () => {
     useGraph.getState().select(null);
     const ui = useUi.getState();
@@ -68,7 +70,7 @@ export function GitmdFileLink({
         'inline-flex max-w-full items-baseline gap-1 rounded bg-primary/10 px-1 py-px font-mono text-[0.9em] text-primary hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
         className,
       )}
-      title="Open file diff in GitMD"
+      title={t('Open file diff in GitMD')}
       aria-label={`Open diff for ${path} in GitMD`}
       onClick={openDiff}
     >
@@ -87,6 +89,7 @@ function ReferenceLink({
   display: string;
   repoPath: string;
 }) {
+  const t = useUiText();
   if (reference.kind === 'file') {
     return (
       <GitmdFileLink
@@ -100,7 +103,7 @@ function ReferenceLink({
       <button
         type="button"
         className="inline-flex max-w-full items-baseline gap-1 text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
-        title="Open link"
+        title={t('Open link')}
         onClick={() => void openExternal(reference.value)}
       >
         <span className="[overflow-wrap:anywhere]">{display}</span>
@@ -116,7 +119,7 @@ function ReferenceLink({
     <button
       type="button"
       className="inline-flex items-center gap-1 rounded bg-surface-raised px-1 py-px font-mono text-[0.9em] text-foreground hover:bg-border-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-      title="Search commit in GitMD"
+      title={t('Search commit in GitMD')}
       aria-label={`Search commit ${reference.value} in GitMD`}
       onClick={searchCommit}
     >
@@ -127,6 +130,7 @@ function ReferenceLink({
 }
 
 export function GitmdCodeText({ text, repoPath, knownFiles, className }: GitmdCodeTextProps) {
+  const t = useUiText();
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyTimer = useRef<number | null>(null);
   const blocks = useMemo(() => {
@@ -166,7 +170,7 @@ export function GitmdCodeText({ text, repoPath, knownFiles, className }: GitmdCo
     const reference = classifyGitmdCodeReference(code, repoPath, knownFiles);
     if (reference) return renderReference(reference, code, key);
     return (
-      <button key={key} type="button" className="inline-flex items-center gap-1 rounded bg-surface-raised px-1 py-px font-mono text-[0.9em] text-foreground hover:bg-border-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" title="Copy code" onClick={() => copy(code, `code:${key}`)}>
+      <button key={key} type="button" className="inline-flex items-center gap-1 rounded bg-surface-raised px-1 py-px font-mono text-[0.9em] text-foreground hover:bg-border-subtle focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" title={t('Copy code')} onClick={() => copy(code, `code:${key}`)}>
         {code}
         {copiedKey === `code:${key}` ? <Check className="size-3 text-success" /> : <Copy className="size-3 text-faint" />}
       </button>
@@ -180,7 +184,7 @@ export function GitmdCodeText({ text, repoPath, knownFiles, className }: GitmdCo
       const content = parts.flatMap((part, partIndex) => part.reference
         ? [renderReference(part.reference, part.text, `${lineKey}-ref-${partIndex}`)]
         : renderInlineMarkdown(part.text, `${lineKey}-${partIndex}`, renderCode, (label, url, key) => (
-          <button key={key} type="button" className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary" title="Open link" onClick={() => void openExternal(url)}>
+          <button key={key} type="button" className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary" title={t('Open link')} onClick={() => void openExternal(url)}>
             {label}
           </button>
         )));
@@ -269,8 +273,8 @@ export function GitmdCodeText({ text, repoPath, knownFiles, className }: GitmdCo
               <button
                 type="button"
                 className="inline-flex size-5 items-center justify-center rounded text-faint hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                title="Copy code block"
-                aria-label="Copy code block"
+                title={t('Copy code block')}
+                aria-label={t('Copy code block')}
                 onClick={() => copy(block.value, copyKey)}
               >
                 {copiedKey === copyKey ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}

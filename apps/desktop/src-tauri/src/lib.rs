@@ -126,6 +126,7 @@ pub fn run() {
         })
         .manage(terminal::TerminalState::default())
         .manage(gitmd_agent::AgentTaskState::default())
+        .manage(gitmd_agent::AgentApprovalState::default())
         .manage(watcher::WatcherState::default())
         .invoke_handler(tauri::generate_handler![
             commands::repo_open,
@@ -228,6 +229,7 @@ pub fn run() {
             commands::term_create,
             commands::gitmd_code_create,
             commands::gitmd_agent_chat,
+            commands::gitmd_agent_approve,
             commands::gitmd_agent_cancel,
             commands::term_write,
             commands::term_resize,

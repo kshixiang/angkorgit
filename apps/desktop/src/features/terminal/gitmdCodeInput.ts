@@ -53,3 +53,54 @@ export function persistentMemoryFromInput(
     content: match[2].replace(/\s+/g, ' ').trim(),
   };
 }
+
+
+export type GitmdChangeMode = 'readonly' | 'once' | 'keep';
+
+export const READ_ONLY_CHANGE_MARKER = 'GITMD_CODE_READ_ONLY';
+
+const CHANGE_INTENT = /(?:修改|改一下|改下|改成|改掉|修复|修正|修一下|实现|重构|提交|暂存|取消暂存|推送|拉取|合并|变基|重置|切换分支|删除文件|删掉|写入|创建文件|新建文件|解决冲突|丢弃|撤销|加上|替换成|amend\b|stage\b|unstage\b|\bcommit\b|\bpush\b|\bpull\b|\bmerge\b|\brebase\b|\breset\b|\bcheckout\b|\bstash\b|\bfix\b|\bchange\b|\bedit\b|\bupdate\b|\bimplement\b|\brefactor\b|\bwrite\b|\bapply\b|\bdelete\b|\badd\b)/i;
+const READ_ONLY_REQUEST = /(?:不要修改|不要改|别改|do not (?:modify|change|edit)|don't (?:modify|change|edit)|read-only|只分析|仅分析|只解释|只是看看|just (?:explain|review|look))/i;
+const QUESTION_START = /^(?:请)?(?:解释|说明|分析|总结|看看|查看|为什么|为何|怎么|如何|what|why|how|explain|describe|summarize|review|inspect|show|compare)\b/i;
+const LOOK_ONLY = /(?:看看|查看|解释|说明|分析|总结|为什么|为何|怎么|如何|\bwhat\b|\bwhy\b|\bhow\b|\bexplain\b|\bdescribe\b|\bshow\b|\breview\b|\binspect\b)/i;
+const DIRECT_CHANGE = /(?:修改|改一下|改下|改成|改掉|修复|修正|修一下|实现|重构|提交|写入|创建文件|新建文件|删除文件|删掉|解决冲突|丢弃|撤销|替换成|\bfix\b|\bchange\b|\bedit\b|\bimplement\b|\brefactor\b|\bwrite\b|\bdelete\b)/i;
+const FOLLOW_UP_CHANGE = /(?:然后|并且|并|and then|also)\s*(?:修改|修复|修一下|提交|fix|change|edit|commit|implement)/i;
+
+export function inputNeedsRepositoryChanges(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.startsWith('!') || trimmed.startsWith('#') || trimmed.startsWith('/')) return false;
+  if (READ_ONLY_REQUEST.test(trimmed) || !CHANGE_INTENT.test(trimmed)) return false;
+  if (LOOK_ONLY.test(trimmed) && !FOLLOW_UP_CHANGE.test(trimmed) && !DIRECT_CHANGE.test(trimmed)) return false;
+  if (QUESTION_START.test(trimmed) && !FOLLOW_UP_CHANGE.test(trimmed)) return false;
+  if (/[?？]\s*$/.test(trimmed) && !/(?:帮我|请把|请帮|请修改|请修复|please\s+(?:fix|change|edit|update|commit|implement)|(?:fix|change|edit|update|commit|implement)\s+(?:this|the|it))/i.test(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
+export function shouldAskToSwitchChangeMode(
+  value: string,
+  mode: GitmdChangeMode,
+  explicitMode: GitmdChangeMode | null,
+): boolean {
+  if (explicitMode !== null || mode !== 'readonly') return false;
+  return inputNeedsRepositoryChanges(value);
+}
+
+export function cycleGitmdChangeMode(mode: GitmdChangeMode): GitmdChangeMode {
+  if (mode === 'readonly') return 'once';
+  if (mode === 'once') return 'keep';
+  return 'readonly';
+}
+
+export function gitmdChangeModeAfterTurn(mode: GitmdChangeMode): GitmdChangeMode {
+  return mode === 'once' ? 'readonly' : mode;
+}
+
+export function isReadOnlyChangeBlocked(message: string): boolean {
+  return message.includes(READ_ONLY_CHANGE_MARKER);
+}
+
+export function withoutReadOnlyChangeMarker(message: string): string {
+  return message.replaceAll(READ_ONLY_CHANGE_MARKER, '').replace(/\s{2,}/g, ' ').trim();
+}

@@ -8,10 +8,12 @@ import { useRepo } from '@/features/repository/store';
 import { useUi } from '@/features/ui/store';
 import { confirmDialog } from '@/components/confirm';
 import { modKey } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 export const editorCloseShortcut = { current: null as (() => void) | null };
 
 export function EditorPanel({ file }: { file: string }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const refreshStatus = useRepo((s) => s.refreshStatus);
   const closeEditor = useUi((s) => s.closeEditor);
@@ -62,10 +64,10 @@ export function EditorPanel({ file }: { file: string }) {
       return;
     }
     void confirmDialog({
-      title: 'Discard unsaved changes?',
-      description: 'This file has unsaved edits. Close without saving?',
+      title: t('Discard unsaved changes?'),
+      description: t('This file has unsaved edits. Close without saving?'),
       path: file,
-      confirmLabel: 'Close without saving',
+      confirmLabel: t('Close without saving'),
       destructive: true,
     }).then((ok) => {
       if (ok) closeEditor();
@@ -95,13 +97,13 @@ export function EditorPanel({ file }: { file: string }) {
             </span>
           }
         >
-          <Button variant="ghost" size="icon-sm" aria-label="Close editor" onClick={requestClose}>
+          <Button variant="ghost" size="icon-sm" aria-label={t('Close editor')} onClick={requestClose}>
             <X className="size-4" />
           </Button>
         </Hint>
         <Pencil className="size-3.5 shrink-0 text-primary" />
         <span className="min-w-0 flex-1 truncate font-mono text-xs">{file}</span>
-        {dirty && <Badge tone="primary">unsaved</Badge>}
+        {dirty && <Badge tone="primary">{t('unsaved')}</Badge>}
         <Hint
           label={
             <span className="flex items-center gap-1">

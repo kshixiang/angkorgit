@@ -20,8 +20,10 @@ import { useUndo } from '@/features/history/undoStore';
 import { useGraph } from '@/features/graph/store';
 import { useSettings } from '@/features/settings/store';
 import { basename, dirname } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const { dialog, dialogContext: rawContext, closeDialog } = useUi();
   const dialogContext = typeof rawContext === 'string' ? rawContext : null;
@@ -159,7 +161,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
   const submitCreateFile = () => {
     const fileName = name.trim();
     if (!fileName || fileName === '.' || fileName === '..' || /[\\/]/.test(fileName)) {
-      toast.error('Enter a file name without a path.');
+      toast.error(t('Enter a file name without a path.'));
       return;
     }
     void submit('Create file', async () => {
@@ -174,7 +176,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
       <Dialog open={dialog === 'createBranch'} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create branch</DialogTitle>
+            <DialogTitle>{t('Create branch')}</DialogTitle>
             <DialogDescription>
               {dialogContext ? `From commit ${dialogContext.slice(0, 8)}` : 'From the current HEAD'}
             </DialogDescription>
@@ -190,17 +192,11 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
               }}
             />
             <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-              <Checkbox checked={checkout} onCheckedChange={(v) => setCheckout(v === true)} />
-              Checkout after creating
-            </label>
+              <Checkbox checked={checkout} onCheckedChange={(v) => setCheckout(v === true)} />{t('Checkout after creating')}</label>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
-            <Button disabled={busy || !name.trim()} onClick={submitCreateBranch}>
-              Create
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
+            <Button disabled={busy || !name.trim()} onClick={submitCreateBranch}>{t('Create')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -208,7 +204,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
       <Dialog open={dialog === 'createTag'} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create tag</DialogTitle>
+            <DialogTitle>{t('Create tag')}</DialogTitle>
             <DialogDescription>
               {dialogContext ? `At commit ${dialogContext.slice(0, 8)}` : 'At the current HEAD'} — add a message for an annotated tag.
             </DialogDescription>
@@ -224,18 +220,14 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
               }}
             />
             <Textarea
-              placeholder="Tag message (optional)"
+              placeholder={t('Tag message (optional)')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
             />
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
-            <Button disabled={busy || !name.trim()} onClick={submitCreateTag}>
-              Create
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
+            <Button disabled={busy || !name.trim()} onClick={submitCreateTag}>{t('Create')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -265,7 +257,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
             )}
             <Input
               autoFocus
-              placeholder="Stash message (optional)"
+              placeholder={t('Stash message (optional)')}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={(e) => {
@@ -274,18 +266,12 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
             />
             {stashPaths.length === 0 && (
               <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-                <Checkbox checked={includeUntracked} onCheckedChange={(v) => setIncludeUntracked(v === true)} />
-                Include untracked files
-              </label>
+                <Checkbox checked={includeUntracked} onCheckedChange={(v) => setIncludeUntracked(v === true)} />{t('Include untracked files')}</label>
             )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
-            <Button disabled={busy} onClick={submitStash}>
-              Stash
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
+            <Button disabled={busy} onClick={submitStash}>{t('Stash')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -293,7 +279,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
       <Dialog open={dialog === 'rename'} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Rename branch</DialogTitle>
+            <DialogTitle>{t('Rename branch')}</DialogTitle>
             <DialogDescription>Renaming “{dialogContext}”.</DialogDescription>
           </DialogHeader>
           <Input
@@ -305,15 +291,11 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
             }}
           />
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
             <Button
               disabled={busy || !name.trim() || name.trim() === dialogContext}
               onClick={submitRename}
-            >
-              Rename
-            </Button>
+            >{t('Rename')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -321,7 +303,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
       <Dialog open={dialog === 'createFile'} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create file</DialogTitle>
+            <DialogTitle>{t('Create file')}</DialogTitle>
             <DialogDescription>In {createFileFolder}/</DialogDescription>
           </DialogHeader>
           <Input
@@ -334,12 +316,8 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
             }}
           />
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
-            <Button disabled={busy || !name.trim()} onClick={submitCreateFile}>
-              Create
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
+            <Button disabled={busy || !name.trim()} onClick={submitCreateFile}>{t('Create')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -386,9 +364,7 @@ export function RepoDialogs({ onDone }: { onDone: () => Promise<void> }) {
             </label>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={closeDialog}>
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
             <Button ref={cherryPickRef} disabled={busy} onClick={submitCherryPick}>
               {pickOids.length > 1 ? `Cherry-pick ${pickOids.length} commits` : 'Cherry-pick'}
             </Button>

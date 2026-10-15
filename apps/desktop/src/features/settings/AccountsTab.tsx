@@ -35,8 +35,10 @@ import { ipc, openExternal, type AccountCheckStatus, type HostingAccount } from 
 import { timeAgo } from '@/shared/utils';
 import { confirmDialog } from '@/components/confirm';
 import { Field, SettingCard } from './SettingCard';
+import { useUiText } from '@/shared/i18n';
 
-type ProviderKind = 'github' | 'gitlab' | 'gitlab-self' | 'bitbucket' | 'other';
+type ProviderKind = 'gitlab' | 'gitlab-self' | 'bitbucket' | 'other';
+type AccountProvider = ProviderKind | 'github';
 
 interface ProviderPreset {
   label: string;
@@ -47,15 +49,16 @@ interface ProviderPreset {
   usernameHint: string;
 }
 
+const EXISTING_GITHUB: ProviderPreset = {
+  label: 'GitHub',
+  defaultHost: 'github.com',
+  hostEditable: false,
+  tokenUrl: () => null,
+  tokenHint: 'Token used for HTTPS git access',
+  usernameHint: 'username',
+};
+
 const PROVIDERS: Record<ProviderKind, ProviderPreset> = {
-  github: {
-    label: 'GitHub',
-    defaultHost: 'github.com',
-    hostEditable: false,
-    tokenUrl: () => 'https://github.com/settings/tokens/new?scopes=repo&description=GitMD',
-    tokenHint: 'Personal access token with the "repo" scope',
-    usernameHint: 'username (detected from the token)',
-  },
   gitlab: {
     label: 'GitLab.com',
     defaultHost: 'gitlab.com',
@@ -112,7 +115,7 @@ function daysUntil(date: Date): number {
 }
 
 async function validateToken(
-  provider: ProviderKind,
+  provider: AccountProvider,
   host: string,
   identity: string,
   token: string,
@@ -137,19 +140,6 @@ async function validateToken(
       }
       if (res.status !== 200) throw new Error(`Bitbucket rejected the token (${res.status})`);
       return { login: (JSON.parse(res.body) as { username: string }).username };
-    }
-    if (provider === 'github') {
-      const res = await ipc.httpRequest({
-        url: 'https://api.github.com/user',
-        method: 'GET',
-        headers: {
-          authorization: `Bearer ${token}`,
-          accept: 'application/vnd.github+json',
-          'user-agent': 'GitMD',
-        },
-      });
-      if (res.status !== 200) throw new Error(`GitHub rejected the token (${res.status})`);
-      return { login: (JSON.parse(res.body) as { login: string }).login };
     }
     if (provider === 'gitlab' || provider === 'gitlab-self') {
       for (const scheme of ['https', 'http']) {
@@ -184,25 +174,24 @@ function AccountStatus({
   account: HostingAccount;
   check: AccountCheckStatus | 'checking' | undefined;
 }) {
+  const t = useUiText();
   if (check === 'checking') return <Spinner className="size-3.5" />;
   if (check === 'unreachable') {
-    return <span className="text-xs text-muted">Could not check (offline?)</span>;
+    return <span className="text-xs text-muted">{t('Could not check (offline?)')}</span>;
   }
   if (check === 'no_token') {
     return (
       <span className="flex items-center gap-1 text-xs text-danger">
-        <AlertTriangle className="size-3.5" /> Token missing from the keychain
-      </span>
+        <AlertTriangle className="size-3.5" />{t('Token missing from the keychain')}</span>
     );
   }
   if (!account.verified || check === 'unauthorized') {
     if (!account.verifiedAt) {
-      return <span className="text-xs text-faint">Not verified</span>;
+      return <span className="text-xs text-faint">{t('Not verified')}</span>;
     }
     return (
       <span className="flex items-center gap-1 text-xs text-danger">
-        <AlertTriangle className="size-3.5" /> Token expired or revoked
-      </span>
+        <AlertTriangle className="size-3.5" />{t('Token expired or revoked')}</span>
     );
   }
   const expiry = parseExpiry(account.expiresAt);
@@ -211,8 +200,7 @@ function AccountStatus({
     if (days <= 0) {
       return (
         <span className="flex items-center gap-1 text-xs text-danger">
-          <AlertTriangle className="size-3.5" /> Token expired
-        </span>
+          <AlertTriangle className="size-3.5" />{t('Token expired')}</span>
       );
     }
     return (
@@ -230,10 +218,11 @@ function AccountStatus({
 }
 
 export function AccountsTab() {
+  const t = useUiText();
   const [accounts, setAccounts] = useState<HostingAccount[]>([]);
   const [checks, setChecks] = useState<Record<string, AccountCheckStatus | 'checking'>>({});
-  const [provider, setProvider] = useState<ProviderKind>('github');
-  const [host, setHost] = useState(PROVIDERS.github.defaultHost);
+  const [provider, setProvider] = useState<AccountProvider>('gitlab');
+  const [host, setHost] = useState(PROVIDERS.gitlab.defaultHost);
   const [username, setUsername] = useState('');
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -252,7 +241,9 @@ export function AccountsTab() {
   const runChecks = async (list: HostingAccount[]) => {
     const eligible = list.filter(
       (account) =>
-        account.provider !== 'other' && !(account.provider === 'bitbucket' && !account.email),
+        account.provider !== 'other' &&
+        account.provider !== 'github' &&
+        !(account.provider === 'bitbucket' && !account.email),
     );
     setChecks((c) => ({
       ...c,
@@ -292,7 +283,7 @@ export function AccountsTab() {
     };
   }, []);
 
-  const preset = PROVIDERS[provider];
+  const preset = provider === 'github' ? EXISTING_GITHUB : PROVIDERS[provider];
 
   const changeProvider = (kind: ProviderKind) => {
     setProvider(kind);
@@ -300,9 +291,10 @@ export function AccountsTab() {
   };
 
   const reconnect = (account: HostingAccount) => {
-    const kind = (
-      Object.keys(PROVIDERS) as ProviderKind[]
-    ).find((k) => k === account.provider) ?? 'other';
+    const kind: AccountProvider =
+      account.provider === 'github'
+        ? 'github'
+        : ((Object.keys(PROVIDERS) as ProviderKind[]).find((k) => k === account.provider) ?? 'other');
     setProvider(kind);
     setHost(account.host);
     setUsername(kind === 'bitbucket' ? (account.email ?? '') : account.username);
@@ -388,7 +380,7 @@ export function AccountsTab() {
       title: `Remove ${account.username} on ${account.host}?`,
       description:
         'The token is deleted from the system keychain. Pushes to this host fall back to your other accounts or the credential helper.',
-      confirmLabel: 'Remove account',
+      confirmLabel: t('Remove account'),
       destructive: true,
     });
     if (ok) await remove(account);
@@ -396,13 +388,12 @@ export function AccountsTab() {
 
   return (
     <SettingCard
-      title="Accounts"
+      title={t('Accounts')}
       description="Used automatically when a remote's host matches — push and pull over HTTPS with no SSH setup. Several accounts per host are fine; one is the default and profiles can pick another."
       action={
         !showForm ? (
           <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
-            <Plus className="size-3.5" /> Add account
-          </Button>
+            <Plus className="size-3.5" />{t('Add account')}</Button>
         ) : undefined
       }
     >
@@ -420,7 +411,7 @@ export function AccountsTab() {
             ))}
           </div>
         )}
-        {loadFailed && <p className="text-xs text-danger">Could not load accounts.</p>}
+        {loadFailed && <p className="text-xs text-danger">{t('Could not load accounts.')}</p>}
 
         {!loading &&
           accounts.map((account) => {
@@ -438,7 +429,7 @@ export function AccountsTab() {
                   <p className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <span className="truncate">{account.username}</span>
                     <span className="truncate font-normal text-muted">@ {account.host}</span>
-                    {multi && account.isDefault && <Badge tone="neutral">default</Badge>}
+                    {multi && account.isDefault && <Badge tone="neutral">{t('default')}</Badge>}
                   </p>
                   <p className="flex flex-wrap items-center gap-x-2 text-xs text-faint">
                     <AccountStatus account={account} check={checks[key]} />
@@ -448,8 +439,7 @@ export function AccountsTab() {
                 </div>
                 {(!account.verified || checks[key] === 'no_token' || checks[key] === 'unauthorized') && (
                   <Button variant="secondary" size="sm" onClick={() => reconnect(account)}>
-                    <RefreshCw className="size-3.5" /> Reconnect
-                  </Button>
+                    <RefreshCw className="size-3.5" />{t('Reconnect')}</Button>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -477,12 +467,10 @@ export function AccountsTab() {
                         reconnect(account);
                       }}
                     >
-                      <RefreshCw /> Reconnect with a new token…
-                    </DropdownMenuItem>
+                      <RefreshCw />{t('Reconnect with a new token…')}</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem destructive onClick={() => void confirmRemove(account)}>
-                      <Trash2 /> Remove account…
-                    </DropdownMenuItem>
+                      <Trash2 />{t('Remove account…')}</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -496,21 +484,25 @@ export function AccountsTab() {
               {accounts.length === 0 ? 'Connect your first account' : 'Add account'}
             </p>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Provider">
-                <Select value={provider} onValueChange={(v) => changeProvider(v as ProviderKind)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.keys(PROVIDERS) as ProviderKind[]).map((kind) => (
-                      <SelectItem key={kind} value={kind}>
-                        {PROVIDERS[kind].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Field label={t('Provider')}>
+                {provider === 'github' ? (
+                  <Input value={EXISTING_GITHUB.label} disabled />
+                ) : (
+                  <Select value={provider} onValueChange={(v) => changeProvider(v as ProviderKind)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(PROVIDERS) as ProviderKind[]).map((kind) => (
+                        <SelectItem key={kind} value={kind}>
+                          {t(PROVIDERS[kind].label)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </Field>
-              <Field label="Host">
+              <Field label={t('Host')}>
                 <Input
                   placeholder="gitlab.example.com"
                   value={host}
@@ -521,7 +513,13 @@ export function AccountsTab() {
               </Field>
               <Field
                 label={provider === 'bitbucket' ? 'Atlassian account email' : 'Username'}
-                hint={provider === 'bitbucket' ? 'Bitbucket username is detected' : provider === 'other' ? undefined : 'detected from the token'}
+                hint={
+                  provider === 'bitbucket'
+                    ? 'Bitbucket username is detected'
+                    : provider === 'gitlab' || provider === 'gitlab-self'
+                      ? 'detected from the token'
+                      : undefined
+                }
               >
                 <Input
                   placeholder={provider === 'bitbucket' ? 'you@company.com' : 'optional'}
@@ -530,7 +528,7 @@ export function AccountsTab() {
                 />
               </Field>
               <Field
-                label="Token"
+                label={t('Token')}
                 hint={
                   tokenPage ? (
                     <button
@@ -546,7 +544,7 @@ export function AccountsTab() {
                 <Input
                   ref={tokenInputRef}
                   type="password"
-                  placeholder="Paste the token"
+                  placeholder={t('Paste the token')}
                   value={token}
                   onChange={(e) => setToken(e.target.value)}
                   onKeyDown={(e) => {
@@ -560,9 +558,7 @@ export function AccountsTab() {
               <span className="min-w-0 truncate text-[11px] text-faint">{preset.tokenHint}</span>
               <span className="flex shrink-0 gap-2">
                 {accounts.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>
-                    Cancel
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setAdding(false)}>{t('Cancel')}</Button>
                 )}
                 <Button size="sm" onClick={() => void connect()} disabled={busy || !token.trim() || !host.trim()}>
                   {busy ? <Spinner className="text-primary-foreground" /> : null}

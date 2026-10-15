@@ -57,6 +57,7 @@ import { capCount, modKey } from '@/shared/utils';
 import { useUiText } from '@/shared/i18n';
 
 function RepoSwitcher() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const recents = useRepo((s) => s.recents);
   const open = useRepo((s) => s.open);
@@ -107,7 +108,7 @@ function RepoSwitcher() {
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60',
           )}
           disabled={!!busy}
-          aria-label="Switch repository"
+          aria-label={t('Switch repository')}
         >
           <Logo size={22} className="text-foreground" />
           <span className="leading-tight">
@@ -127,7 +128,7 @@ function RepoSwitcher() {
         align="start"
         className="flex max-h-[min(70vh,var(--radix-dropdown-menu-content-available-height))] min-w-72 flex-col"
       >
-        <DropdownMenuLabel>Repositories</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('Repositories')}</DropdownMenuLabel>
         <div className="min-h-0 flex-1 overflow-y-auto">
           {recents.map((recent) => {
             const isCurrent = recent.path === repo.path;
@@ -151,18 +152,15 @@ function RepoSwitcher() {
             })()
           }
         >
-          <FolderOpen /> Open repository…
-        </DropdownMenuItem>
+          <FolderOpen />{t('Open repository…')}</DropdownMenuItem>
         <DropdownMenuItem onClick={() => openDialog('clone')}>
-          <GitBranchPlus /> Clone repository…
-        </DropdownMenuItem>
+          <GitBranchPlus />{t('Clone repository…')}</DropdownMenuItem>
         {profiles.length > 0 && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <UserRound /> Profile
-              </DropdownMenuSubTrigger>
+                <UserRound />{t('Profile')}</DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {profiles.map((profile) => {
                   const active = assignedProfile?.id === profile.id;
@@ -194,6 +192,7 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 function StateActions({ onRefresh }: { onRefresh: () => Promise<void> }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   if (!repo || repo.state === 'clean') return null;
   const path = repo.path;
@@ -215,16 +214,16 @@ function StateActions({ onRefresh }: { onRefresh: () => Promise<void> }) {
   const abortRebase = () =>
     void (async () => {
       const ok = await confirmDialog({
-        title: 'Abort rebase?',
+        title: t('Abort rebase?'),
         description:
-          'This rewinds the branch to where it was before the rebase started. Commits made during the rebase are discarded.',
-        confirmLabel: 'Abort rebase',
+          t('This rewinds the branch to where it was before the rebase started. Commits made during the rebase are discarded.'),
+        confirmLabel: t('Abort rebase'),
         destructive: true,
       });
       if (!ok) return;
       try {
         await ipc.rebaseAbort(path);
-        toast.success('Rebase aborted');
+        toast.success(t('Rebase aborted'));
       } catch (error) {
         toast.error(`Abort failed: ${(error as { message?: string }).message ?? error}`);
       }
@@ -239,12 +238,12 @@ function StateActions({ onRefresh }: { onRefresh: () => Promise<void> }) {
         title: `Clear ${state} state?`,
         description:
           `Git still marks this repository as mid-${state}. Clearing removes that marker and keeps every file and commit exactly as it is now. Use this when the ${state} is already finished.`,
-        confirmLabel: 'Clear state',
+        confirmLabel: t('Clear state'),
       });
       if (!ok) return;
       try {
         await ipc.stateCleanup(path);
-        toast.success('State cleared');
+        toast.success(t('State cleared'));
       } catch (error) {
         toast.error(`Clear failed: ${(error as { message?: string }).message ?? error}`);
       }
@@ -253,7 +252,7 @@ function StateActions({ onRefresh }: { onRefresh: () => Promise<void> }) {
 
   return (
     <DropdownMenu>
-      <Hint label={STATE_LABELS[state] ?? state}>
+      <Hint label={t(STATE_LABELS[state] ?? state)}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -270,32 +269,29 @@ function StateActions({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </DropdownMenuTrigger>
       </Hint>
       <DropdownMenuContent align="start" className="min-w-56">
-        <DropdownMenuLabel>{STATE_LABELS[state] ?? state}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t(STATE_LABELS[state] ?? state)}</DropdownMenuLabel>
         {state === 'rebase' && (
           <>
             <DropdownMenuItem onClick={continueRebase}>
-              <Redo2 /> Continue rebase
-            </DropdownMenuItem>
+              <Redo2 />{t('Continue rebase')}</DropdownMenuItem>
             <DropdownMenuItem destructive onClick={abortRebase}>
-              <Undo2 /> Abort rebase
-            </DropdownMenuItem>
+              <Undo2 />{t('Abort rebase')}</DropdownMenuItem>
           </>
         )}
         {state === 'merge' && (
           <DropdownMenuItem destructive onClick={abortMerge}>
-            <Undo2 /> Abort merge
-          </DropdownMenuItem>
+            <Undo2 />{t('Abort merge')}</DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={clearState}>
-          <Check /> Clear state, keep everything as is
-        </DropdownMenuItem>
+          <Check />{t('Clear state, keep everything as is')}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
 function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const undoStack = useUndo((s) => s.undoStack);
   const redoStack = useUndo((s) => s.redoStack);
@@ -328,7 +324,7 @@ function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Undo"
+          aria-label={t('Undo')}
           disabled={!nextUndo}
           onClick={() => run('undo')}
         >
@@ -351,7 +347,7 @@ function UndoRedoButtons({ onRefresh }: { onRefresh: () => Promise<void> }) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Redo"
+          aria-label={t('Redo')}
           disabled={!nextRedo}
           onClick={() => run('redo')}
         >
@@ -477,17 +473,13 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </Hint>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Pull options" disabled={!!busy}>
+            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label={t('Pull options')} disabled={!!busy}>
               <ChevronDown className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => void run('Pull (merge)', () => ipc.pull(repo.path, remote, 'merge'))}>
-              Pull with merge
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void run('Pull (rebase)', () => ipc.pull(repo.path, remote, 'rebase'))}>
-              Pull with rebase
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void run('Pull (merge)', () => ipc.pull(repo.path, remote, 'merge'))}>{t('Pull with merge')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => void run('Pull (rebase)', () => ipc.pull(repo.path, remote, 'rebase'))}>{t('Pull with rebase')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -507,7 +499,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
         </Hint>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label="Push options" disabled={!!busy}>
+            <Button variant="ghost" size="icon-sm" className="rounded-l-none" aria-label={t('Push options')} disabled={!!busy}>
               <ChevronDown className="size-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -543,11 +535,11 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           <Archive />
         </Button>
       </Hint>
-      <Hint label={latestStash ? `Pop latest stash: ${latestStash.message}` : 'Pop latest stash (nothing stashed)'}>
+      <Hint label={latestStash ? `${t('Pop latest stash')}: ${latestStash.message}` : t('Pop latest stash (nothing stashed)')}>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Pop latest stash"
+          aria-label={t('Pop latest stash')}
           disabled={!latestStash || !!busy}
           onClick={() => void run('Pop stash', () => ipc.stashPop(repo.path, 0))}
         >
@@ -558,7 +550,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
       <Separator orientation="vertical" className="mx-2 h-6" />
 
       <div className="flex items-center">
-        <Hint label={editor ? `Open in ${editor.label}` : 'Open in editor (none detected, see Settings → Git)'}>
+        <Hint label={editor ? `${t('Open')} ${editor.label}` : t('Open in editor (none detected, see Settings → Git)')}>
           <Button
             variant="ghost"
             size="icon"
@@ -576,7 +568,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
               variant="ghost"
               size="icon-sm"
               className="rounded-l-none"
-              aria-label="Editor options"
+              aria-label={t('Editor options')}
               disabled={editors.length === 0}
             >
               <ChevronDown className="size-3.5" />
@@ -611,7 +603,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             </span>
           }
         >
-          <Button variant="ghost" size="icon" aria-label="Command palette" onClick={() => setPaletteOpen(true)}>
+          <Button variant="ghost" size="icon" aria-label={t('Command palette')} onClick={() => setPaletteOpen(true)}>
             <Command />
           </Button>
         </Hint>
@@ -623,7 +615,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
             </span>
           }
         >
-          <Button variant="ghost" size="icon" aria-label="Toggle terminal" onClick={toggleTerminal}>
+          <Button variant="ghost" size="icon" aria-label={t('Toggle terminal')} onClick={toggleTerminal}>
             <SquareTerminal />
           </Button>
         </Hint>
@@ -631,7 +623,7 @@ export function Toolbar({ onRefresh }: { onRefresh: () => Promise<void> }) {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Refresh"
+            aria-label={t('Refresh')}
             onClick={() => {
               setSpinning(true);
               void onRefresh().finally(() => setSpinning(false));

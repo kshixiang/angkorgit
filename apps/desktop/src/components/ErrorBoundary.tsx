@@ -1,6 +1,8 @@
 import { Component, type ReactNode } from 'react';
 import { AlertTriangle, ClipboardCopy, RotateCcw } from 'lucide-react';
 import { Button, Logo } from '@gitmd/design-system';
+import { translate } from '@/shared/i18n';
+import { useSettings } from '@/features/settings/store';
 
 interface State {
   error: Error | null;
@@ -26,6 +28,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   render() {
     const { error } = this.state;
+    const t = (key: string) => translate(key, useSettings.getState().uiLanguage);
     if (!error) return this.props.children;
 
     return (
@@ -33,22 +36,20 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <Logo size={48} className="text-foreground" />
         <div className="flex items-center gap-2 text-danger">
           <AlertTriangle className="size-5" />
-          <h1 className="text-lg font-semibold text-foreground">Something went wrong</h1>
+          <h1 className="text-lg font-semibold text-foreground">{t('Something went wrong')}</h1>
         </div>
         <p className="max-w-md text-sm text-muted">
-          GitMD hit an unexpected error. Your repositories are safe — this only affects the
-          interface. Restarting usually fixes it; if it keeps happening, please report the details
-          below.
+          {t('GitMD hit an unexpected error. Your repositories are safe — this only affects the interface. Restarting usually fixes it; if it keeps happening, please report the details below.')}
         </p>
         <pre className="max-h-40 max-w-lg overflow-auto rounded-lg border border-border bg-surface p-3 text-left font-mono text-xs text-danger">
           {error.name}: {error.message}
         </pre>
         <div className="flex gap-2">
           <Button onClick={() => window.location.reload()}>
-            <RotateCcw /> Restart interface
+            <RotateCcw />{t('Restart interface')}
           </Button>
           <Button variant="secondary" onClick={this.copyDetails}>
-            <ClipboardCopy /> Copy error details
+            <ClipboardCopy />{t('Copy error details')}
           </Button>
         </div>
       </div>

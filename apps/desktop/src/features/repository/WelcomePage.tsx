@@ -93,7 +93,7 @@ export function WelcomePage() {
   const openRepository = async (path: string) => {
     if (useRepo.getState().opening !== null) return;
     if (missing.has(path)) {
-      toast.error('This folder no longer exists. Remove it from recents or open it from its new location.');
+      toast.error(t('This folder no longer exists. Remove it from recents or open it from its new location.'));
       return;
     }
     try {
@@ -209,7 +209,7 @@ export function WelcomePage() {
             {recents.length === 0 ? (
               <SettingEmpty
                 icon={<FolderGit2 className="size-4" />}
-                title="No repositories yet"
+                title={t('No repositories yet')}
                 description="Open a folder that already has a .git directory, or clone one from a URL. Everything you open shows up here."
                 action={
                   <span className="flex gap-2">
@@ -331,7 +331,7 @@ export function WelcomePage() {
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(menu.repo.path);
-                toast.success('Path copied');
+                toast.success(t('Path copied'));
               }}
             >
               <Copy /> {t('Copy path')}

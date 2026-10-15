@@ -337,7 +337,7 @@ export function CommitGraph() {
           ? ` ${local.ahead} commit${local.ahead === 1 ? '' : 's'} only on the local branch will be lost.`
           : '';
       void confirmDialog({
-        title: 'Reset branch to its remote?',
+        title: t('Reset branch to its remote?'),
         description: local.isHead
           ? `Hard reset to ${ref.shorthand} (${commit.shortOid}).${losing} Uncommitted changes are discarded and cannot be recovered.`
           : `This branch is not checked out. It is checked out first, then hard reset to ${ref.shorthand} (${commit.shortOid}).${losing} Uncommitted changes are discarded and cannot be recovered.`,
@@ -407,12 +407,12 @@ export function CommitGraph() {
               className="flex items-center gap-0.5 rounded-md border border-border-subtle bg-surface-raised/60 px-1"
               aria-label={`Match ${find.active + 1} of ${find.matches.length}${find.truncated ? ' or more' : ''}`}
             >
-              <Hint label="Previous match (Shift+Enter)">
+              <Hint label={t('Previous match (Shift+Enter)')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   className="h-5 w-5"
-                  aria-label="Previous match"
+                  aria-label={t('Previous match')}
                   onClick={() => void stepFind(path, -1)}
                 >
                   <ChevronUp className="size-3.5" />
@@ -422,12 +422,12 @@ export function CommitGraph() {
                 {find.active + 1} of {find.matches.length}
                 {find.truncated ? '+' : ''}
               </span>
-              <Hint label="Next match (Enter)">
+              <Hint label={t('Next match (Enter)')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   className="h-5 w-5"
-                  aria-label="Next match"
+                  aria-label={t('Next match')}
                   onClick={() => void stepFind(path, 1)}
                 >
                   <ChevronDown className="size-3.5" />
@@ -449,7 +449,7 @@ export function CommitGraph() {
           <span className="flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs text-primary">
             <Filter className="size-3" />
             {filters.branch}
-            <button aria-label="Clear branch filter" onClick={() => setFilters(path, { branch: '' })}>
+            <button aria-label={t('Clear branch filter')} onClick={() => setFilters(path, { branch: '' })}>
               <X className="size-3" />
             </button>
           </span>
@@ -461,9 +461,9 @@ export function CommitGraph() {
             {hasMore ? '+' : ''} commit{commits.length === 1 && !hasMore ? '' : 's'}
           </span>
           <DropdownMenu>
-            <Hint label="Graph display">
+            <Hint label={t('Graph display')}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label="Graph display options">
+                <Button variant="ghost" size="icon-sm" aria-label={t('Graph display options')}>
                   <Settings2 className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
@@ -512,36 +512,30 @@ export function CommitGraph() {
             {t('Branch / tag')}
           </span>
         )}
-        <span className="shrink-0 truncate" style={{ width: gutterWidth, marginRight: GUTTER_GAP }}>
-          Graph
-        </span>
+        <span className="shrink-0 truncate" style={{ width: gutterWidth, marginRight: GUTTER_GAP }}>{t('Graph')}</span>
         {graphColumns.message && (
           <span className="min-w-0 flex-1 truncate">
             {t('Message')}
           </span>
         )}
         {graphColumns.author && (
-          <span className="shrink-0 truncate" style={{ width: AUTHOR_COL_WIDTH }}>
-            Author
-          </span>
+          <span className="shrink-0 truncate" style={{ width: AUTHOR_COL_WIDTH }}>{t('Author')}</span>
         )}
         {graphColumns.hash && (
-          <span className={cn('w-14 shrink-0', graphColumns.message ? 'text-right' : 'text-left')}>Hash</span>
+          <span className={cn('w-14 shrink-0', graphColumns.message ? 'text-right' : 'text-left')}>{t('Hash')}</span>
         )}
         {graphColumns.date && (
-          <span className={cn('w-[4.5rem] shrink-0', graphColumns.message ? 'text-right' : 'text-left')}>Date</span>
+          <span className={cn('w-[4.5rem] shrink-0', graphColumns.message ? 'text-right' : 'text-left')}>{t('Date')}</span>
         )}
         {!graphColumns.message && <span className="min-w-0 flex-1" />}
       </div>
-      <div ref={scrollRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none" role="table" aria-label="Commits">
+      <div ref={scrollRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto outline-none" role="table" aria-label={t('Commits')}>
         <WipRow gutterWidth={gutterWidth} showRefs={graphColumns.refs} />
         {rows.length === 0 && !loading ? (
           error ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-danger">
               <span className="[overflow-wrap:anywhere]">Could not load the history: {error}</span>
-              <Button variant="ghost" size="sm" onClick={() => void reload(path)}>
-                Retry
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => void reload(path)}>{t('Retry')}</Button>
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-faint">
@@ -551,9 +545,7 @@ export function CommitGraph() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setFilters(path, { branch: '' })}
-                >
-                  Clear filters
-                </Button>
+                >{t('Clear filters')}</Button>
               )}
             </div>
           )
@@ -606,9 +598,7 @@ export function CommitGraph() {
         {error && rows.length > 0 && !loading && (
           <div className="flex items-center justify-center gap-2 px-3 py-2 text-xs text-danger">
             <span className="[overflow-wrap:anywhere]">Could not load more commits: {error}</span>
-            <button className="shrink-0 underline underline-offset-2" onClick={() => void reload(path)}>
-              Retry
-            </button>
+            <button className="shrink-0 underline underline-offset-2" onClick={() => void reload(path)}>{t('Retry')}</button>
           </div>
         )}
       </div>
@@ -627,30 +617,27 @@ export function CommitGraph() {
                 <DropdownMenuItem
                   onClick={() => void act('Apply stash', () => ipc.stashApply(path, stashIndexOf(refMenu.ref)))}
                 >
-                  <Archive /> Apply stash (keep it)
-                </DropdownMenuItem>
+                  <Archive />{t('Apply stash (keep it)')}</DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => void act('Pop stash', () => ipc.stashPop(path, stashIndexOf(refMenu.ref)))}
                 >
-                  <ArchiveRestore /> Pop stash
-                </DropdownMenuItem>
+                  <ArchiveRestore />{t('Pop stash')}</DropdownMenuItem>
                 <DropdownMenuItem
                   destructive
                   onClick={() => {
                     const ref = refMenu.ref;
                     void confirmDialog({
-                      title: 'Drop this stash?',
-                      description: 'The stashed changes are deleted and cannot be recovered.',
+                      title: t('Drop this stash?'),
+                      description: t('The stashed changes are deleted and cannot be recovered.'),
                       path: ref.shorthand,
-                      confirmLabel: 'Drop stash',
+                      confirmLabel: t('Drop stash'),
                       destructive: true,
                     }).then((ok) => {
                       if (ok) void act('Drop stash', () => ipc.stashDrop(path, stashIndexOf(ref)));
                     });
                   }}
                 >
-                  <Trash2 /> Drop stash…
-                </DropdownMenuItem>
+                  <Trash2 />{t('Drop stash…')}</DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
             )}
@@ -667,8 +654,7 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <GitMerge /> Merge into current branch
-                </DropdownMenuItem>
+                  <GitMerge />{t('Merge into current branch')}</DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={refMenuFf !== true}
                   onClick={() =>
@@ -678,8 +664,7 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <FastForward /> Fast-forward current branch to this
-                </DropdownMenuItem>
+                  <FastForward />{t('Fast-forward current branch to this')}</DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
                     void act(`Rebase onto ${refMenu.ref.shorthand}`, () => ipc.rebase(path, refMenu.ref.shorthand), {
@@ -687,8 +672,7 @@ export function CommitGraph() {
                     })
                   }
                 >
-                  <ListRestart /> Rebase current branch onto this
-                </DropdownMenuItem>
+                  <ListRestart />{t('Rebase current branch onto this')}</DropdownMenuItem>
                 {refMenuResetTarget && (
                   <DropdownMenuItem destructive onClick={() => resetToRemote(refMenu.ref, refMenu.commit)}>
                     <RotateCcw /> Reset {refMenuResetTarget} to this…
@@ -703,11 +687,9 @@ export function CommitGraph() {
                         )
                       }
                     >
-                      <ArrowDownToLine /> Pull
-                    </DropdownMenuItem>
+                      <ArrowDownToLine />{t('Pull')}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => void pushBranch(refMenu.ref.shorthand)}>
-                      <ArrowUpFromLine /> Push
-                    </DropdownMenuItem>
+                      <ArrowUpFromLine />{t('Push')}</DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
@@ -716,11 +698,10 @@ export function CommitGraph() {
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(refMenu.ref.shorthand);
-                toast.success('Name copied');
+                toast.success(t('Name copied'));
               }}
             >
-              <Copy /> Copy name
-            </DropdownMenuItem>
+              <Copy />{t('Copy name')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -734,18 +715,13 @@ export function CommitGraph() {
             <DropdownMenuLabel className="font-mono">{menu.commit.shortOid}</DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => void act(`Checkout ${menu.commit.shortOid}`, () => ipc.checkoutDetached(path, menu.commit.oid), { kind: 'checkout' })}
-            >
-              Checkout commit (detached)
-            </DropdownMenuItem>
+            >{t('Checkout commit (detached)')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('createBranch', menu.commit.oid)}>
-              <GitBranchPlus /> Create branch here…
-            </DropdownMenuItem>
+              <GitBranchPlus />{t('Create branch here…')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('createTag', menu.commit.oid)}>
-              <TagIcon /> Create tag here…
-            </DropdownMenuItem>
+              <TagIcon />{t('Create tag here…')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => openDialog('createWorktree', { oid: menu.commit.oid })}>
-              <FolderTree /> New worktree from here…
-            </DropdownMenuItem>
+              <FolderTree />{t('New worktree from here…')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             {menu.commit.refs.some((ref) => ref.kind === 'localBranch') && (
               <>
@@ -769,8 +745,7 @@ export function CommitGraph() {
               </DropdownMenuItem>
             ) : (
               <DropdownMenuItem onClick={() => openDialog('cherryPick', menu.commit.oid)}>
-                <ListRestart /> Cherry-pick onto current branch…
-              </DropdownMenuItem>
+                <ListRestart />{t('Cherry-pick onto current branch…')}</DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={() =>
@@ -779,8 +754,7 @@ export function CommitGraph() {
                 })
               }
             >
-              <Undo2 /> Revert commit
-            </DropdownMenuItem>
+              <Undo2 />{t('Revert commit')}</DropdownMenuItem>
             {multiSelection?.contiguous && (
               <DropdownMenuItem
                 onClick={() =>
@@ -808,16 +782,13 @@ export function CommitGraph() {
             )}
             {!menu.commit.isHead && (
               <DropdownMenuItem onClick={() => openDialog('interactiveRebase', menu.commit.oid)}>
-                <ListOrdered /> Interactively rebase onto here…
-              </DropdownMenuItem>
+                <ListOrdered />{t('Interactively rebase onto here…')}</DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void act(`Soft reset to ${menu.commit.shortOid}`, () => ipc.reset(path, menu.commit.oid, 'soft'), { kind: 'reset' })}>
-              <RotateCcw /> Reset here (soft)
-            </DropdownMenuItem>
+              <RotateCcw />{t('Reset here (soft)')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => void act(`Mixed reset to ${menu.commit.shortOid}`, () => ipc.reset(path, menu.commit.oid, 'mixed'), { kind: 'reset' })}>
-              <RotateCcw /> Reset here (mixed)
-            </DropdownMenuItem>
+              <RotateCcw />{t('Reset here (mixed)')}</DropdownMenuItem>
             <DropdownMenuItem
               destructive
               onClick={() => {
@@ -825,7 +796,7 @@ export function CommitGraph() {
                   title: `Hard reset to ${menu.commit.shortOid}?`,
                   description:
                     'HEAD, the index and your working tree will all move to this commit. Uncommitted work is discarded and cannot be recovered.',
-                  confirmLabel: 'Hard reset',
+                  confirmLabel: t('Hard reset'),
                   destructive: true,
                 }).then((ok) => {
                   if (ok)
@@ -835,8 +806,7 @@ export function CommitGraph() {
                 });
               }}
             >
-              <RotateCcw /> Reset here (hard)
-            </DropdownMenuItem>
+              <RotateCcw />{t('Reset here (hard)')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

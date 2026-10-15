@@ -592,12 +592,12 @@ export function Sidebar() {
         <span className="flex min-w-0 flex-1 flex-col leading-tight">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="min-w-0 truncate">{wt.name}</span>
-            {wt.isMain && <Home className="size-3 shrink-0 text-faint" aria-label="Main worktree" />}
-            {wt.isLocked && <Lock className="size-3 shrink-0 text-faint" aria-label="Locked" />}
+            {wt.isMain && <Home className="size-3 shrink-0 text-faint" aria-label={t('Main worktree')} />}
+            {wt.isLocked && <Lock className="size-3 shrink-0 text-faint" aria-label={t('Locked')} />}
             {wt.isMissing ? (
-              <AlertTriangle className="size-3 shrink-0 text-danger" aria-label="Folder missing" />
+              <AlertTriangle className="size-3 shrink-0 text-danger" aria-label={t('Folder missing')} />
             ) : dirty ? (
-              <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-label="Uncommitted changes" />
+              <span className="size-1.5 shrink-0 rounded-full bg-primary" aria-label={t('Uncommitted changes')} />
             ) : null}
           </span>
           <span className="truncate font-mono text-[10px] text-faint">{subtitle}</span>
@@ -876,12 +876,12 @@ export function Sidebar() {
             className="h-7 border-transparent bg-surface-raised pl-8 text-xs"
           />
         </div>
-        <Hint label="Collapse all sections">
+        <Hint label={t('Collapse all sections')}>
           <Button
             variant="ghost"
             size="icon-sm"
             className="shrink-0 text-faint hover:text-foreground"
-            aria-label="Collapse all sections"
+            aria-label={t('Collapse all sections')}
             disabled={!anySectionOpen && expandedFolders.size === 0}
             onClick={collapseAll}
           >
@@ -897,8 +897,8 @@ export function Sidebar() {
           title={t('Branches')}
           count={locals.length}
           action={
-            <Hint label="New branch">
-              <Button variant="ghost" size="icon-sm" aria-label="New branch" onClick={() => openDialog('createBranch')}>
+            <Hint label={t('New branch')}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('New branch')} onClick={() => openDialog('createBranch')}>
                 <Plus className="size-3.5" />
               </Button>
             </Hint>
@@ -917,7 +917,7 @@ export function Sidebar() {
           {q && locals.length > FLAT_FILTER_CAP && (
             <div className="px-2 py-1 pl-7 text-xs text-faint">+{locals.length - FLAT_FILTER_CAP} more…</div>
           )}
-          {noFilterMatches && <div className="px-2 py-1 pl-7 text-xs text-faint">No refs match the filter.</div>}
+          {noFilterMatches && <div className="px-2 py-1 pl-7 text-xs text-faint">{t('No refs match the filter.')}</div>}
         </Section>
         {spacerAfter('branches')}
 
@@ -929,19 +929,19 @@ export function Sidebar() {
           action={
             <span className="flex items-center">
               {worktrees.some((w) => w.isMissing) && (
-                <Hint label="Forget worktrees whose folder is gone">
+                <Hint label={t('Forget worktrees whose folder is gone')}>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Prune missing worktrees"
+                    aria-label={t('Prune missing worktrees')}
                     onClick={() => void act('Prune worktrees', () => ipc.worktreePrune(path))}
                   >
                     <Eraser className="size-3.5" />
                   </Button>
                 </Hint>
               )}
-              <Hint label="New worktree">
-                <Button variant="ghost" size="icon-sm" aria-label="New worktree" onClick={() => openDialog('createWorktree')}>
+              <Hint label={t('New worktree')}>
+                <Button variant="ghost" size="icon-sm" aria-label={t('New worktree')} onClick={() => openDialog('createWorktree')}>
                   <Plus className="size-3.5" />
                 </Button>
               </Hint>
@@ -958,8 +958,8 @@ export function Sidebar() {
           {!repoRefreshing && worktrees.length <= 1 && (
             <SidebarEmpty
               icon={<FolderTree />}
-              title="Two branches, two folders"
-              description="Fix a bug or run an agent beside your work. No stashing."
+              title={t('Two branches, two folders')}
+              description={t('Fix a bug or run an agent beside your work. No stashing.')}
               action={
                 <Button
                   variant="secondary"
@@ -967,14 +967,13 @@ export function Sidebar() {
                   className="w-full justify-center"
                   onClick={() => openDialog('createWorktree')}
                 >
-                  <Plus className="size-3.5" /> New worktree
-                </Button>
+                  <Plus className="size-3.5" />{t('New worktree')}</Button>
               }
             />
           )}
           {worktrees.length > 1 && filteredWorktrees.map(renderWorktree)}
           {worktrees.length > 1 && q && filteredWorktrees.length === 0 && (
-            <div className="px-2 py-1 pl-7 text-xs text-faint">No worktrees match the filter.</div>
+            <div className="px-2 py-1 pl-7 text-xs text-faint">{t('No worktrees match the filter.')}</div>
           )}
         </Section>
         {spacerAfter('worktrees')}
@@ -988,21 +987,21 @@ export function Sidebar() {
             count={filteredPrs.length}
             action={
               <span className="flex items-center">
-                <Hint label="Refresh pull requests">
+                <Hint label={t('Refresh pull requests')}>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Refresh pull requests"
+                    aria-label={t('Refresh pull requests')}
                     onClick={() => void useForge.getState().load(true)}
                   >
                     <RefreshCw className={cn('size-3.5', forgeLoading && 'animate-spin')} />
                   </Button>
                 </Hint>
-                <Hint label="Create pull request">
+                <Hint label={t('Create pull request')}>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Create pull request"
+                    aria-label={t('Create pull request')}
                     onClick={() => openDialog('createPullRequest')}
                   >
                     <Plus className="size-3.5" />
@@ -1027,7 +1026,7 @@ export function Sidebar() {
                 onClick={() => void useForge.getState().load(true)}
               >
                 {forgeError}
-                <span className="mt-0.5 block text-primary">Click to retry</span>
+                <span className="mt-0.5 block text-primary">{t('Click to retry')}</span>
               </button>
             )}
             {forgeAccount && !forgeError && filteredPrs.length === 0 && !forgeLoading && (
@@ -1037,9 +1036,7 @@ export function Sidebar() {
             )}
             {forgeLoading && filteredPrs.length === 0 && (
               <div className="flex items-center gap-2 px-2 py-1 pl-7 text-xs text-faint">
-                <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />
-                Loading…
-              </div>
+                <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />{t('Loading…')}</div>
             )}
             {filteredPrs.map((pr) => (
               <div
@@ -1055,7 +1052,7 @@ export function Sidebar() {
                 <span className="min-w-0 flex-1 truncate">
                   <span className="text-faint">#{pr.number}</span> {pr.title}
                 </span>
-                {pr.isDraft && <Badge>Draft</Badge>}
+                {pr.isDraft && <Badge>{t('Draft')}</Badge>}
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -1082,8 +1079,8 @@ export function Sidebar() {
           title={t('Remotes')}
           count={remoteBranches.length}
           action={
-            <Hint label="Add remote">
-              <Button variant="ghost" size="icon-sm" aria-label="Add remote" onClick={openAddRemote}>
+            <Hint label={t('Add remote')}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('Add remote')} onClick={openAddRemote}>
                 <Plus className="size-3.5" />
               </Button>
             </Hint>
@@ -1092,12 +1089,11 @@ export function Sidebar() {
           {remotes.length === 0 && !hasRemoteBranches && !repoRefreshing && (
             <SidebarEmpty
               icon={<Cloud />}
-              title="No remotes"
-              description="This repository lives only on this machine. Add a remote to push, pull and open pull requests."
+              title={t('No remotes')}
+              description={t('This repository lives only on this machine. Add a remote to push, pull and open pull requests.')}
               action={
                 <Button variant="secondary" size="sm" className="w-full justify-center" onClick={openAddRemote}>
-                  <Plus className="size-3.5" /> Add remote
-                </Button>
+                  <Plus className="size-3.5" />{t('Add remote')}</Button>
               }
             />
           )}
@@ -1120,8 +1116,8 @@ export function Sidebar() {
           count={filteredTags.length}
           {...section('tags')}
           action={
-            <Hint label="New tag">
-              <Button variant="ghost" size="icon-sm" aria-label="New tag" onClick={() => openDialog('createTag')}>
+            <Hint label={t('New tag')}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('New tag')} onClick={() => openDialog('createTag')}>
                 <Plus className="size-3.5" />
               </Button>
             </Hint>
@@ -1130,12 +1126,11 @@ export function Sidebar() {
           {tags.length === 0 && !repoRefreshing && (
             <SidebarEmpty
               icon={<TagIcon />}
-              title="No tags yet"
-              description="Mark releases and milestones so they stand out in the graph."
+              title={t('No tags yet')}
+              description={t('Mark releases and milestones so they stand out in the graph.')}
               action={
                 <Button variant="secondary" size="sm" className="w-full justify-center" onClick={() => openDialog('createTag')}>
-                  <Plus className="size-3.5" /> New tag
-                </Button>
+                  <Plus className="size-3.5" />{t('New tag')}</Button>
               }
             />
           )}
@@ -1179,8 +1174,8 @@ export function Sidebar() {
           count={stashes.length}
           {...section('stashes')}
           action={
-            <Hint label="New stash">
-              <Button variant="ghost" size="icon-sm" aria-label="New stash" onClick={() => openDialog('createStash')}>
+            <Hint label={t('New stash')}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('New stash')} onClick={() => openDialog('createStash')}>
                 <Plus className="size-3.5" />
               </Button>
             </Hint>
@@ -1189,12 +1184,11 @@ export function Sidebar() {
           {stashes.length === 0 && !repoRefreshing && (
             <SidebarEmpty
               icon={<Archive />}
-              title="Nothing stashed"
-              description="Set changes aside without committing, then pop them back later."
+              title={t('Nothing stashed')}
+              description={t('Set changes aside without committing, then pop them back later.')}
               action={
                 <Button variant="secondary" size="sm" className="w-full justify-center" onClick={() => openDialog('createStash')}>
-                  <Plus className="size-3.5" /> Stash changes
-                </Button>
+                  <Plus className="size-3.5" />{t('Stash changes')}</Button>
               }
             />
           )}
@@ -1215,7 +1209,7 @@ export function Sidebar() {
                 variant="ghost"
                 size="icon-sm"
                 className="shrink-0 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-                aria-label="Stash actions"
+                aria-label={t('Stash actions')}
                 onClick={(e) => {
                   e.stopPropagation();
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1231,7 +1225,7 @@ export function Sidebar() {
 
         {submodules.length > 0 && (
           <>
-          <Section {...section('submodules')} icon={<Boxes className="size-3.5" />} title="Submodules" count={submodules.length}>
+          <Section {...section('submodules')} icon={<Boxes className="size-3.5" />} title={t('Submodules')} count={submodules.length}>
             {submodules.map((sub) => (
               <div
                 key={sub.name}
@@ -1273,25 +1267,22 @@ export function Sidebar() {
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuLabel className="max-w-64 truncate font-mono">{subMenu.sub.path}</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => openSubmodule(subMenu.sub)}>
-              <FolderGit2 /> Open as repository
-            </DropdownMenuItem>
+              <FolderGit2 />{t('Open as repository')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 const sub = subMenu.sub;
                 void act(`Update ${sub.name}`, () => ipc.submoduleUpdate(path, sub.name));
               }}
             >
-              <ListRestart /> Update (checkout recorded commit)
-            </DropdownMenuItem>
+              <ListRestart />{t('Update (checkout recorded commit)')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(`${path}/${subMenu.sub.path}`);
-                toast.success('Path copied');
+                toast.success(t('Path copied'));
               }}
             >
-              <Copy /> Copy path
-            </DropdownMenuItem>
+              <Copy />{t('Copy path')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1306,19 +1297,16 @@ export function Sidebar() {
               #{prMenu.pr.number} {prMenu.pr.title}
             </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => checkoutPullRequest(prMenu.pr)}>
-              <Check /> Checkout
-            </DropdownMenuItem>
+              <Check />{t('Checkout')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => void openExternal(prMenu.pr.url)}>
-              <Cloud /> Open in browser
-            </DropdownMenuItem>
+              <Cloud />{t('Open in browser')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(prMenu.pr.url);
-                toast.success('URL copied');
+                toast.success(t('URL copied'));
               }}
             >
-              <Copy /> Copy URL
-            </DropdownMenuItem>
+              <Copy />{t('Copy URL')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1336,16 +1324,14 @@ export function Sidebar() {
                 void act(`Checkout ${tag.name}`, () => ipc.checkoutDetached(path, tag.name), { kind: 'checkout' });
               }}
             >
-              <Check /> Checkout (detached)
-            </DropdownMenuItem>
+              <Check />{t('Checkout (detached)')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 const tag = tagMenu.tag;
                 void act(`Push tag ${tag.name}`, () => ipc.pushTag(path, remotes[0]?.name ?? 'origin', tag.name));
               }}
             >
-              <Cloud /> Push to remote
-            </DropdownMenuItem>
+              <Cloud />{t('Push to remote')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
@@ -1354,8 +1340,7 @@ export function Sidebar() {
                 void act(`Delete tag ${tag.name}`, () => ipc.tagDelete(path, tag.name));
               }}
             >
-              <Trash2 /> Delete
-            </DropdownMenuItem>
+              <Trash2 />{t('Delete')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1373,16 +1358,14 @@ export function Sidebar() {
                 void act('Apply stash', () => ipc.stashApply(path, stash.index));
               }}
             >
-              <Play /> Apply
-            </DropdownMenuItem>
+              <Play />{t('Apply')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 const stash = stashMenu.stash;
                 void act('Pop stash', () => ipc.stashPop(path, stash.index));
               }}
             >
-              <Undo2 /> Pop
-            </DropdownMenuItem>
+              <Undo2 />{t('Pop')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
@@ -1391,8 +1374,7 @@ export function Sidebar() {
                 void act('Drop stash', () => ipc.stashDrop(path, stash.index));
               }}
             >
-              <Trash2 /> Delete
-            </DropdownMenuItem>
+              <Trash2 />{t('Delete')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1419,23 +1401,20 @@ export function Sidebar() {
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(worktreeMenu.worktree.path);
-                toast.success('Path copied');
+                toast.success(t('Path copied'));
               }}
             >
-              <Copy /> Copy path
-            </DropdownMenuItem>
+              <Copy />{t('Copy path')}</DropdownMenuItem>
             {!worktreeMenu.worktree.isMain && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem destructive onClick={() => void removeWorktree(worktreeMenu.worktree)}>
                   {worktreeMenu.worktree.isMissing ? (
                     <>
-                      <Eraser /> Forget missing worktree
-                    </>
+                      <Eraser />{t('Forget missing worktree')}</>
                   ) : (
                     <>
-                      <Trash2 /> Remove worktree…
-                    </>
+                      <Trash2 />{t('Remove worktree…')}</>
                   )}
                 </DropdownMenuItem>
               </>
@@ -1466,16 +1445,14 @@ export function Sidebar() {
                 if (url) void openExternal(url);
               }}
             >
-              <Globe /> Open in browser
-            </DropdownMenuItem>
+              <Globe />{t('Open in browser')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 const r = remoteMenu.remote;
                 setEditRemote({ original: r.name, name: r.name, url: r.url });
               }}
             >
-              <Pencil /> Edit remote…
-            </DropdownMenuItem>
+              <Pencil />{t('Edit remote…')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
@@ -1485,15 +1462,14 @@ export function Sidebar() {
                   title: `Remove remote "${r.name}"?`,
                   description:
                     'The remote and its remote-tracking branches are removed from this repository. Nothing is deleted on the server.',
-                  confirmLabel: 'Remove remote',
+                  confirmLabel: t('Remove remote'),
                   destructive: true,
                 }).then((ok) => {
                   if (ok) void act(`Remove ${r.name}`, () => ipc.remoteRemove(path, r.name));
                 });
               }}
             >
-              <Trash2 /> Remove remote…
-            </DropdownMenuItem>
+              <Trash2 />{t('Remove remote…')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1535,9 +1511,7 @@ export function Sidebar() {
             </label>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setEditRemote(null)}>
-              Cancel
-            </Button>
+            <Button variant="secondary" onClick={() => setEditRemote(null)}>{t('Cancel')}</Button>
             <Button
               disabled={savingRemote || !editRemote?.name.trim() || !editRemote?.url.trim()}
               onClick={() => void submitEditRemote()}
@@ -1568,13 +1542,11 @@ export function Sidebar() {
                   })
                 }
               >
-                <Check /> Checkout
-              </DropdownMenuItem>
+                <Check />{t('Checkout')}</DropdownMenuItem>
             )}
             {!branchMenu.branch.isHead && !branchMenuHeld && (
               <DropdownMenuItem onClick={() => openDialog('createWorktree', { branch: branchMenu.branch.name })}>
-                <FolderTree /> Open in new worktree…
-              </DropdownMenuItem>
+                <FolderTree />{t('Open in new worktree…')}</DropdownMenuItem>
             )}
             <DropdownMenuItem
               disabled={branchMenu.branch.isHead}
@@ -1584,8 +1556,7 @@ export function Sidebar() {
                 })
               }
             >
-              <GitMerge /> Merge into current
-            </DropdownMenuItem>
+              <GitMerge />{t('Merge into current')}</DropdownMenuItem>
             <DropdownMenuItem
               disabled={branchMenu.branch.isHead || branchMenuFf !== true}
               onClick={() =>
@@ -1594,8 +1565,7 @@ export function Sidebar() {
                 })
               }
             >
-              <FastForward /> Fast-forward current to this
-            </DropdownMenuItem>
+              <FastForward />{t('Fast-forward current to this')}</DropdownMenuItem>
             {!branchMenu.branch.isRemote && (
               <DropdownMenuItem
                 disabled={branchMenu.branch.isHead}
@@ -1605,8 +1575,7 @@ export function Sidebar() {
                   })
                 }
               >
-                <ListRestart /> Rebase current onto this
-              </DropdownMenuItem>
+                <ListRestart />{t('Rebase current onto this')}</DropdownMenuItem>
             )}
             {!branchMenu.branch.isRemote && (
               <>
@@ -1634,13 +1603,11 @@ export function Sidebar() {
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => openDialog('createBranch', branchMenu.branch.targetOid)}>
-              <GitBranchPlus /> Create branch here…
-            </DropdownMenuItem>
+              <GitBranchPlus />{t('Create branch here…')}</DropdownMenuItem>
             {!branchMenu.branch.isRemote && (
               <>
                 <DropdownMenuItem onClick={() => openDialog('rename', branchMenu.branch.name)}>
-                  <Pencil /> Rename…
-                </DropdownMenuItem>
+                  <Pencil />{t('Rename…')}</DropdownMenuItem>
                 <DropdownMenuItem
                   destructive
                   disabled={branchMenu.branch.isHead}
@@ -1652,8 +1619,7 @@ export function Sidebar() {
                     )
                   }
                 >
-                  <Trash2 /> Delete
-                </DropdownMenuItem>
+                  <Trash2 />{t('Delete')}</DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>
@@ -1704,9 +1670,7 @@ export function Sidebar() {
                   <span className="max-w-full truncate">
                     Fast-forward {dropAction.target} to {dropAction.source}
                   </span>
-                  <span className="text-[11px] font-normal text-muted">
-                    Moves the branch pointer without creating a merge commit
-                  </span>
+                  <span className="text-[11px] font-normal text-muted">{t('Moves the branch pointer without creating a merge commit')}</span>
                 </span>
               </Button>
             )}
@@ -1729,9 +1693,7 @@ export function Sidebar() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDropAction(null)}>
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={() => setDropAction(null)}>{t('Cancel')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

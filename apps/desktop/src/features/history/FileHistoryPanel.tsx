@@ -30,6 +30,7 @@ import { useDiffFind } from '@/features/diff/diffSearch';
 import { useDiffSelectAll } from '@/features/diff/diffCopy';
 import { diffSelectionText } from '@/features/diff/diffSelection';
 import type { LineMenuInfo } from '@/features/diff/VirtualDiff';
+import { useUiText } from '@/shared/i18n';
 
 const HISTORY_PAGE = 500;
 const COMMIT_ROW_ESTIMATE = 54;
@@ -69,6 +70,7 @@ function VirtualCommitList({
 }
 
 export function FileHistoryPanel({ file }: { file: string }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const closeFileHistory = useUi((s) => s.closeFileHistory);
   const preset = useUi((s) => s.fileHistoryPreset);
@@ -232,7 +234,7 @@ export function FileHistoryPanel({ file }: { file: string }) {
             </span>
           }
         >
-          <Button variant="ghost" size="icon-sm" aria-label="Close file history" onClick={closeFileHistory}>
+          <Button variant="ghost" size="icon-sm" aria-label={t('Close file history')} onClick={closeFileHistory}>
             <X className="size-4" />
           </Button>
         </Hint>
@@ -250,74 +252,70 @@ export function FileHistoryPanel({ file }: { file: string }) {
             size="sm"
             className={cn('h-6 px-2', pane === 'diff' && 'bg-surface-raised text-foreground')}
             aria-pressed={pane === 'diff'}
-            aria-label="Diff view"
+            aria-label={t('Diff view')}
             onClick={() => setPane('diff')}
-          >
-            Diff
-          </Button>
+          >{t('Diff')}</Button>
           <Button
             variant="ghost"
             size="sm"
             className={cn('h-6 px-2', pane === 'blame' && 'bg-surface-raised text-foreground')}
             aria-pressed={pane === 'blame'}
-            aria-label="Blame view"
+            aria-label={t('Blame view')}
             onClick={() => setPane('blame')}
           >
-            <UserRoundSearch className="size-3.5" />
-            Blame
-          </Button>
+            <UserRoundSearch className="size-3.5" />{t('Blame')}</Button>
         </div>
         {pane === 'diff' && (
           <>
-        <Hint label="Inline diff">
+        <Hint label={t('Inline diff')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Inline diff"
+            aria-label={t('Inline diff')}
             className={cn(diffView === 'inline' && 'bg-surface-raised text-foreground')}
             onClick={() => setDiffView('inline')}
           >
             <Rows3 className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label="Side-by-side diff">
+        <Hint label={t('Side-by-side diff')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Side-by-side diff"
+            aria-label={t('Side-by-side diff')}
             className={cn(diffView === 'split' && 'bg-surface-raised text-foreground')}
             onClick={() => setDiffView('split')}
           >
             <Columns2 className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label={wordDiff ? 'Word diff on' : 'Word diff off'}>
+        <Hint label={wordDiff ? t('Word diff on') : t('Word diff off')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle word diff"
+            aria-label={t('Toggle word diff')}
             className={cn(wordDiff && 'bg-surface-raised text-primary')}
             onClick={() => setWordDiff(!wordDiff)}
           >
             <WholeWord className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label={wrapLines ? 'Lines wrapped — click for horizontal scroll' : 'Wrap long lines'}>
+        <Hint label={wrapLines ? t('Lines wrapped — click for horizontal scroll') : t('Wrap long lines')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle line wrapping"
+            aria-label={t('Toggle line wrapping')}
             className={cn(wrapLines && 'bg-surface-raised text-primary')}
             onClick={() => setWrapLines(!wrapLines)}
           >
             <WrapText className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label={fullFileDiff ? 'Whole file shown — click for changes only' : 'Show whole file'}>
+        <Hint label={fullFileDiff ? t('Whole file shown — click for changes only') : t('Show whole file')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle whole file view"
+            aria-label={t('Toggle whole file view')}
             className={cn(fullFileDiff && 'bg-surface-raised text-primary')}
             onClick={() => setFullFileDiff(!fullFileDiff)}
           >
@@ -333,18 +331,14 @@ export function FileHistoryPanel({ file }: { file: string }) {
           {historyError ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
               <p className="text-sm text-danger">Could not load file history: {historyError}</p>
-              <Button variant="ghost" size="sm" onClick={() => setHistoryAttempt((n) => n + 1)}>
-                Retry
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setHistoryAttempt((n) => n + 1)}>{t('Retry')}</Button>
             </div>
           ) : commits === null ? (
             <div className="flex h-full items-center justify-center">
               <Spinner className="size-5" />
             </div>
           ) : commits.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-faint">
-              No commits touch this file on the current branch.
-            </p>
+            <p className="px-4 py-10 text-center text-sm text-faint">{t('No commits touch this file on the current branch.')}</p>
           ) : (
             <>
               <div
@@ -369,8 +363,8 @@ export function FileHistoryPanel({ file }: { file: string }) {
                   <Pencil className="size-3" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs text-foreground">Working copy</span>
-                  <span className="block truncate text-[11px] text-muted">The file as it is on disk right now</span>
+                  <span className="block truncate text-xs text-foreground">{t('Working copy')}</span>
+                  <span className="block truncate text-[11px] text-muted">{t('The file as it is on disk right now')}</span>
                 </span>
               </div>
               <VirtualCommitList
@@ -410,7 +404,7 @@ export function FileHistoryPanel({ file }: { file: string }) {
                       <Badge tone="neutral" className="font-mono text-[10px]">
                         {commit.shortOid}
                       </Badge>
-                      <Hint label="Open this commit in the graph with all its files">
+                      <Hint label={t('Open this commit in the graph with all its files')}>
                         <Button
                           variant="ghost"
                           size="icon-sm"
@@ -498,16 +492,14 @@ export function FileHistoryPanel({ file }: { file: string }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" side="bottom">
             <DropdownMenuItem onClick={() => openCommit(commitMenu.commit)}>
-              <GitCommitHorizontal /> Open commit with all its files
-            </DropdownMenuItem>
+              <GitCommitHorizontal />{t('Open commit with all its files')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(commitMenu.commit.oid);
-                toast.success('Hash copied');
+                toast.success(t('Hash copied'));
               }}
             >
-              <Copy /> Copy hash
-            </DropdownMenuItem>
+              <Copy />{t('Copy hash')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -522,25 +514,22 @@ export function FileHistoryPanel({ file }: { file: string }) {
               <DropdownMenuItem
                 onClick={() => {
                   void navigator.clipboard.writeText(lineMenu.selection);
-                  toast.success('Copied');
+                  toast.success(t('Copied'));
                 }}
               >
-                <Copy /> Copy
-              </DropdownMenuItem>
+                <Copy />{t('Copy')}</DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(lineMenu.info.line.content);
-                toast.success('Line copied');
+                toast.success(t('Line copied'));
               }}
             >
-              <Copy /> Copy line
-            </DropdownMenuItem>
+              <Copy />{t('Copy line')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => selectSide(lineMenu.info.side ?? 'new')}
             >
-              <TextSelect /> Select all
-            </DropdownMenuItem>
+              <TextSelect />{t('Select all')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

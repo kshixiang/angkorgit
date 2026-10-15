@@ -5,6 +5,7 @@ import { useUi } from '@/features/ui/store';
 import { languageOf } from '@/shared/highlight';
 import { CodeLine, gutter, lineBg, pairHunkLines, prepareCommentStates, wrapUnavailable, type SearchRanges } from './diffShared';
 import { flattenDiff, VirtualInlineDiff, VirtualSplitDiff, type LineMenuInfo } from './VirtualDiff';
+import { useUiText } from '@/shared/i18n';
 
 interface HunkProps {
   hunk: DiffHunk;
@@ -150,23 +151,24 @@ function WrappedSplitHunk({ hunk, language, useWordDiff, actions, search }: Hunk
 }
 
 function ImageDiff({ diff }: { diff: FileDiff }) {
+  const t = useUiText();
   const mime = diff.path.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
   return (
     <div className="flex gap-4 p-4">
       {diff.oldImage && (
         <figure className="flex-1 rounded-lg border border-danger/40 bg-surface p-3 text-center">
           <img src={`data:${mime};base64,${diff.oldImage}`} alt="Previous version" className="mx-auto max-h-72 max-w-full" />
-          <figcaption className="mt-2 text-xs text-danger">Before</figcaption>
+          <figcaption className="mt-2 text-xs text-danger">{t('Before')}</figcaption>
         </figure>
       )}
       {diff.newImage && (
         <figure className="flex-1 rounded-lg border border-success/40 bg-surface p-3 text-center">
           <img src={`data:${mime};base64,${diff.newImage}`} alt="New version" className="mx-auto max-h-72 max-w-full" />
-          <figcaption className="mt-2 text-xs text-success">After</figcaption>
+          <figcaption className="mt-2 text-xs text-success">{t('After')}</figcaption>
         </figure>
       )}
       {!diff.oldImage && !diff.newImage && (
-        <p className="w-full py-8 text-center text-sm text-faint">Image contents unavailable</p>
+        <p className="w-full py-8 text-center text-sm text-faint">{t('Image contents unavailable')}</p>
       )}
     </div>
   );
@@ -185,6 +187,7 @@ export function DiffViewer({
   onLineContextMenu?: (event: React.MouseEvent, info: LineMenuInfo) => void;
   search?: SearchRanges;
 }) {
+  const t = useUiText();
   const diffView = useUi((s) => s.diffView);
   const useWord = useUi((s) => s.wordDiff);
   const wrapLines = useUi((s) => s.wrapLines);
@@ -200,10 +203,10 @@ export function DiffViewer({
 
   if (diff.isImage) return <ImageDiff diff={diff} />;
   if (diff.isBinary) {
-    return <p className="py-8 text-center text-sm text-faint">Binary file — no text diff</p>;
+    return <p className="py-8 text-center text-sm text-faint">{t('Binary file — no text diff')}</p>;
   }
   if (diff.hunks.length === 0) {
-    return <p className="py-8 text-center text-sm text-faint">No changes</p>;
+    return <p className="py-8 text-center text-sm text-faint">{t('No changes')}</p>;
   }
 
   if (!wrap && scrollRef) {

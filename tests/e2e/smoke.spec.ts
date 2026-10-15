@@ -1059,7 +1059,7 @@ test('blame is disabled for a file no commit has seen yet', async ({ page }) => 
   await expect(page.locator('section[aria-label="Diff for src/core/ipc.ts"]').getByRole('button', { name: 'Blame' })).toBeEnabled();
 });
 
-test('the status bar shows the AI connection state once AI is configured and tested', async ({ page }) => {
+test('the status bar opens AI settings without a provider picker', async ({ page }) => {
   await page.goto('/');
   await page.getByText('gitmd', { exact: true }).first().click();
   await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
@@ -1068,29 +1068,10 @@ test('the status bar shows the AI connection state once AI is configured and tes
   await expect(chip).toHaveText('Ollama');
   await chip.click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('button', { name: 'Test connection' })).toBeVisible();
-  await dialog.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: /Installed AI CLI/ }).click();
-  await expect(chip).toHaveAttribute('data-ai-status', 'unconfigured');
-  await expect(chip).toHaveText(/Set up AI/);
-  await dialog.getByRole('button', { name: /Claude Code/ }).click();
-  await expect(chip).toHaveAttribute('data-ai-status', 'untested');
-  await expect(chip).toHaveText('Claude Code');
-  await dialog.getByRole('button', { name: 'Test connection' }).click();
-  await expect(dialog.getByText('Reachable', { exact: true })).toBeVisible({ timeout: 10_000 });
-  await page.keyboard.press('Escape');
-  await expect(chip).toHaveAttribute('data-ai-status', 'ok');
-  await expect(chip).toHaveText('Claude Code');
-  await chip.click();
-  await dialog.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: 'Ollama', exact: true }).click();
-  await expect(dialog.getByText('Settings changed since the last test')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(chip).toHaveAttribute('data-ai-status', 'stale');
-  await expect(chip).toHaveText('Ollama');
-  await page.reload();
-  await page.getByText('gitmd', { exact: true }).first().click();
-  await expect(page.locator('[data-ai-status]')).toHaveAttribute('data-ai-status', 'stale', { timeout: 10_000 });
+  await expect(dialog.getByRole('heading', { name: 'GitMD Code' })).toBeVisible();
+  await expect(dialog.getByText('GitMD Code and message style')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Test connection' })).toHaveCount(0);
+  await expect(dialog.getByText('Provider', { exact: true })).toHaveCount(0);
 });
 
 test('the checked-out branch chip is filled while other local chips stay tinted', async ({ page }) => {
@@ -1180,6 +1161,24 @@ test('shift-click selects a range of working copy files and the menu acts on all
 
   await page.getByText('ipc.ts', { exact: true }).first().click();
   await expect(page.locator('[data-selected-file-row]')).toHaveCount(1);
+});
+
+test('checking a change selects it instead of staging and retargets stage all', async ({ page }) => {
+  await page.goto('/');
+  await page.getByText('gitmd', { exact: true }).first().click();
+  await expect(page.getByPlaceholder('Search commits…')).toBeVisible({ timeout: 10_000 });
+
+  await expect(page.getByRole('button', { name: 'Stage all', exact: true })).toBeVisible();
+  const checkbox = page.getByRole('checkbox', { name: 'Select src/core/ipc.ts' });
+  await checkbox.click();
+  await expect(checkbox).toBeChecked();
+  await expect(page.getByRole('button', { name: 'Stage selected files', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stage all', exact: true })).toHaveCount(0);
+  await expect(page.getByText('ipc.ts', { exact: true }).first()).toBeVisible();
+
+  await checkbox.click();
+  await expect(checkbox).not.toBeChecked();
+  await expect(page.getByRole('button', { name: 'Stage all', exact: true })).toBeVisible();
 });
 
 test('the working copy filter narrows both lists and shows counts', async ({ page }) => {

@@ -3,7 +3,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { AlertTriangle, Archive, Code, Copy, ExternalLink, FolderOpen, History, UserRoundSearch, Maximize2, Minus, Pencil, Plus, SearchCheck, Sparkles, Trash2, Undo2, X } from 'lucide-react';
 import type { FileStatus } from '@gitmd/core';
-import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, LEGACY_PROJECT_REVIEW_FILE, PROJECT_REVIEW_FILE, joinCommitMessage, splitCommitMessage } from '@gitmd/core';
+import { aiCapabilities, buildStagedReviewSignature, filterFiles, hasCommittedHistory, hashText, LEGACY_PROJECT_REVIEW_FILE, PROJECT_REVIEW_FILE, joinCommitMessage, resolveCommitPrefix, splitCommitMessage } from '@gitmd/core';
 import {
   Badge,
   Button,
@@ -20,7 +20,7 @@ import {
   Textarea,
   cn,
 } from '@gitmd/design-system';
-import { ipc, saveFile } from '@/core/ipc';
+import { ipc, isTauri, saveFile } from '@/core/ipc';
 import { useRepo } from '@/features/repository/store';
 import { useGraph } from '@/features/graph/store';
 import { focusRequests, useUi } from '@/features/ui/store';
@@ -34,6 +34,7 @@ import { openInEditor, preferredEditor, useEditors } from '@/features/settings/e
 import { useUndo } from '@/features/history/undoStore';
 import { abortMergeFlow } from '@/features/repository/merge';
 import { useCommitDraft } from './draftStore';
+import { buildGitmdCommitMessagePrompt, commitMessageFromGitmdCode } from './gitmdCommitMessage';
 import { confirmDialog } from '@/components/confirm';
 import { FileFilterInput } from '@/components/FileFilterInput';
 import { FileTree, treeIndent as sharedTreeIndent, FileTreeFoldButton, INITIAL_FOLD, nextFold, type FileTreeFold, type FileTreeFoldState } from '@/components/FileTree';
@@ -64,6 +65,8 @@ const FileRow = memo(function FileRow({
   selected,
   onClick,
   onPrimary,
+  onPick,
+  picked,
   onDiscard,
   onContextMenu,
   indent,
@@ -74,6 +77,8 @@ const FileRow = memo(function FileRow({
   selected: boolean;
   onClick: (file: FileStatus, staged: boolean, event: React.MouseEvent) => void;
   onPrimary: (file: FileStatus, staged: boolean) => void;
+  onPick?: (file: FileStatus, picked: boolean) => void;
+  picked?: boolean;
   onDiscard?: (file: FileStatus) => void;
   onContextMenu?: (event: React.MouseEvent, file: FileStatus, staged: boolean) => void;
   indent?: number;
@@ -81,6 +86,7 @@ const FileRow = memo(function FileRow({
 }) {
   const kind = staged ? file.staged : file.unstaged;
   const conflicted = file.unstaged === 'conflicted';
+  const selecting = onPick !== undefined;
   const row = (
       <div
         data-selected-file-row={selected || undefined}
@@ -94,9 +100,12 @@ const FileRow = memo(function FileRow({
         onContextMenu={onContextMenu ? (e) => onContextMenu(e, file, staged) : undefined}
       >
         <Checkbox
-          checked={staged}
-          aria-label={staged ? `Unstage ${file.path}` : `Stage ${file.path}`}
-          onCheckedChange={() => onPrimary(file, staged)}
+          checked={selecting ? !!picked : staged}
+          aria-label={selecting ? `Select ${file.path}` : staged ? `Unstage ${file.path}` : `Stage ${file.path}`}
+          onCheckedChange={(value) => {
+            if (onPick) onPick(file, value === true);
+            else onPrimary(file, staged);
+          }}
           onClick={(e) => e.stopPropagation()}
         />
         {statusBadge(conflicted && !staged ? 'conflicted' : kind)}
@@ -250,6 +259,7 @@ export function WorkingCopyPanel() {
   const [committing, setCommitting] = useState(false);
   const [aiBusy, setAiBusy] = useState(false);
   const aiRunRef = useRef(0);
+  const aiRequestRef = useRef<string | null>(null);
   const [reviewExpanded, setReviewExpanded] = useState(false);
   const [waitIndex, setWaitIndex] = useState(0);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; file: FileStatus; staged: boolean } | null>(null);
@@ -261,6 +271,7 @@ export function WorkingCopyPanel() {
     staged: boolean;
   } | null>(null);
   const [multi, setMulti] = useState<{ staged: boolean; paths: string[] } | null>(null);
+  const [pickedPaths, setPickedPaths] = useState<ReadonlySet<string>>(() => new Set());
   const messageRef = useRef<HTMLTextAreaElement | null>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
 
@@ -318,6 +329,29 @@ export function WorkingCopyPanel() {
     () => filterFiles(allUnstaged, fileStatusPath, fileQuery),
     [allUnstaged, fileQuery],
   );
+  const pickedUnstaged = useMemo(
+    () => allUnstaged.filter((file) => pickedPaths.has(file.path)).map((file) => file.path),
+    [allUnstaged, pickedPaths],
+  );
+  const pickedRepo = useRef(path);
+  useEffect(() => {
+    if (pickedRepo.current === path) return;
+    pickedRepo.current = path;
+    setPickedPaths(new Set());
+  }, [path]);
+  useEffect(() => {
+    setPickedPaths((prev) => {
+      if (prev.size === 0) return prev;
+      const live = new Set(allUnstaged.map((file) => file.path));
+      let changed = false;
+      const next = new Set<string>();
+      for (const filePath of prev) {
+        if (live.has(filePath)) next.add(filePath);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [allUnstaged]);
   const stagedSignature = useMemo(() => buildStagedReviewSignature(files), [files]);
   const review = useAiWork((s) => (path ? (s.reviews[path] ?? null) : null));
   const reviewBusy = useAiWork((s) => (path ? !!s.reviewBusy[path] : false));
@@ -469,7 +503,7 @@ export function WorkingCopyPanel() {
       description: staged
         ? 'These files go back to the last commit — staged and unstaged changes alike. New files are deleted. This cannot be undone.'
         : 'All changes in these files will be reverted. Untracked files among them are deleted. This cannot be undone.',
-      confirmLabel: 'Discard',
+      confirmLabel: t('Discard'),
       destructive: true,
     }).then((ok) => {
       if (ok) void discardMany(paths, staged);
@@ -484,7 +518,7 @@ export function WorkingCopyPanel() {
         ? 'These files go back to the last commit — staged and unstaged changes alike. New files are deleted. This cannot be undone.'
         : 'All changes in this folder will be reverted. Untracked files among them are deleted. This cannot be undone.',
       path: folder,
-      confirmLabel: 'Discard all',
+      confirmLabel: t('Discard all'),
       destructive: true,
     }).then((ok) => {
       if (ok) void discardMany(paths, staged);
@@ -505,7 +539,7 @@ export function WorkingCopyPanel() {
       if (!output) return;
       try {
         await ipc.exportFilesPatch(path, paths, output);
-        toast.success('Patch saved');
+        toast.success(t('Patch saved'));
       } catch (error) {
         toast.error(`Create patch failed: ${(error as { message?: string }).message ?? error}`);
       }
@@ -563,7 +597,7 @@ export function WorkingCopyPanel() {
   const requestDiscard = useCallback(
     (file: FileStatus, staged = false) => {
       void confirmDialog({
-        title: 'Discard changes?',
+        title: t('Discard changes?'),
         description: staged
           ? file.staged === 'new'
             ? 'This file is new — discarding removes it from the index and deletes the file. This cannot be undone.'
@@ -572,7 +606,7 @@ export function WorkingCopyPanel() {
             ? 'This file is new — discarding reverts it and deletes the file. This cannot be undone.'
             : 'All changes in this file will be reverted. This cannot be undone.',
         path: file.path,
-        confirmLabel: 'Discard',
+        confirmLabel: t('Discard'),
         destructive: true,
       }).then((ok) => {
         if (ok) void discardOne(file.path, staged);
@@ -586,46 +620,117 @@ export function WorkingCopyPanel() {
   const generateMessage = async () => {
     if (aiBusy) {
       aiRunRef.current += 1;
+      const requestId = aiRequestRef.current;
+      aiRequestRef.current = null;
+      if (requestId) void ipc.gitmdAgentCancel(requestId);
       setAiBusy(false);
       return;
     }
-    if (!aiConfigured()) {
-      toast.info('Configure an AI provider in Settings first');
+    if (stagedFiles.length === 0) {
+      toast.info(t('Stage some changes first'));
       return;
     }
-    if (stagedFiles.length === 0) {
-      toast.info('Stage some changes first');
+    if (!isTauri()) {
+      if (!aiConfigured()) {
+        toast.info(t('Configure an AI provider in Settings first'));
+        return;
+      }
+      const run = ++aiRunRef.current;
+      const stillRunning = () => aiRunRef.current === run;
+      setAiBusy(true);
+      try {
+        const patch = await ipc.stagedPatch(path);
+        if (!stillRunning()) return;
+        const generated = await aiCapabilities.generateCommitMessage(getAiProvider(), patch, {
+          style: useSettings.getState().aiStyle.commit,
+          branch: status?.branch ?? null,
+          language: useSettings.getState().aiCommitLanguage,
+        });
+        if (!stillRunning()) return;
+        setMessage(generated);
+      } catch (error) {
+        if (stillRunning()) {
+          toast.error(`AI request failed: ${(error as { message?: string } | null)?.message ?? String(error)}`);
+        }
+      } finally {
+        if (stillRunning()) setAiBusy(false);
+      }
+      return;
+    }
+    const gitmd = useSettings.getState().gitmdCode;
+    if (!gitmd.apiKey.trim() || !gitmd.model.trim()) {
+      toast.info(t('Configure GitMD Code in Settings first'));
+      useUi.getState().openDialog('settings', { section: 'ai' });
       return;
     }
     const run = ++aiRunRef.current;
     const stillRunning = () => aiRunRef.current === run;
+    const requestId = crypto.randomUUID();
+    aiRequestRef.current = requestId;
     setAiBusy(true);
     try {
-      const patch = await ipc.stagedPatch(path);
+      await ipc.aiKeySet('gitmd-code', gitmd.apiKey);
       if (!stillRunning()) return;
-      const generated = await aiCapabilities.generateCommitMessage(getAiProvider(), patch, {
-        style: useSettings.getState().aiStyle.commit,
-        branch: status?.branch ?? null,
-        language: useSettings.getState().aiCommitLanguage,
+      const settings = useSettings.getState();
+      const style = settings.aiStyle.commit;
+      const branch = status?.branch ?? repo?.headBranch ?? null;
+      const language = settings.aiCommitLanguage;
+      const prefix = resolveCommitPrefix(style.prefixRules, branch);
+      const files = allStaged.slice(0, 12).map((file) => ({ path: file.path, staged: true as const }));
+      const response = await ipc.gitmdAgentChat({
+        requestId,
+        repoPath: path,
+        baseUrl: gitmd.baseUrl.trim(),
+        model: gitmd.model.trim(),
+        history: [],
+        prompt: buildGitmdCommitMessagePrompt({
+          style,
+          branch,
+          language,
+          stagedCount: allStaged.length,
+        }),
+        uiContext: {
+          view: 'workingCopy',
+          headBranch: repo?.headBranch ?? branch,
+          headOid: repo?.headOid ?? null,
+          repoState: repo?.state ?? 'clean',
+          selectedOid: null,
+          path: files[0]?.path ?? null,
+          staged: files.length > 0,
+          oid: null,
+          oldPath: null,
+          rev: null,
+          files,
+        },
+        allowChanges: false,
+        language,
+        responseStyle: 'concise',
+        responseContract: 'commit_message',
       });
       if (!stillRunning()) return;
+      const generated = commitMessageFromGitmdCode(response.content, prefix);
+      if (!generated) {
+        toast.error(t('GitMD Code returned an empty commit message'));
+        return;
+      }
       setMessage(generated);
     } catch (error) {
       if (stillRunning()) {
-        toast.error(`AI request failed: ${(error as { message?: string } | null)?.message ?? String(error)}`);
+        toast.error(`GitMD Code request failed: ${(error as { message?: string } | null)?.message ?? String(error)}`);
       }
     } finally {
+      if (aiRequestRef.current === requestId) aiRequestRef.current = null;
       if (stillRunning()) setAiBusy(false);
     }
   };
 
   const reviewStaged = async () => {
     if (!aiConfigured()) {
-      toast.info('Configure an AI provider in Settings first');
+      toast.info(t('Configure an AI provider in Settings first'));
       return;
     }
     if (stagedFiles.length === 0) {
-      toast.info('Stage some changes first');
+      toast.info(t('Stage some changes first'));
       return;
     }
     const target = path;
@@ -636,7 +741,7 @@ export function WorkingCopyPanel() {
       const patch = await ipc.stagedPatch(target);
       if (!stillRunning()) return;
       if (!patch.trim()) {
-        toast.info('The staged changes have no reviewable text diff');
+        toast.info(t('The staged changes have no reviewable text diff'));
         return;
       }
       const projectInstructions = await ipc.readFile(target, PROJECT_REVIEW_FILE).catch(async (error) => {
@@ -655,13 +760,13 @@ export function WorkingCopyPanel() {
       });
       if (!stillRunning()) return;
       if (!text) {
-        toast.error('The AI provider returned an empty review — try again or check the model in Settings');
+        toast.error(t('The AI provider returned an empty review — try again or check the model in Settings'));
         return;
       }
       const state = useRepo.getState();
       if (state.repo?.path !== target) return;
       if (buildStagedReviewSignature(state.status?.files ?? []) !== signature) {
-        toast.info('The staged changes changed during the review — run it again');
+        toast.info(t('The staged changes changed during the review — run it again'));
         return;
       }
       useAiWork
@@ -691,7 +796,7 @@ export function WorkingCopyPanel() {
       await ensureRepoProfile(path);
       if (amend) {
         await ipc.amend(path, message.trim() ? message.trim() : null);
-        toast.success('Commit amended');
+        toast.success(t('Commit amended'));
       } else {
         const summary = message.trim().split('\n')[0].slice(0, 50);
         await useUndo.getState().tracked({
@@ -856,6 +961,16 @@ export function WorkingCopyPanel() {
   const treeIndent = (depth?: number) =>
     fileTree && depth !== undefined ? sharedTreeIndent(depth) : undefined;
 
+  const setPicked = useCallback((file: FileStatus, picked: boolean) => {
+    setPickedPaths((prev) => {
+      if (prev.has(file.path) === picked) return prev;
+      const next = new Set(prev);
+      if (picked) next.add(file.path);
+      else next.delete(file.path);
+      return next;
+    });
+  }, []);
+
   const renderUnstaged = (file: FileStatus, depth?: number) => (
     <FileRow
       key={`u-${file.path}`}
@@ -863,9 +978,11 @@ export function WorkingCopyPanel() {
       staged={false}
       treeMode={fileTree}
       indent={treeIndent(depth)}
+      picked={pickedPaths.has(file.path)}
       selected={(selectedFile?.path === file.path && !selectedFile.staged) || inMulti(file, false)}
       onClick={onRowClick}
       onPrimary={toggleStage}
+      onPick={setPicked}
       onContextMenu={openFileMenu}
       onDiscard={requestDiscard}
     />
@@ -966,21 +1083,28 @@ export function WorkingCopyPanel() {
                   onFold={(mode) => setUnstagedFold((f) => nextFold(f, mode))}
                 />
               )}
-              <Button variant="ghost" size="sm" onClick={() => void run(() => ipc.stageAll(path), 'Stage all failed')}>
-                <Plus className="size-3" /> {t('Stage all')}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (pickedUnstaged.length > 0) void stageMany(pickedUnstaged, false);
+                  else void run(() => ipc.stageAll(path), 'Stage all failed');
+                }}
+              >
+                <Plus className="size-3" /> {pickedUnstaged.length > 0 ? t('Stage selected files') : t('Stage all')}
               </Button>
-              <Hint label="Discard all changes">
+              <Hint label={t('Discard all changes')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Discard all changes"
+                  aria-label={t('Discard all changes')}
                   className="text-muted hover:text-danger"
                   onClick={() => {
                     void confirmDialog({
                       title: `Discard all ${allUnstaged.length} change${allUnstaged.length === 1 ? '' : 's'}?`,
                       description:
-                        'Every unstaged change will be reverted and untracked files will be deleted. This cannot be undone — not even with ⌘Z.',
-                      confirmLabel: 'Discard all',
+                        t('Every unstaged change will be reverted and untracked files will be deleted. This cannot be undone — not even with ⌘Z.'),
+                      confirmLabel: t('Discard all'),
                       destructive: true,
                     }).then((ok) => {
                       if (ok) void discardEverything();
@@ -1030,18 +1154,18 @@ export function WorkingCopyPanel() {
               <Button variant="ghost" size="sm" onClick={() => void run(() => ipc.unstageAll(path), 'Unstage all failed')}>
                 <Minus className="size-3" /> {t('Unstage all')}
               </Button>
-              <Hint label="Discard all staged changes">
+              <Hint label={t('Discard all staged changes')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Discard all staged changes"
+                  aria-label={t('Discard all staged changes')}
                   className="text-muted hover:text-danger"
                   onClick={() => {
                     void confirmDialog({
                       title: `Discard all ${allStaged.length} staged change${allStaged.length === 1 ? '' : 's'}?`,
                       description:
-                        'Every staged file goes back to the last commit, unstaged edits to those files included, and new files are deleted. This cannot be undone — not even with ⌘Z.',
-                      confirmLabel: 'Discard all',
+                        t('Every staged file goes back to the last commit, unstaged edits to those files included, and new files are deleted. This cannot be undone — not even with ⌘Z.'),
+                      confirmLabel: t('Discard all'),
                       destructive: true,
                     }).then((ok) => {
                       if (ok) void discardAllStaged();
@@ -1099,6 +1223,14 @@ export function WorkingCopyPanel() {
                   <Archive /> Stash {menuMulti.paths.length} files…
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => useUi.getState().askGitmdCodeAboutFiles(
+                    menuMulti.paths.map((filePath) => ({ path: filePath, staged: menuMulti.staged })),
+                  )}
+                >
+                  <Sparkles /> {t('Ask AI')}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem destructive onClick={() => requestDiscardMany(menuMulti.paths, menuMulti.staged)}>
                   <Trash2 /> Discard changes in {menuMulti.paths.length} files…
                 </DropdownMenuItem>
@@ -1111,41 +1243,42 @@ export function WorkingCopyPanel() {
                 <DropdownMenuItem
                   onClick={() => void run(() => ipc.unstageFile(path, fileMenu.file.path), 'Unstage failed')}
                 >
-                  <Minus /> Unstage file
-                </DropdownMenuItem>
+                  <Minus />{t('Unstage file')}</DropdownMenuItem>
                 <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file, true)}>
-                  <Trash2 /> Discard changes…
-                </DropdownMenuItem>
+                  <Trash2 />{t('Discard changes…')}</DropdownMenuItem>
               </>
             ) : (
               <>
                 <DropdownMenuItem
                   onClick={() => void run(() => ipc.stageFile(path, fileMenu.file.path), 'Stage failed')}
                 >
-                  <Plus /> Stage file
-                </DropdownMenuItem>
+                  <Plus />{t('Stage file')}</DropdownMenuItem>
                 <DropdownMenuItem destructive onClick={() => requestDiscard(fileMenu.file)}>
-                  <Trash2 /> Discard changes…
-                </DropdownMenuItem>
+                  <Trash2 />{t('Discard changes…')}</DropdownMenuItem>
               </>
             )}
             <DropdownMenuItem
               onClick={() => useUi.getState().openDialog('createStash', { paths: [fileMenu.file.path] })}
             >
-              <Archive /> Stash this file…
+              <Archive />{t('Stash this file…')}</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => useUi.getState().askGitmdCodeAboutFiles([
+                { path: fileMenu.file.path, staged: fileMenu.staged },
+              ])}
+            >
+              <Sparkles /> {t('Ask AI')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => openEditor(fileMenu.file.path)}>
-              <Pencil /> Edit file
-            </DropdownMenuItem>
+              <Pencil />{t('Edit file')}</DropdownMenuItem>
             {editor && (
               <DropdownMenuItem onClick={() => void openInEditor(editor.id, `${path}/${fileMenu.file.path}`)}>
                 <Code /> Open in {editor.label}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => useUi.getState().openFileHistory(fileMenu.file.path)}>
-              <History /> File history
-            </DropdownMenuItem>
+              <History />{t('File history')}</DropdownMenuItem>
             <DropdownMenuItem
               disabled={!hasCommittedHistory(fileMenu.file)}
               onClick={() => useUi.getState().openBlame(fileMenu.file.path)}
@@ -1163,8 +1296,7 @@ export function WorkingCopyPanel() {
                   )
               }
             >
-              <ExternalLink /> Open in external app
-            </DropdownMenuItem>
+              <ExternalLink />{t('Open in external app')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
                 void ipc
@@ -1181,40 +1313,37 @@ export function WorkingCopyPanel() {
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(fileMenu.file.path);
-                toast.success('Path copied');
+                toast.success(t('Path copied'));
               }}
             >
-              <Copy /> Copy path
-            </DropdownMenuItem>
+              <Copy />{t('Copy path')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(`${path}/${fileMenu.file.path}`);
-                toast.success('Absolute path copied');
+                toast.success(t('Absolute path copied'));
               }}
             >
-              <Copy /> Copy absolute path
-            </DropdownMenuItem>
+              <Copy />{t('Copy absolute path')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               destructive
               onClick={() => {
                 const file = fileMenu.file;
                 void confirmDialog({
-                  title: 'Delete file?',
+                  title: t('Delete file?'),
                   description:
                     file.unstaged === 'untracked'
                       ? 'The file is untracked — deleting it cannot be undone.'
                       : 'The file will be removed from your working tree. It can be restored with Discard (the deletion shows as a change).',
                   path: file.path,
-                  confirmLabel: 'Delete',
+                  confirmLabel: t('Delete'),
                   destructive: true,
                 }).then((ok) => {
                   if (ok) void run(() => ipc.deleteFile(path, file.path), 'Delete failed');
                 });
               }}
             >
-              <Trash2 /> Delete file…
-            </DropdownMenuItem>
+              <Trash2 />{t('Delete file…')}</DropdownMenuItem>
             </>
             )}
           </DropdownMenuContent>
@@ -1238,19 +1367,16 @@ export function WorkingCopyPanel() {
               destructive
               onClick={() => requestDiscardFolder(folderMenu.path, folderMenu.paths, folderMenu.staged)}
             >
-              <Trash2 /> Discard all changes in folder…
-            </DropdownMenuItem>
+              <Trash2 />{t('Discard all changes in folder…')}</DropdownMenuItem>
             {!folderMenu.staged && (
               <DropdownMenuItem onClick={() => ignoreFolderFiles(folderMenu.paths)}>
                 <Minus /> Ignore all files in {folderMenu.path}/
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => stashFolder(folderMenu.paths)}>
-              <Archive /> Stash folder…
-            </DropdownMenuItem>
+              <Archive />{t('Stash folder…')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportFolderPatch(folderMenu.path, folderMenu.paths)}>
-              <Copy /> Create patch from changes in directory…
-            </DropdownMenuItem>
+              <Copy />{t('Create patch from changes in directory…')}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() =>
@@ -1259,11 +1385,9 @@ export function WorkingCopyPanel() {
                 )
               }
             >
-              <FolderOpen /> Open folder
-            </DropdownMenuItem>
+              <FolderOpen />{t('Open folder')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => useUi.getState().openDialog('createFile', { folder: folderMenu.path })}>
-              <Pencil /> Create a file in this folder
-            </DropdownMenuItem>
+              <Pencil />{t('Create a file in this folder')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
@@ -1271,16 +1395,15 @@ export function WorkingCopyPanel() {
       {status === null ? null : files.length === 0 && !amend && repo?.state !== 'merge' ? (
         <div className="shrink-0 border-t border-border-subtle px-3 py-2">
           <Button variant="ghost" size="sm" className="text-muted" onClick={() => setAmend(true)}>
-            <Undo2 className="size-3" /> Amend last commit…
-          </Button>
+            <Undo2 className="size-3" />{t('Amend last commit…')}</Button>
         </div>
       ) : (
         <div className="relative shrink-0 border-t border-border-subtle p-3">
           <div
             role="separator"
             aria-orientation="horizontal"
-            aria-label="Resize commit box"
-            title="Drag to resize · double-click to reset"
+            aria-label={t('Resize commit box')}
+            title={t('Drag to resize · double-click to reset')}
             onMouseDown={startResize}
             onDoubleClick={() => useUi.getState().setCommitBoxHeight(null)}
             className={cn(
@@ -1298,13 +1421,12 @@ export function WorkingCopyPanel() {
             <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
               <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
                 <span className="flex items-center gap-1.5 font-medium text-primary">
-                  <SearchCheck className="size-3.5" /> AI review
-                </span>
-                <Hint label="Stop the review">
+                  <SearchCheck className="size-3.5" />{t('AI review')}</span>
+                <Hint label={t('Stop the review')}>
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="Stop the AI review"
+                    aria-label={t('Stop the AI review')}
                     onClick={stopReview}
                   >
                     <X className="size-3" />
@@ -1323,24 +1445,23 @@ export function WorkingCopyPanel() {
             <div className="mb-2 rounded-md border border-primary/30 bg-primary/5 text-xs leading-relaxed">
               <div className="flex items-center justify-between pl-3 pr-1.5 pt-1.5">
                 <span className="flex items-center gap-1.5 font-medium text-primary">
-                  <SearchCheck className="size-3.5" /> AI review
-                </span>
+                  <SearchCheck className="size-3.5" />{t('AI review')}</span>
                 <span className="flex items-center">
-                  <Hint label="Open review in full view">
+                  <Hint label={t('Open review in full view')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Open AI review in full view"
+                      aria-label={t('Open AI review in full view')}
                       onClick={() => setReviewExpanded(true)}
                     >
                       <Maximize2 className="size-3" />
                     </Button>
                   </Hint>
-                  <Hint label="Dismiss review">
+                  <Hint label={t('Dismiss review')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Dismiss AI review"
+                      aria-label={t('Dismiss AI review')}
                       onClick={() => useAiWork.getState().setReview(path, null)}
                     >
                       <X className="size-3" />
@@ -1371,7 +1492,7 @@ export function WorkingCopyPanel() {
                   }
                 }}
                 placeholder={amend ? 'New summary (leave empty to keep current)' : 'Summary'}
-                aria-label="Commit summary"
+                aria-label={t('Commit summary')}
                 spellCheck
                 className={cn(
                   'h-9 min-w-0 flex-1 bg-transparent pl-3 text-sm font-medium text-foreground outline-none',
@@ -1385,16 +1506,16 @@ export function WorkingCopyPanel() {
                     'pointer-events-none absolute right-9 font-mono text-[10px] tabular-nums',
                     summary.length > 72 ? 'text-danger' : 'text-faint',
                   )}
-                  title="Summary length (50 recommended, 72 max)"
+                  title={t('Summary length (50 recommended, 72 max)')}
                 >
                   {summary.length}/72
                 </span>
               )}
-              <Hint label={aiBusy ? 'Stop generating' : 'Generate message with AI'}>
+              <Hint label={aiBusy ? t('Stop generating') : t('Generate message with GitMD Code')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={aiBusy ? 'Stop generating the commit message' : 'Generate commit message with AI'}
+                  aria-label={aiBusy ? 'Stop generating the commit message' : 'Generate commit message with GitMD Code'}
                   className="absolute right-1.5"
                   disabled={reviewBusy}
                   onClick={() => void generateMessage()}
@@ -1418,8 +1539,8 @@ export function WorkingCopyPanel() {
                   summaryRef.current?.focus();
                 }
               }}
-              placeholder="Description — what changed and why  ·  ⌘⏎ to commit"
-              aria-label="Commit description"
+              placeholder={t('Description — what changed and why  ·  ⌘⏎ to commit')}
+              aria-label={t('Commit description')}
               className={cn(
                 'min-h-[72px] resize-none rounded-none border-0 bg-transparent px-3 py-2 text-xs leading-relaxed text-foreground shadow-none focus-visible:ring-0 focus-visible:border-0',
                 commitBoxHeight === null ? 'max-h-[260px]' : 'max-h-[600px] overflow-y-auto',
@@ -1429,9 +1550,8 @@ export function WorkingCopyPanel() {
           <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
             <label className="mr-auto flex cursor-pointer items-center gap-1.5 text-xs text-muted">
               <Checkbox checked={amend} onCheckedChange={(v) => setAmend(v === true)} />
-              <Undo2 className="size-3" /> Amend
-            </label>
-            <Hint label="Review staged changes with AI before committing">
+              <Undo2 className="size-3" />{t('Amend')}</label>
+            <Hint label={t('Review staged changes with AI before committing')}>
               <Button
                 variant="outline"
                 size="sm"
@@ -1447,15 +1567,13 @@ export function WorkingCopyPanel() {
               </Button>
             </Hint>
             {repo?.state === 'merge' && (
-              <Hint label="Reset the working copy to the state before the merge started">
+              <Hint label={t('Reset the working copy to the state before the merge started')}>
                 <Button
                   variant="outline"
                   size="sm"
                   className="text-danger hover:text-danger"
                   onClick={() => void abortMergeFlow(path)}
-                >
-                  Abort merge
-                </Button>
+                >{t('Abort merge')}</Button>
               </Hint>
             )}
             <Button
@@ -1477,7 +1595,7 @@ export function WorkingCopyPanel() {
       <AiResultDialog
         open={reviewExpanded && !!review && reviewCurrent}
         onOpenChange={(open) => !open && setReviewExpanded(false)}
-        title="AI review"
+        title={t('AI review')}
         icon={<SearchCheck className="size-4 text-primary" />}
         text={review?.text ?? ''}
       />

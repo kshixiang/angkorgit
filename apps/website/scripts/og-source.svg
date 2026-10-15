@@ -21,20 +21,13 @@
 
   <g>
     <rect x="112" y="132" width="164" height="366" rx="8" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.08)" />
-    <g transform="translate(152 300)">
-      <g stroke="#D97706" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
-        <path d="M64 4 L55 38 L55 54 L73 54 L73 38 Z" />
-        <path d="M28 26 L22.5 44 L22.5 56 L33.5 56 L33.5 44 Z" />
-        <path d="M100 26 L94.5 44 L94.5 56 L105.5 56 L105.5 44 Z" />
-      </g>
-      <g stroke="#EAE1D1" stroke-width="5" stroke-linecap="round" fill="none">
-        <path d="M28 64 C28 78 46 74 64 74" />
-        <path d="M100 64 C100 78 82 74 64 74" />
-        <path d="M64 56 V 86" />
-      </g>
-      <circle cx="28" cy="61" r="6" fill="#D97706" />
-      <circle cx="100" cy="61" r="6" fill="#D97706" />
-      <circle cx="64" cy="94" r="6" fill="#EAE1D1" />
+    <g transform="translate(194 315) scale(1.45) translate(-99.5 -98)" fill="none" stroke-linecap="round">
+      <line x1="80" y1="48" x2="80" y2="148" stroke="#3FB950" stroke-width="12" />
+      <path d="M80 80 C140 80 140 120 80 120" stroke="#58A6FF" stroke-width="12" />
+      <circle cx="80" cy="48" r="12" fill="#7EE787" />
+      <circle cx="80" cy="80" r="12" fill="#7EE787" />
+      <circle cx="80" cy="120" r="12" fill="#7EE787" />
+      <circle cx="80" cy="148" r="12" fill="#7EE787" />
     </g>
   </g>
 

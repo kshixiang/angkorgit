@@ -33,6 +33,7 @@ import { useUi } from '@/features/ui/store';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { AiText } from '@/features/ai/AiText';
 import { confirmDialog } from '@/components/confirm';
+import { useUiText } from '@/shared/i18n';
 
 type Side = 'current' | 'incoming';
 
@@ -183,6 +184,7 @@ function finishHint(state: RepoState | undefined): string {
 }
 
 export function ConflictResolver({ file, onResolved }: { file: string; onResolved: () => Promise<void> }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const conflicts = useRepo((s) => s.conflicts);
   const openConflict = useUi((s) => s.openConflict);
@@ -398,13 +400,13 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
     const replaceBlocks = blockIndex === undefined ? blockEdits.size > 0 : blockEdits.has(blockIndex);
     if (!replaceManual && !replaceBlocks) return true;
     const ok = await confirmDialog({
-      title: 'Replace hand edits?',
+      title: t('Replace hand edits?'),
       description: replaceManual
         ? 'Your hand-written result (and any hand-edited conflicts) will be replaced by the resolution built from the checkboxes.'
         : blockIndex === undefined
           ? 'Hand-edited conflict results will be replaced by the lines you pick.'
           : "This conflict's hand-edited result will be replaced by the lines you pick.",
-      confirmLabel: 'Replace',
+      confirmLabel: t('Replace'),
       destructive: true,
     });
     if (!ok) return false;
@@ -424,10 +426,10 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
   const confirmLeave = async (): Promise<boolean> => {
     if (!hasProgress) return true;
     return confirmDialog({
-      title: 'Leave this file unresolved?',
-      description: 'Nothing is written until you mark the file resolved. The lines you picked and edited here will be lost.',
+      title: t('Leave this file unresolved?'),
+      description: t('Nothing is written until you mark the file resolved. The lines you picked and edited here will be lost.'),
       path: file,
-      confirmLabel: 'Leave',
+      confirmLabel: t('Leave'),
       destructive: true,
     });
   };
@@ -530,9 +532,9 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
 
   const discardManual = async () => {
     const ok = await confirmDialog({
-      title: 'Discard the hand-written result?',
-      description: 'The result goes back to the lines picked from A and B.',
-      confirmLabel: 'Discard',
+      title: t('Discard the hand-written result?'),
+      description: t('The result goes back to the lines picked from A and B.'),
+      confirmLabel: t('Discard'),
       destructive: true,
     });
     if (ok) setManualText(null);
@@ -580,9 +582,9 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
 
   const revertEdit = async (index: number) => {
     const ok = await confirmDialog({
-      title: 'Discard hand-edited result?',
-      description: 'This conflict goes back to the lines picked from A and B, or to unresolved.',
-      confirmLabel: 'Discard',
+      title: t('Discard hand-edited result?'),
+      description: t('This conflict goes back to the lines picked from A and B, or to unresolved.'),
+      confirmLabel: t('Discard'),
       destructive: true,
     });
     if (!ok) return;
@@ -651,7 +653,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
 
   const explain = async (current: string, incoming: string) => {
     if (!aiConfigured()) {
-      toast.info('Configure an AI provider in Settings first');
+      toast.info(t('Configure an AI provider in Settings first'));
       return;
     }
     const run = ++aiRunRef.current;
@@ -748,12 +750,12 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
 
   const renderRevertAction = (index: number) => (
     <span className="absolute right-2 top-0.5 z-10 flex items-center opacity-0 transition-opacity group-hover:opacity-100">
-      <Hint label="Discard the hand edit and rebuild from the checkboxes">
+      <Hint label={t('Discard the hand edit and rebuild from the checkboxes')}>
         <Button
           variant="ghost"
           size="icon-sm"
           className="h-5 w-5 border border-border bg-surface shadow-soft"
-          aria-label="Discard the hand edit for this conflict"
+          aria-label={t('Discard the hand edit for this conflict')}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
@@ -842,7 +844,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
           }}
           spellCheck={false}
           rows={Math.max(draftLines.length, 1)}
-          aria-label="Hand-edited result for this conflict"
+          aria-label={t('Hand-edited result for this conflict')}
           className={cn(
             'ml-2 min-w-0 flex-1 resize-none overflow-hidden bg-transparent p-0 font-mono text-xs leading-5 text-foreground',
             'focus:outline-none',
@@ -856,7 +858,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
     <div
       data-line={lineNo - (outputStarts.get(index) ?? 1)}
       className="flex cursor-text items-start gap-2 border-l-2 border-danger bg-danger/5 px-2 transition-colors hover:bg-danger/10"
-      title="Unresolved conflict — click to edit the result, or pick lines above"
+      title={t('Unresolved conflict — click to edit the result, or pick lines above')}
       onMouseDown={(e) => {
         e.preventDefault();
         startEdit(index, lineFromEvent(e));
@@ -1084,13 +1086,13 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
               </span>
             )}
           </div>
-          <Hint label="Explain this conflict with AI">
+          <Hint label={t('Explain this conflict with AI')}>
             <Button
               variant="ghost"
               size="icon-sm"
               className="absolute right-1 top-0.5 z-10 h-6 w-6"
               disabled={aiBusy}
-              aria-label="Explain this conflict with AI"
+              aria-label={t('Explain this conflict with AI')}
               onClick={() => void explain(block.current.join('\n'), block.incoming.join('\n'))}
             >
               {aiBusy ? (
@@ -1146,7 +1148,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
           <GitMerge className="size-4" />
         </span>
         <div className="min-w-0 leading-tight">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">Resolve conflicts</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">{t('Resolve conflicts')}</p>
           <p className="flex min-w-0 items-baseline gap-1.5 text-sm">
             <span className="max-w-full shrink-0 truncate font-semibold text-foreground">{basename(file)}</span>
             {dirname(file) && <span className="min-w-0 truncate font-mono text-[11px] text-faint">{dirname(file)}</span>}
@@ -1154,12 +1156,12 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
         </div>
         {conflicts.length > 1 && fileIndex >= 0 && (
           <span className="flex shrink-0 items-center gap-0.5 rounded-md border border-border-subtle bg-surface-raised/60 px-1">
-            <Hint label="Previous conflicted file">
+            <Hint label={t('Previous conflicted file')}>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className="h-5 w-5"
-                aria-label="Previous file"
+                aria-label={t('Previous file')}
                 onClick={() => void switchFile(-1)}
               >
                 <ChevronLeft className="size-3.5" />
@@ -1168,12 +1170,12 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
             <span className="whitespace-nowrap px-1 text-[10px] font-medium tabular-nums text-muted">
               File {fileIndex + 1} of {conflicts.length}
             </span>
-            <Hint label="Next conflicted file">
+            <Hint label={t('Next conflicted file')}>
               <Button
                 variant="ghost"
                 size="icon-sm"
                 className="h-5 w-5"
-                aria-label="Next file"
+                aria-label={t('Next file')}
                 onClick={() => void switchFile(1)}
               >
                 <ChevronRight className="size-3.5" />
@@ -1218,8 +1220,8 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
               </Button>
             </span>
           </Hint>
-          <Hint label="Close">
-            <Button variant="ghost" size="icon" aria-label="Close" onClick={() => void requestClose()}>
+          <Hint label={t('Close')}>
+            <Button variant="ghost" size="icon" aria-label={t('Close')} onClick={() => void requestClose()}>
               <X />
             </Button>
           </Hint>
@@ -1239,24 +1241,24 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
                   <Checkbox
                     checked={allOfSidePicked('current')}
                     onCheckedChange={() => void togglePaneSide('current')}
-                    aria-label="Take all lines from side A"
+                    aria-label={t('Take all lines from side A')}
                   />
                   <Badge tone="info">A</Badge>
                   <span className="min-w-0 flex-1 truncate text-xs font-medium text-info">{aLabel}</span>
                   <Hint label={sideHint(repoState, 'current')}>
-                    <span className="shrink-0 cursor-help text-[10px] uppercase tracking-wide text-faint">current</span>
+                    <span className="shrink-0 cursor-help text-[10px] uppercase tracking-wide text-faint">{t('current')}</span>
                   </Hint>
                 </label>
                 <label className="flex cursor-pointer items-center gap-2 border-t-2 border-t-success/60 px-3 py-1.5">
                   <Checkbox
                     checked={allOfSidePicked('incoming')}
                     onCheckedChange={() => void togglePaneSide('incoming')}
-                    aria-label="Take all lines from side B"
+                    aria-label={t('Take all lines from side B')}
                   />
                   <Badge tone="success">B</Badge>
                   <span className="min-w-0 flex-1 truncate text-xs font-medium text-success">{bLabel}</span>
                   <Hint label={sideHint(repoState, 'incoming')}>
-                    <span className="shrink-0 cursor-help text-[10px] uppercase tracking-wide text-faint">incoming</span>
+                    <span className="shrink-0 cursor-help text-[10px] uppercase tracking-wide text-faint">{t('incoming')}</span>
                   </Hint>
                 </label>
               </div>
@@ -1289,7 +1291,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
                 <div className="flex shrink-0 items-center gap-2 border-b border-border-subtle px-3 py-1.5">
                   <Sparkles className="size-3.5 text-primary" />
                   <span className="text-xs font-semibold">{aiBusy ? 'Explaining conflict…' : 'AI explanation'}</span>
-                  <Hint label={aiBusy ? 'Stop explaining' : 'Dismiss'}>
+                  <Hint label={aiBusy ? t('Stop explaining') : t('Dismiss')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -1319,15 +1321,15 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
           </PanelResizeHandle>
           <Panel defaultSize={40} minSize={20} className="relative flex flex-col">
             <div className="flex items-center gap-2 border-b border-border-subtle bg-surface px-3 py-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">Result</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">{t('Result')}</span>
               {total > 0 && (
                 <span className="flex items-center gap-0.5 rounded-md border border-border-subtle bg-surface-raised/60 px-1">
-                  <Hint label="Previous conflict (↑)">
+                  <Hint label={t('Previous conflict (↑)')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       className="h-5 w-5"
-                      aria-label="Previous conflict"
+                      aria-label={t('Previous conflict')}
                       onClick={() => jump(-1)}
                     >
                       <ChevronUp className="size-3.5" />
@@ -1336,12 +1338,12 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
                   <span className="whitespace-nowrap px-1 text-[10px] font-medium tabular-nums text-muted">
                     Conflict {activeConflict + 1} of {total}
                   </span>
-                  <Hint label="Next conflict (↓)">
+                  <Hint label={t('Next conflict (↓)')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       className="h-5 w-5"
-                      aria-label="Next conflict"
+                      aria-label={t('Next conflict')}
                       onClick={() => jump(1)}
                     >
                       <ChevronDown className="size-3.5" />
@@ -1352,9 +1354,8 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
               {manualText !== null ? (
                 <>
                   <Badge tone="primary">
-                    <Pencil className="size-2.5" /> edited by hand
-                  </Badge>
-                  {manualHasMarkers && <Badge tone="danger">markers remain</Badge>}
+                    <Pencil className="size-2.5" />{t('edited by hand')}</Badge>
+                  {manualHasMarkers && <Badge tone="danger">{t('markers remain')}</Badge>}
                 </>
               ) : (
                 <>
@@ -1368,11 +1369,11 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
               )}
               <span className="ml-auto flex shrink-0 items-center gap-1">
                 {manualText === null ? (
-                  <Hint label="Edit the whole result by hand">
+                  <Hint label={t('Edit the whole result by hand')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Edit output by hand"
+                      aria-label={t('Edit output by hand')}
                       onClick={() => {
                         setEditingBlock(null);
                         setManualText(buildResult());
@@ -1382,21 +1383,19 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
                     </Button>
                   </Hint>
                 ) : (
-                  <Hint label="Discard the hand-written result and rebuild from the checkboxes">
+                  <Hint label={t('Discard the hand-written result and rebuild from the checkboxes')}>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Reset manual edits"
+                      aria-label={t('Reset manual edits')}
                       onClick={() => void discardManual()}
                     >
                       <RotateCcw className="size-3.5" />
                     </Button>
                   </Hint>
                 )}
-                <Hint label="Clear every pick and start over">
-                  <Button variant="ghost" size="sm" onClick={() => void reset()}>
-                    Reset
-                  </Button>
+                <Hint label={t('Clear every pick and start over')}>
+                  <Button variant="ghost" size="sm" onClick={() => void reset()}>{t('Reset')}</Button>
                 </Hint>
               </span>
             </div>
@@ -1405,7 +1404,7 @@ export function ConflictResolver({ file, onResolved }: { file: string; onResolve
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
                 spellCheck={false}
-                aria-label="Resolved file content (editable)"
+                aria-label={t('Resolved file content (editable)')}
                 className={cn(
                   'min-h-0 flex-1 resize-none bg-transparent px-4 py-2 font-mono text-xs leading-5 text-foreground',
                   'focus:outline-none focus:ring-1 focus:ring-inset focus:ring-primary/40',

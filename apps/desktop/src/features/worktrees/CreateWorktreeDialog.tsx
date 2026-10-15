@@ -29,10 +29,12 @@ import { useGraph } from '@/features/graph/store';
 import { useSettings } from '@/features/settings/store';
 import { useUi, type CreateWorktreePreset } from '@/features/ui/store';
 import { basename } from '@/shared/utils';
+import { useUiText } from '@/shared/i18n';
 
 type Mode = 'existing' | 'new';
 
 export function CreateWorktreeDialog() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const branches = useRepo((s) => s.branches);
   const worktrees = useRepo((s) => s.worktrees);
@@ -163,9 +165,7 @@ export function CreateWorktreeDialog() {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FolderTree className="size-4 text-primary" />
-            New worktree
-          </DialogTitle>
+            <FolderTree className="size-4 text-primary" />{t('New worktree')}</DialogTitle>
           <DialogDescription>
             A second folder for this repository with its own checked-out branch. Work on two
             things at once without stashing, and keep every commit in the same history.
@@ -175,8 +175,8 @@ export function CreateWorktreeDialog() {
         <div className="flex flex-col gap-4">
           <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="new">New branch</TabsTrigger>
-              <TabsTrigger value="existing">Existing branch</TabsTrigger>
+              <TabsTrigger value="new">{t('New branch')}</TabsTrigger>
+              <TabsTrigger value="existing">{t('Existing branch')}</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -202,25 +202,21 @@ export function CreateWorktreeDialog() {
               Branch
               <Select value={existingBranch} onValueChange={setExistingBranch}>
                 <SelectTrigger className="h-9 font-mono">
-                  <SelectValue placeholder="Choose a branch" />
+                  <SelectValue placeholder={t('Choose a branch')} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableBranches.length === 0 && (
-                    <div className="px-2 py-1.5 text-xs text-faint">
-                      Every branch is already checked out somewhere.
-                    </div>
+                    <div className="px-2 py-1.5 text-xs text-faint">{t('Every branch is already checked out somewhere.')}</div>
                   )}
                   {availableBranches.map((b) => (
                     <SelectItem key={b.name} value={b.name}>
                       <span className="font-mono">{b.name}</span>
-                      {b.isRemote && <span className="ml-2 text-[10px] text-faint">remote</span>}
+                      {b.isRemote && <span className="ml-2 text-[10px] text-faint">{t('remote')}</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <span className="text-[11px] text-faint">
-                Branches already open in a worktree are not listed; git allows one folder per branch.
-              </span>
+              <span className="text-[11px] text-faint">{t('Branches already open in a worktree are not listed; git allows one folder per branch.')}</span>
             </label>
           )}
 
@@ -239,25 +235,19 @@ export function CreateWorktreeDialog() {
                 placeholder="/path/to/new-folder"
                 className="font-mono"
               />
-              <Button variant="secondary" size="icon" aria-label="Browse for a parent folder" onClick={() => void browse()}>
+              <Button variant="secondary" size="icon" aria-label={t('Browse for a parent folder')} onClick={() => void browse()}>
                 <FolderOpen />
               </Button>
             </div>
-            <span className="text-[11px] text-faint">
-              Created next to the repository by default. The folder must not exist yet.
-            </span>
+            <span className="text-[11px] text-faint">{t('Created next to the repository by default. The folder must not exist yet.')}</span>
           </label>
 
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-            <Checkbox checked={openAfter} onCheckedChange={(v) => setOpenAfter(v === true)} />
-            Open it in a new tab
-          </label>
+            <Checkbox checked={openAfter} onCheckedChange={(v) => setOpenAfter(v === true)} />{t('Open it in a new tab')}</label>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={closeDialog}>
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
           <Button disabled={!canSubmit} onClick={() => void submit()} className={cn(busy && 'gap-2')}>
             {busy ? <Spinner className="text-primary-foreground" /> : null}
             Create worktree

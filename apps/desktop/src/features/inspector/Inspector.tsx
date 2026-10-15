@@ -85,11 +85,11 @@ export function Inspector() {
           {commit || commitError ? (isStash ? 'Stash' : 'Commit') : t('Working copy')}
         </span>
         <div className="ml-auto flex items-center gap-0.5">
-          <Hint label={fileFilterOpen ? 'Hide file filter' : 'Filter files'}>
+          <Hint label={fileFilterOpen ? t('Hide file filter') : t('Filter files')}>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label={fileFilterOpen ? 'Hide file filter' : 'Filter files'}
+              aria-label={fileFilterOpen ? t('Hide file filter') : t('Filter files')}
               aria-pressed={fileFilterOpen}
               className={cn(fileFilterOpen && 'bg-surface-raised text-foreground')}
               onClick={() => setFileFilterOpen(!fileFilterOpen)}
@@ -98,22 +98,22 @@ export function Inspector() {
             </Button>
           </Hint>
           <span className="mx-1 h-4 w-px bg-border-subtle" />
-          <Hint label="Flat list">
+          <Hint label={t('Flat list')}>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Flat file list"
+              aria-label={t('Flat file list')}
               className={cn(!fileTree && 'bg-surface-raised text-foreground')}
               onClick={() => setFileTree(false)}
             >
               <List className="size-3.5" />
             </Button>
           </Hint>
-          <Hint label="Folder tree">
+          <Hint label={t('Folder tree')}>
             <Button
               variant="ghost"
               size="icon-sm"
-              aria-label="Folder tree"
+              aria-label={t('Folder tree')}
               className={cn(fileTree && 'bg-surface-raised text-foreground')}
               onClick={() => setFileTree(true)}
             >
@@ -123,11 +123,11 @@ export function Inspector() {
           {(commit || commitError) && (
             <>
               <span className="mx-1 h-4 w-px bg-border-subtle" />
-              <Hint label="Back to working copy">
+              <Hint label={t('Back to working copy')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="Back to working copy"
+                  aria-label={t('Back to working copy')}
                   onClick={() => {
                     useUi.getState().closeCenterDiff();
                     useGraph.getState().select(null);
@@ -156,9 +156,7 @@ export function Inspector() {
             <p className="text-xs text-danger [overflow-wrap:anywhere]">
               Could not load commit: {commitError}
             </p>
-            <Button variant="ghost" size="sm" onClick={retry}>
-              Retry
-            </Button>
+            <Button variant="ghost" size="sm" onClick={retry}>{t('Retry')}</Button>
           </div>
         ) : (
           <WorkingCopyPanel />

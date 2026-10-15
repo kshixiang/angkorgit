@@ -26,6 +26,7 @@ import { useRepo } from '@/features/repository/store';
 import { useGraph } from './store';
 import { useUi, type DialogContext } from '@/features/ui/store';
 import { useUndo } from '@/features/history/undoStore';
+import { useUiText } from '@/shared/i18n';
 
 const ACTIONS: RebaseTodoAction[] = ['pick', 'reword', 'squash', 'fixup', 'drop'];
 
@@ -65,6 +66,7 @@ function presetAction(
 }
 
 export function InteractiveRebaseDialog() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const dialog = useUi((s) => s.dialog);
   const dialogContext = useUi((s) => s.dialogContext);
@@ -163,7 +165,7 @@ export function InteractiveRebaseDialog() {
         label: 'interactive rebase',
         action: () => ipc.rebaseInteractive(path, baseOid, todo),
       });
-      toast.success('Interactive rebase done');
+      toast.success(t('Interactive rebase done'));
       closeDialog();
       await useRepo.getState().refresh();
       await useGraph.getState().reload(path);
@@ -180,7 +182,7 @@ export function InteractiveRebaseDialog() {
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Interactive rebase</DialogTitle>
+          <DialogTitle>{t('Interactive rebase')}</DialogTitle>
           <DialogDescription>
             Rewriting the commits above {baseOid.slice(0, 8)} — they apply top to bottom, so the
             top row becomes the oldest rebased commit. Drag rows to reorder.
@@ -193,13 +195,11 @@ export function InteractiveRebaseDialog() {
         ) : (
           <div
             role="list"
-            aria-label="Rebase plan"
+            aria-label={t('Rebase plan')}
             className="flex max-h-[50vh] flex-col gap-1 overflow-y-auto pr-1"
           >
             {rows.length === 0 && (
-              <p className="py-6 text-center text-sm text-faint">
-                No commits to rebase above this point.
-              </p>
+              <p className="py-6 text-center text-sm text-faint">{t('No commits to rebase above this point.')}</p>
             )}
             {rows.map((row) => (
               <div
@@ -238,7 +238,7 @@ export function InteractiveRebaseDialog() {
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <Hint label="Drag to reorder">
+                  <Hint label={t('Drag to reorder')}>
                     <span className="shrink-0 cursor-grab text-faint">
                       <GripVertical className="size-4" />
                     </span>
@@ -277,7 +277,7 @@ export function InteractiveRebaseDialog() {
                   <Textarea
                     rows={2}
                     className="text-xs"
-                    placeholder="Combined message (optional)"
+                    placeholder={t('Combined message (optional)')}
                     value={row.message}
                     onChange={(e) => setMessage(row.commit.oid, e.target.value)}
                   />
@@ -293,9 +293,7 @@ export function InteractiveRebaseDialog() {
           </p>
         )}
         <DialogFooter>
-          <Button variant="ghost" onClick={closeDialog} disabled={executing}>
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={closeDialog} disabled={executing}>{t('Cancel')}</Button>
           <Button
             disabled={loading || executing || invalidCombine || rows.length === 0}
             onClick={() => void execute()}

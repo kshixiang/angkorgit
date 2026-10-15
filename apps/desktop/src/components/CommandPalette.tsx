@@ -191,16 +191,16 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
     close();
     void (async () => {
       const ok = await confirmDialog({
-        title: 'Abort rebase?',
+        title: t('Abort rebase?'),
         description:
-          'This rewinds the branch to where it was before the rebase started. Commits made during the rebase are discarded.',
-        confirmLabel: 'Abort rebase',
+          t('This rewinds the branch to where it was before the rebase started. Commits made during the rebase are discarded.'),
+        confirmLabel: t('Abort rebase'),
         destructive: true,
       });
       if (!ok) return;
       try {
         await ipc.rebaseAbort(path);
-        toast.success('Rebase aborted');
+        toast.success(t('Rebase aborted'));
       } catch (error) {
         toast.error(`Abort failed: ${(error as { message?: string }).message ?? error}`);
       }
@@ -220,12 +220,12 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         title: `Clear ${repoState} state?`,
         description:
           `Git still marks this repository as mid-${repoState}. Clearing removes that marker and keeps every file and commit exactly as it is now. Use this when the ${repoState} is already finished.`,
-        confirmLabel: 'Clear state',
+        confirmLabel: t('Clear state'),
       });
       if (!ok) return;
       try {
         await ipc.stateCleanup(path);
-        toast.success('State cleared');
+        toast.success(t('State cleared'));
       } catch (error) {
         toast.error(`Clear failed: ${(error as { message?: string }).message ?? error}`);
       }
@@ -237,7 +237,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
     <Command.Dialog
       open={paletteOpen}
       onOpenChange={setPaletteOpen}
-      label="Command palette"
+      label={t('Command palette')}
       shouldFilter={mode === 'commands'}
       className="fixed left-1/2 top-24 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-surface-overlay shadow-soft"
     >
@@ -261,16 +261,15 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
       />
       <Command.List className="max-h-80 overflow-y-auto p-1.5 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-faint">
         {!(mode !== 'commands' && (filesLoading || filesError)) && (
-          <Command.Empty className="py-8 text-center text-sm text-faint">No results.</Command.Empty>
+          <Command.Empty className="py-8 text-center text-sm text-faint">{t('No results.')}</Command.Empty>
         )}
 
         {mode !== 'commands' && filesLoading && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-faint">
-            <Spinner /> Loading files…
-          </div>
+            <Spinner />{t('Loading files…')}</div>
         )}
         {mode !== 'commands' && !filesLoading && filesError && (
-          <div className="py-8 text-center text-sm text-faint">Could not list files.</div>
+          <div className="py-8 text-center text-sm text-faint">{t('Could not list files.')}</div>
         )}
         {mode !== 'commands' && !filesLoading && !filesError && (
           <Command.Group heading={mode === 'blame' ? 'Blame' : 'File history'}>
@@ -291,16 +290,16 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
 
         {mode === 'commands' && (
         <>
-        <Command.Group heading="Actions">
-          <PaletteItem icon={<History />} label="File history…" onSelect={() => enterFilePicker('fileHistory')} />
-          <PaletteItem icon={<UserRoundSearch />} label="Blame…" onSelect={() => enterFilePicker('blame')} />
-          <PaletteItem icon={<ArrowDownToLine />} label="Pull" onSelect={() => run('Pull', () => ipc.pull(path, remote))} />
+        <Command.Group heading={t('Actions')}>
+          <PaletteItem icon={<History />} label={t('File history…')} onSelect={() => enterFilePicker('fileHistory')} />
+          <PaletteItem icon={<UserRoundSearch />} label={t('Blame…')} onSelect={() => enterFilePicker('blame')} />
+          <PaletteItem icon={<ArrowDownToLine />} label={t('Pull')} onSelect={() => run('Pull', () => ipc.pull(path, remote))} />
           <PaletteItem
             icon={<ArrowDownToLine />}
-            label="Pull with rebase"
+            label={t('Pull with rebase')}
             onSelect={() => run('Pull (rebase)', () => ipc.pull(path, remote, 'rebase'))}
           />
-          <PaletteItem icon={<ArrowUpFromLine />} label="Push" onSelect={() => run('Push', () => ipc.push(path, remote, false, false, true))} />
+          <PaletteItem icon={<ArrowUpFromLine />} label={t('Push')} onSelect={() => run('Push', () => ipc.push(path, remote, false, false, true))} />
           {(() => {
             const headUpstream = branches.find((b) => !b.isRemote && b.isHead)?.upstream ?? null;
             const pickedRemote = pickForgeRemote(remotes, headUpstream);
@@ -345,7 +344,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<GitBranchPlus />}
-            label="Create branch…"
+            label={t('Create branch…')}
             onSelect={() => {
               close();
               openDialog('createBranch');
@@ -353,7 +352,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<FolderTree />}
-            label="New worktree…"
+            label={t('New worktree…')}
             onSelect={() => {
               close();
               openDialog('createWorktree');
@@ -361,7 +360,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<TagIcon />}
-            label="Create tag…"
+            label={t('Create tag…')}
             onSelect={() => {
               close();
               openDialog('createTag');
@@ -369,7 +368,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<Archive />}
-            label="Stash changes…"
+            label={t('Stash changes…')}
             onSelect={() => {
               close();
               openDialog('createStash');
@@ -390,7 +389,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           )}
           <PaletteItem
             icon={<RefreshCw />}
-            label="Refresh"
+            label={t('Refresh')}
             onSelect={() => {
               close();
               void onRefresh();
@@ -399,25 +398,25 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         </Command.Group>
 
         {repoState !== 'clean' && (
-          <Command.Group heading="Repository state">
+          <Command.Group heading={t('Repository state')}>
             {repoState === 'rebase' && (
               <>
-                <PaletteItem icon={<Redo2 />} label="Continue rebase" onSelect={continueRebase} />
-                <PaletteItem icon={<Undo2 />} label="Abort rebase" onSelect={abortRebase} />
+                <PaletteItem icon={<Redo2 />} label={t('Continue rebase')} onSelect={continueRebase} />
+                <PaletteItem icon={<Undo2 />} label={t('Abort rebase')} onSelect={abortRebase} />
               </>
             )}
             {repoState === 'merge' && (
-              <PaletteItem icon={<Undo2 />} label="Abort merge" onSelect={abortMerge} />
+              <PaletteItem icon={<Undo2 />} label={t('Abort merge')} onSelect={abortMerge} />
             )}
-            <PaletteItem icon={<Check />} label="Clear repository state" onSelect={clearState} />
+            <PaletteItem icon={<Check />} label={t('Clear repository state')} onSelect={clearState} />
           </Command.Group>
         )}
 
-        <Command.Group heading="Repository">
-          <PaletteItem icon={<FolderOpen />} label="Open repository…" onSelect={openRepository} />
+        <Command.Group heading={t('Repository')}>
+          <PaletteItem icon={<FolderOpen />} label={t('Open repository…')} onSelect={openRepository} />
           <PaletteItem
             icon={<GitBranchPlus />}
-            label="Clone repository…"
+            label={t('Clone repository…')}
             onSelect={() => {
               close();
               openDialog('clone');
@@ -425,7 +424,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<Home />}
-            label="Back to repositories"
+            label={t('Back to repositories')}
             onSelect={() => {
               close();
               navigate('/welcome');
@@ -434,7 +433,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         </Command.Group>
 
         {worktrees.some((w) => !w.isCurrent && !w.isMissing) && (
-          <Command.Group heading="Switch worktree">
+          <Command.Group heading={t('Switch worktree')}>
             {worktrees
               .filter((w) => !w.isCurrent && !w.isMissing)
               .map((w) => (
@@ -454,7 +453,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
         )}
 
         {otherRepos.length > 0 && (
-          <Command.Group heading="Switch repository">
+          <Command.Group heading={t('Switch repository')}>
             {otherRepos.map((recent) => (
               <PaletteItem
                 key={recent.path}
@@ -471,7 +470,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           </Command.Group>
         )}
 
-        <Command.Group heading="Checkout branch">
+        <Command.Group heading={t('Checkout branch')}>
           {visibleBranches.map((branch) => (
             <PaletteItem
               key={branch.name}
@@ -491,7 +490,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           ))}
         </Command.Group>
 
-        <Command.Group heading="View">
+        <Command.Group heading={t('View')}>
           <PaletteItem
             icon={<Sparkles />}
             label={t('Open GitMD Code')}
@@ -502,7 +501,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<SquareTerminal />}
-            label="Toggle terminal"
+            label={t('Toggle terminal')}
             shortcut="`"
             onSelect={() => {
               close();
@@ -520,7 +519,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<ChevronsDownUp />}
-            label="Collapse sidebar sections"
+            label={t('Collapse sidebar sections')}
             onSelect={() => {
               close();
               useUi.getState().collapseSidebarSections(SIDEBAR_SECTIONS);
@@ -528,7 +527,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<ZoomIn />}
-            label="Zoom in"
+            label={t('Zoom in')}
             shortcut="+"
             onSelect={() => {
               close();
@@ -537,7 +536,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<ZoomOut />}
-            label="Zoom out"
+            label={t('Zoom out')}
             shortcut="-"
             onSelect={() => {
               close();
@@ -554,7 +553,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<Settings />}
-            label="Settings"
+            label={t('Settings')}
             shortcut=","
             onSelect={() => {
               close();
@@ -563,7 +562,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           />
           <PaletteItem
             icon={<SquareTerminal />}
-            label="Install command line tool"
+            label={t('Install command line tool')}
             onSelect={() => {
               close();
               void installCliTool().catch((error) =>
@@ -585,7 +584,7 @@ export function CommandPalette({ onRefresh }: { onRefresh: () => Promise<void> }
           )}
           <PaletteItem
             icon={<Download />}
-            label="Check for updates"
+            label={t('Check for updates')}
             onSelect={() => {
               close();
               void import('@/features/updater/check').then(({ checkForUpdates }) =>

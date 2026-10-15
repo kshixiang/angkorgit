@@ -19,7 +19,7 @@ certificate**, so your OS asks for a few extra confirmations on first launch.
 3. When you open a repository in Desktop/Documents/Downloads, macOS asks
    *"GitMD would like to access files in your … folder"* → **Allow**.
    One prompt per folder, then it's remembered.
-4. If you connect a GitHub/GitLab account, the first git operation per app
+4. If you connect a hosting account, the first git operation per app
    session asks to read the token from your Keychain → **Allow** (plain
    "Allow" — "Always Allow" has no effect on unsigned apps).
 

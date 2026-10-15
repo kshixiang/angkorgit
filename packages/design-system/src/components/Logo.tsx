@@ -33,19 +33,14 @@ export function Logo({
 @keyframes gitmd-draw-loop { 0% { stroke-dashoffset: 300; opacity: 1; } 55% { stroke-dashoffset: 0; opacity: 1; } 82% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
 @keyframes gitmd-dots-loop { 0%, 40% { opacity: 0; } 60%, 82% { opacity: 1; } 100% { opacity: 0; } }`}</style>
       )}
-      <g stroke="#D97706" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={draw}>
-        <path d="M32 6 L27 20 L27 30 L37 30 L37 20 Z" />
-        <path d="M16 16 L12.5 26 L12.5 34 L19.5 34 L19.5 26 Z" />
-        <path d="M48 16 L44.5 26 L44.5 34 L51.5 34 L51.5 26 Z" />
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round" style={draw}>
+        <path d="M23.2 9.5V54.5" stroke="#3FB950" strokeWidth={5.4} />
+        <path d="M23.2 23.9C50.2 23.9 50.2 41.9 23.2 41.9" stroke="#58A6FF" strokeWidth={5.4} />
       </g>
-      <g stroke="currentColor" strokeWidth={3} strokeLinecap="round" fill="none" style={draw}>
-        <path d="M16 40 C16 48 24 46 32 46" />
-        <path d="M48 40 C48 48 40 46 32 46" />
-        <path d="M32 36 V 54" />
-      </g>
-      <circle cx={16} cy={38} r={3.5} fill="#D97706" style={dots} />
-      <circle cx={48} cy={38} r={3.5} fill="#D97706" style={dots} />
-      <circle cx={32} cy={57} r={3.5} fill="currentColor" style={dots} />
+      <circle cx={23.2} cy={9.5} r={5.4} fill="#7EE787" style={dots} />
+      <circle cx={23.2} cy={23.9} r={5.4} fill="#7EE787" style={dots} />
+      <circle cx={23.2} cy={41.9} r={5.4} fill="#7EE787" style={dots} />
+      <circle cx={23.2} cy={54.5} r={5.4} fill="#7EE787" style={dots} />
     </svg>
   );
 }

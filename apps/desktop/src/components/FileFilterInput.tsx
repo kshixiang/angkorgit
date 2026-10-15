@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Search, X } from 'lucide-react';
 import { Button, Input, cn } from '@gitmd/design-system';
+import { useUiText } from '@/shared/i18n';
 
 let consumedFocusSeq = 0;
 
@@ -19,6 +20,7 @@ export function FileFilterInput({
   placeholder?: string;
   className?: string;
 }) {
+  const t = useUiText();
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (focusSeq === 0 || focusSeq === consumedFocusSeq) return;
@@ -47,7 +49,7 @@ export function FileFilterInput({
         <Button
           variant="ghost"
           size="icon-sm"
-          aria-label="Clear filter"
+          aria-label={t('Clear filter')}
           className="absolute right-0.5 top-1/2 size-6 -translate-y-1/2"
           onClick={() => onChange('')}
         >

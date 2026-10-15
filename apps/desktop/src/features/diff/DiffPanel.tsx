@@ -31,8 +31,10 @@ import { useDiffFind } from './diffSearch';
 import { useDiffSelectAll } from './diffCopy';
 import { diffSelectionText } from './diffSelection';
 import { changeBlocks, DiffMinimap, scrollToFraction } from './DiffMinimap';
+import { useUiText } from '@/shared/i18n';
 
 export function DiffPanel({ target }: { target: CenterDiffTarget }) {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const status = useRepo((s) => s.status);
   const statusVersion = useRepo((s) => s.statusVersion);
@@ -267,7 +269,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             </span>
           }
         >
-          <Button variant="ghost" size="icon-sm" aria-label="Close diff" onClick={closeCenterDiff}>
+          <Button variant="ghost" size="icon-sm" aria-label={t('Close diff')} onClick={closeCenterDiff}>
             <X className="size-4" />
           </Button>
         </Hint>
@@ -286,33 +288,33 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           </span>
         )}
         <Separator orientation="vertical" className="mx-1 h-4" />
-        <Hint label="Inline diff">
+        <Hint label={t('Inline diff')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Inline diff"
+            aria-label={t('Inline diff')}
             className={cn(diffView === 'inline' && 'bg-surface-raised text-foreground')}
             onClick={() => setDiffView('inline')}
           >
             <Rows3 className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label="Side-by-side diff">
+        <Hint label={t('Side-by-side diff')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Side-by-side diff"
+            aria-label={t('Side-by-side diff')}
             className={cn(diffView === 'split' && 'bg-surface-raised text-foreground')}
             onClick={() => setDiffView('split')}
           >
             <Columns2 className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label={wordDiff ? 'Word diff on' : 'Word diff off'}>
+        <Hint label={wordDiff ? t('Word diff on') : t('Word diff off')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle word diff"
+            aria-label={t('Toggle word diff')}
             className={cn(wordDiff && 'bg-surface-raised text-primary')}
             onClick={() => setWordDiff(!wordDiff)}
           >
@@ -331,7 +333,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle line wrapping"
+            aria-label={t('Toggle line wrapping')}
             disabled={!!textDiff && wrapUnavailable(textDiff)}
             className={cn(wrapLines && 'bg-surface-raised text-primary')}
             onClick={() => setWrapLines(!wrapLines)}
@@ -339,22 +341,22 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             <WrapText className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label={fullFileDiff ? 'Whole file shown — click for changes only' : 'Show whole file'}>
+        <Hint label={fullFileDiff ? t('Whole file shown — click for changes only') : t('Show whole file')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Toggle whole file view"
+            aria-label={t('Toggle whole file view')}
             className={cn(fullFileDiff && 'bg-surface-raised text-primary')}
             onClick={() => setFullFileDiff(!fullFileDiff)}
           >
             <FileText className="size-3.5" />
           </Button>
         </Hint>
-        <Hint label="File history">
+        <Hint label={t('File history')}>
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="File history"
+            aria-label={t('File history')}
             onClick={() => openFileHistory(target.path)}
           >
             <History className="size-3.5" />
@@ -372,7 +374,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            aria-label="Blame"
+            aria-label={t('Blame')}
             disabled={!blameable}
             onClick={() => openBlame(target.path, target.oid ?? null)}
           >
@@ -389,7 +391,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 </span>
               }
             >
-              <Button variant="ghost" size="icon-sm" aria-label="Previous change" onClick={() => jumpChange(-1)}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('Previous change')} onClick={() => jumpChange(-1)}>
                 <ChevronUp className="size-4" />
               </Button>
             </Hint>
@@ -400,7 +402,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 </span>
               }
             >
-              <Button variant="ghost" size="icon-sm" aria-label="Next change" onClick={() => jumpChange(1)}>
+              <Button variant="ghost" size="icon-sm" aria-label={t('Next change')} onClick={() => jumpChange(1)}>
                 <ChevronDown className="size-4" />
               </Button>
             </Hint>
@@ -422,7 +424,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Previous file"
+                aria-label={t('Previous file')}
                 disabled={fileIndex <= 0}
                 onClick={() => goFile(-1)}
               >
@@ -442,7 +444,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                aria-label="Next file"
+                aria-label={t('Next file')}
                 disabled={fileIndex >= siblings.length - 1}
                 onClick={() => goFile(1)}
               >
@@ -460,16 +462,14 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                 size="sm"
                 onClick={() => void runStage(() => ipc.unstageFile(path, target.path), 'Unstage')}
               >
-                <Minus className="size-3" /> Unstage file
-              </Button>
+                <Minus className="size-3" />{t('Unstage file')}</Button>
             ) : (
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => void runStage(() => ipc.stageFile(path, target.path), 'Stage')}
               >
-                <Plus className="size-3" /> Stage file
-              </Button>
+                <Plus className="size-3" />{t('Stage file')}</Button>
             )}
           </>
         )}
@@ -488,9 +488,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               <p className="max-w-md text-center text-sm text-danger [overflow-wrap:anywhere]">
                 Could not load the diff: {loadError}
               </p>
-              <Button variant="ghost" size="sm" onClick={() => setReloadToken((t) => t + 1)}>
-                Retry
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setReloadToken((t) => t + 1)}>{t('Retry')}</Button>
             </div>
           ) : diff ? (
             <DiffViewer
@@ -526,12 +524,10 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                     >
                       {target.staged ? (
                         <>
-                          <Minus className="size-3" /> Unstage hunk
-                        </>
+                          <Minus className="size-3" />{t('Unstage hunk')}</>
                       ) : (
                         <>
-                          <Plus className="size-3" /> Stage hunk
-                        </>
+                          <Plus className="size-3" />{t('Stage hunk')}</>
                       )}
                     </Button>
                   )
@@ -539,9 +535,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
             }
             />
           ) : (
-            <p className="py-16 text-center text-sm text-faint">
-              No diff to show — the change may already be staged or resolved.
-            </p>
+            <p className="py-16 text-center text-sm text-faint">{t('No diff to show — the change may already be staged or resolved.')}</p>
           )}
         </div>
         {diff && !loading && <DiffMinimap diff={diff} view={diffView} scrollRef={scrollRef} />}
@@ -572,8 +566,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                       )
                     }
                   >
-                    <Minus /> Unstage this line
-                  </DropdownMenuItem>
+                    <Minus />{t('Unstage this line')}</DropdownMenuItem>
                 ) : (
                   <>
                     <DropdownMenuItem
@@ -592,17 +585,16 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                         )
                       }
                     >
-                      <Plus /> Stage this line
-                    </DropdownMenuItem>
+                      <Plus />{t('Stage this line')}</DropdownMenuItem>
                     <DropdownMenuItem
                       destructive
                       onClick={() => {
                         const info = lineMenu.info;
                         void confirmDialog({
-                          title: 'Discard this line?',
+                          title: t('Discard this line?'),
                           description:
-                            'The change on this line will be reverted in your working tree (modified lines are restored to their original text). This cannot be undone.',
-                          confirmLabel: 'Discard line',
+                            t('The change on this line will be reverted in your working tree (modified lines are restored to their original text). This cannot be undone.'),
+                          confirmLabel: t('Discard line'),
                           destructive: true,
                         }).then((ok) => {
                           if (ok)
@@ -619,8 +611,7 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
                         });
                       }}
                     >
-                      <Trash2 /> Discard this line…
-                    </DropdownMenuItem>
+                      <Trash2 />{t('Discard this line…')}</DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
@@ -630,25 +621,22 @@ export function DiffPanel({ target }: { target: CenterDiffTarget }) {
               <DropdownMenuItem
                 onClick={() => {
                   void navigator.clipboard.writeText(lineMenu.selection);
-                  toast.success('Copied');
+                  toast.success(t('Copied'));
                 }}
               >
-                <Copy /> Copy
-              </DropdownMenuItem>
+                <Copy />{t('Copy')}</DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={() => {
                 void navigator.clipboard.writeText(lineMenu.info.line.content);
-                toast.success('Line copied');
+                toast.success(t('Line copied'));
               }}
             >
-              <Copy /> Copy line
-            </DropdownMenuItem>
+              <Copy />{t('Copy line')}</DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => selectSide(lineMenu.info.side ?? 'new')}
             >
-              <TextSelect /> Select all
-            </DropdownMenuItem>
+              <TextSelect />{t('Select all')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

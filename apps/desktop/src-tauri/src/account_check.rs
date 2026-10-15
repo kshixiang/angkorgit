@@ -80,38 +80,12 @@ async fn run_blocking<T: Send + 'static>(
 
 async fn probe(account: &AccountInfo, token: &str) -> Verdict {
     match account.provider.as_str() {
-        "github" => probe_github(token).await,
         "gitlab" | "gitlab-self" => probe_gitlab(&account.host, token).await,
         "bitbucket" => match &account.email {
             Some(email) => probe_bitbucket(email, token).await,
             None => Verdict::Unsupported,
         },
         _ => Verdict::Unsupported,
-    }
-}
-
-async fn probe_github(token: &str) -> Verdict {
-    let Ok(client) = crate::http::shared_client() else {
-        return Verdict::Unreachable;
-    };
-    let response = client
-        .get("https://api.github.com/user")
-        .header("authorization", format!("Bearer {token}"))
-        .header("accept", "application/vnd.github+json")
-        .header("user-agent", "GitMD")
-        .send()
-        .await;
-    match response {
-        Ok(res) if res.status().is_success() => {
-            let expires_at = res
-                .headers()
-                .get("github-authentication-token-expiration")
-                .and_then(|value| value.to_str().ok())
-                .map(str::to_string);
-            Verdict::Valid { expires_at }
-        }
-        Ok(res) if res.status().as_u16() == 401 => Verdict::Unauthorized,
-        _ => Verdict::Unreachable,
     }
 }
 

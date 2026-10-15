@@ -15,6 +15,7 @@ import {
 import { ipc, listen, pickDirectory } from '@/core/ipc';
 import { useUi, type ClonePreset, type DialogContext } from '@/features/ui/store';
 import { useSettings } from '@/features/settings/store';
+import { useUiText } from '@/shared/i18n';
 
 function clonePreset(ctx: DialogContext): ClonePreset | null {
   if (!ctx || typeof ctx === 'string' || !('url' in ctx) || !('into' in ctx)) return null;
@@ -22,6 +23,7 @@ function clonePreset(ctx: DialogContext): ClonePreset | null {
 }
 
 export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) {
+  const t = useUiText();
   const { dialog, dialogContext, closeDialog } = useUi();
   const cloneRoot = useSettings((s) => s.cloneRoot);
   const setCloneRoot = useSettings((s) => s.setCloneRoot);
@@ -67,7 +69,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
       const target = `${into.replace(/\/$/, '')}/${name}`;
       const path = await ipc.cloneRepository(url.trim(), target, branch.trim() || null);
       setCloneRoot(into.trim().replace(/\/$/, ''));
-      toast.success('Repository cloned');
+      toast.success(t('Repository cloned'));
       closeDialog();
       onCloned(path);
     } catch (error) {
@@ -80,7 +82,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
     <Dialog open={open} onOpenChange={(o) => !o && closeDialog()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Clone repository</DialogTitle>
+          <DialogTitle>{t('Clone repository')}</DialogTitle>
           <DialogDescription>
             HTTPS or SSH URL. HTTPS uses your saved accounts first, then the system credential
             helper; SSH uses your agent and keys.
@@ -97,7 +99,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
             }}
           />
           <Input
-            placeholder="Branch (optional)"
+            placeholder={t('Branch (optional)')}
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             onKeyDown={(e) => {
@@ -106,7 +108,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
           />
           <div className="flex gap-2">
             <Input
-              placeholder="Destination folder"
+              placeholder={t('Destination folder')}
               value={into}
               onChange={(e) => setInto(e.target.value)}
               onKeyDown={(e) => {
@@ -116,7 +118,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
             <Button
               variant="secondary"
               size="icon"
-              aria-label="Browse destination"
+              aria-label={t('Browse destination')}
               onClick={async () => {
                 const dir = await pickDirectory('Choose destination folder');
                 if (dir) setInto(dir);
@@ -140,9 +142,7 @@ export function CloneDialog({ onCloned }: { onCloned: (path: string) => void }) 
           )}
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={closeDialog}>
-            Cancel
-          </Button>
+          <Button variant="ghost" onClick={closeDialog}>{t('Cancel')}</Button>
           <Button onClick={() => void clone()} disabled={progress !== null || !url.trim() || !into.trim()}>
             {progress !== null ? <Spinner className="text-primary-foreground" /> : null}
             Clone

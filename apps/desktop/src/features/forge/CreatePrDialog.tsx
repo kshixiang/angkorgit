@@ -33,6 +33,7 @@ import { useSettings } from '@/features/settings/store';
 import { useUi } from '@/features/ui/store';
 import { aiConfigured, getAiProvider } from '@/features/ai/client';
 import { forgeProviderFor, useForge } from './store';
+import { useUiText } from '@/shared/i18n';
 
 function titleFromBranch(branch: string): string {
   const leaf = branch.split('/').pop() ?? branch;
@@ -48,6 +49,7 @@ interface DialogMeta {
 const dialogMetaCache = new Map<string, DialogMeta>();
 
 export function CreatePrDialog() {
+  const t = useUiText();
   const repo = useRepo((s) => s.repo);
   const branches = useRepo((s) => s.branches);
   const remotes = useRepo((s) => s.remotes);
@@ -253,7 +255,7 @@ export function CreatePrDialog() {
       });
       closeDialog();
       toast.success(`${provider.label} ${noun} #${pr.number} created`, {
-        action: { label: 'Open', onClick: () => void openExternal(pr.url) },
+        action: { label: t('Open'), onClick: () => void openExternal(pr.url) },
       });
       void useForge.getState().load(true);
     } catch (err) {
@@ -281,7 +283,7 @@ export function CreatePrDialog() {
         <div className="flex flex-col gap-3">
           {targets.length > 1 && (
             <div className="flex items-center gap-2">
-              <span className="w-28 shrink-0 text-xs text-muted">Into repository</span>
+              <span className="w-28 shrink-0 text-xs text-muted">{t('Into repository')}</span>
               <Select
                 value={activeTargetName}
                 onValueChange={(value) => {
@@ -289,15 +291,15 @@ export function CreatePrDialog() {
                   baseTouched.current = false;
                 }}
               >
-                <SelectTrigger className="h-8 flex-1" aria-label="Target repository">
+                <SelectTrigger className="h-8 flex-1" aria-label={t('Target repository')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {targets.map((t) => (
-                    <SelectItem key={t.name} value={t.name}>
-                      <span className="font-mono">{t.name}</span>
+                  {targets.map((target) => (
+                    <SelectItem key={target.name} value={target.name}>
+                      <span className="font-mono">{target.name}</span>
                       <span className="ml-2 text-faint">
-                        {t.remote.owner}/{t.remote.repo}
+                        {target.remote.owner}/{target.remote.repo}
                       </span>
                     </SelectItem>
                   ))}
@@ -318,7 +320,7 @@ export function CreatePrDialog() {
               }}
             >
               <SelectTrigger className="h-8 flex-1">
-                <SelectValue placeholder="Target branch" />
+                <SelectValue placeholder={t('Target branch')} />
               </SelectTrigger>
               <SelectContent>
                 {baseOptions.map((name) => (
@@ -331,7 +333,7 @@ export function CreatePrDialog() {
           </div>
           <Input
             autoFocus
-            placeholder="Title"
+            placeholder={t('Title')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
@@ -340,7 +342,7 @@ export function CreatePrDialog() {
           />
           <div className="relative">
             <Textarea
-              placeholder="Description (optional)"
+              placeholder={t('Description (optional)')}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onKeyDown={(e) => {
@@ -349,7 +351,7 @@ export function CreatePrDialog() {
               className="min-h-32 pr-9 font-mono text-xs"
             />
             {aiConfigured() && (
-              <Hint label={generating ? 'Stop generating' : 'Generate a description with AI'}>
+              <Hint label={generating ? t('Stop generating') : t('Generate a description with AI')}>
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -363,9 +365,7 @@ export function CreatePrDialog() {
             )}
             {generating && (
               <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded bg-surface-overlay/90 px-1.5 py-0.5 text-[11px] text-muted">
-                <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />
-                Writing…
-              </span>
+                <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />{t('Writing…')}</span>
             )}
           </div>
           <div className="flex min-w-0 items-center gap-2">
@@ -381,9 +381,7 @@ export function CreatePrDialog() {
               <DropdownMenuContent align="start" className="max-h-64 w-72 overflow-y-auto">
                 {candidatesLoading && (
                   <div className="flex items-center gap-2 px-2 py-1.5 text-xs text-faint">
-                    <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />
-                    Loading members…
-                  </div>
+                    <Logo size={14} animated="loop" className="logo-draw-loop shrink-0" />{t('Loading members…')}</div>
                 )}
                 {accountLookupFailed && (
                   <div className="px-2 py-1.5 text-xs text-faint">
@@ -427,9 +425,7 @@ export function CreatePrDialog() {
             </span>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted">
-            <Checkbox checked={draft} onCheckedChange={(v) => setDraft(v === true)} />
-            Create as draft
-          </label>
+            <Checkbox checked={draft} onCheckedChange={(v) => setDraft(v === true)} />{t('Create as draft')}</label>
           {baseOptions.length === 0 && (
             <p className="text-xs text-info">
               No branches found on {activeTargetName} — fetch it first so the target branch list can fill in.
@@ -449,9 +445,7 @@ export function CreatePrDialog() {
           {error && <p className="text-xs text-danger [overflow-wrap:anywhere]">{error}</p>}
         </div>
         <DialogFooter>
-          <Button variant="secondary" onClick={closeDialog}>
-            Cancel
-          </Button>
+          <Button variant="secondary" onClick={closeDialog}>{t('Cancel')}</Button>
           <Button
             disabled={!title.trim() || !base || !source || notPushed || submitting}
             onClick={() => void submit()}
